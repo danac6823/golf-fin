@@ -694,38 +694,51 @@ function renderRecon(){
     (user==='允甄'?'只有你看得到銀行明細——填入銀行實際餘額,差異=0 才能蓋勾稽章':'零用金實點金額填入,差異=0 即可勾稽')+'</p>';
   mine.forEach(function(p,idx){
     var st=reconInput[p]||{date:today,actual:''};
-    var ymd=Number((st.date||today).replace(/-/g,''));
-    var asof=asofBal(p,ymd);
-    var actual=st.actual===''?null:Number(st.actual);
-    var diff=actual===null?null:actual-asof;
+    reconInput[p]=st; if(!st.date) st.date=today;
     var last=(lastData.recon||{})[p];
     h+='<div class="card">';
     h+='<b style="font-size:14px">'+p+'</b>';
     h+=last?'<p class="sub">上次勾稽:'+last.date+'・餘額 '+money(last.actual)+'・'+last.by+'</p>'
            :'<p class="sub">尚未勾稽過</p>';
-    h+='<label>對帳日</label><input type="date" value="'+(st.date||today)+'" onchange="reconSet(\''+p+'\',\'date\',this.value)">';
-    h+='<div style="display:flex;justify-content:space-between;font-size:13px;margin:4px 0"><span class="sub">截至該日帳面餘額</span><b>'+money(asof)+'</b></div>';
+    h+='<label>對帳日</label><input type="date" value="'+st.date+'" onchange="reconSet(\''+p+'\',\'date\',this.value,'+idx+')">';
+    h+='<div style="display:flex;justify-content:space-between;font-size:13px;margin:4px 0"><span class="sub">截至該日帳面餘額</span><b id="rcAsof_'+idx+'">—</b></div>';
     h+='<label>'+(user==='允甄'?'銀行實際餘額':'實點現金餘額')+'</label>'+
-       '<input type="number" inputmode="numeric" placeholder="輸入實際餘額" value="'+st.actual+'" oninput="reconSet(\''+p+'\',\'actual\',this.value)">';
-    if(diff===null) h+='<p class="sub">填入實際餘額後顯示差異</p>';
-    else if(diff===0){
-      h+='<p style="font-size:14px;font-weight:600;color:#27500A;margin:4px 0">✓ 差異 0,可勾稽</p>';
-      h+='<button class="btn" onclick="reconCommit(\''+p+'\')">✓ 完成勾稽(蓋檢查點,該日前帳目鎖定)</button>';
-    } else {
-      h+='<p style="font-size:14px;font-weight:600;color:#A32D2D;margin:4px 0">差異 '+(diff>0?'+':'')+money(diff)+' 元</p>';
-      if(diff>0) h+='<button class="ghost" style="margin-bottom:6px" onclick="reconQuickFix(\''+p+'\','+diff+',1)">一鍵補記:利息收入 +'+money(diff)+'</button>';
-      else h+='<button class="ghost" style="margin-bottom:6px" onclick="reconQuickFix(\''+p+'\','+(-diff)+',0)">一鍵補記:手續費 −'+money(-diff)+'</button>';
-      h+='<p class="sub">其他可能:有一筆尚未入帳、或金額打錯——到明細頁核對該池近期紀錄</p>';
-    }
+       '<input type="number" inputmode="numeric" placeholder="輸入實際餘額" value="'+st.actual+'" oninput="reconSet(\''+p+'\',\'actual\',this.value,'+idx+')">';
+    h+='<div id="rcDiff_'+idx+'"></div>';
     h+='</div>';
   });
   el.innerHTML=h;
+  mine.forEach(function(p,idx){ reconCalc(p,idx); });
 }
 
-function reconSet(pool,k,v){
+function reconCalc(p,idx){
+  var st=reconInput[p], today=new Date().toISOString().slice(0,10);
+  var ymd=Number((st.date||today).replace(/-/g,''));
+  var asof=asofBal(p,ymd);
+  var az=document.getElementById('rcAsof_'+idx);
+  if(az) az.textContent=money(asof);
+  var actual=st.actual===''?null:Number(st.actual);
+  var diff=actual===null?null:actual-asof;
+  var dz=document.getElementById('rcDiff_'+idx);
+  if(!dz) return;
+  var h='';
+  if(diff===null) h='<p class="sub">填入實際餘額後顯示差異</p>';
+  else if(diff===0){
+    h='<p style="font-size:14px;font-weight:600;color:#27500A;margin:4px 0">✓ 差異 0,可勾稽</p>';
+    h+='<button class="btn" onclick="reconCommit(\''+p+'\')">✓ 完成勾稽(蓋檢查點,該日前帳目鎖定)</button>';
+  } else {
+    h='<p style="font-size:14px;font-weight:600;color:#A32D2D;margin:4px 0">差異 '+(diff>0?'+':'')+money(diff)+' 元</p>';
+    if(diff>0) h+='<button class="ghost" style="margin-bottom:6px" onclick="reconQuickFix(\''+p+'\','+diff+',1)">一鍵補記:利息收入 +'+money(diff)+'</button>';
+    else h+='<button class="ghost" style="margin-bottom:6px" onclick="reconQuickFix(\''+p+'\','+(-diff)+',0)">一鍵補記:手續費 −'+money(-diff)+'</button>';
+    h+='<p class="sub">其他可能:有一筆尚未入帳、或金額打錯——到明細頁核對該池近期紀錄</p>';
+  }
+  dz.innerHTML=h;
+}
+
+function reconSet(pool,k,v,idx){
   reconInput[pool]=reconInput[pool]||{};
   reconInput[pool][k]=v;
-  renderRecon();
+  reconCalc(pool,idx);
 }
 
 function reconQuickFix(pool,amt,isIncome){
