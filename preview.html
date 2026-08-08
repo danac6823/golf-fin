@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1F3864">
-<title>高球隊財務|登帳</title>
+<title>高球隊財務(預覽)</title>
 <style>
 :root{--navy:#1F3864;--bg:#F5F6F8;--card:#fff;--line:#E3E6EB;--txt:#1c1c1e;--sub:#6b7280;
 --blue:#E6F1FB;--blueT:#0C447C;--green:#EAF3DE;--greenT:#27500A;--amber:#FAEEDA;--amberT:#633806;
@@ -58,23 +58,19 @@ body.appOn{padding-bottom:92px}
 <body>
 <div id="toast" class="toast"></div>
 
-<div id="loginView">
-  <h1 style="margin-bottom:6px">⛳ 高球隊財務系統</h1>
-  <p class="sub" style="margin-bottom:16px">第12屆|輕量版 L1</p>
-  <div class="card">
-    <label>登入代碼(向凌華索取)</label>
-    <input id="tokenInput" type="password" placeholder="輸入代碼" autocomplete="off">
-    <button class="btn" onclick="login()">登入</button>
-  </div>
-</div>
+<div id="loginView" class="hide"></div>
 
-<div id="mainView" class="hide">
+<div id="mainView">
+  <p onclick="this.remove()" style="font-size:11px;color:#8a5a00;background:#FFF7E6;border-radius:8px;padding:5px 10px;margin-bottom:8px;cursor:pointer">🔍 預覽模式(正式版無此列)— 點此關閉</p>
   <div class="card">
     <div class="row">
       <div class="avatar" id="avatar">?</div>
       <div style="flex:1"><b id="uname"></b><p class="sub" id="urole"></p></div>
-      <button class="ghost" style="width:auto;padding:8px 12px;margin:0" onclick="refresh()">↻</button>
-      <button class="ghost" style="width:auto;padding:8px 12px;margin:0" onclick="logout()">登出</button>
+      <select id="roleSwitch" style="width:120px;margin:0" onchange="switchRole(this.value)">
+        <option value="麗娜">麗娜・會長</option>
+        <option value="凌華">凌華・總幹事</option>
+        <option value="允甄">允甄・財務</option>
+      </select>
     </div>
   </div>
 
@@ -201,8 +197,58 @@ body.appOn{padding-bottom:92px}
 </div>
 
 <script>
-/* GAS 後端(2026-08-08 部署)*/
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbxTK9_7dOFlML5gO-uHP7gAb2Vr0aF88li4s6t0FSWH-MnLuczZ0RIzVvFTvHGqvbeIwA/exec';
+/* 預覽模式:mock 後端,含完整種子帳 */
+var MOCK = {
+  balances: {'[主]會費池':410887,'[私]Lina贊助池':50415,'[私]花零用金池':32730},
+  overview: {
+    teamSpend:{'創主班':111500,'創12':244438,'共用':0,'待分類':107190},
+    lina:{sponsor:400000,interest:273,direct12:5668,directMain:0,toTeam:0,toPetty:237000,unclassified:107190,privUse:0,balance:50415},
+    petty:{spent:238770,spent12:238770,spentMain:0,funded:237000,custody:34500,balance:32730}
+  },
+  seqR: 4, seqF: 5, seqT: 63, lastPush: null, recon: {},
+  vendors: [
+    {id:'V001',name:'菁英高爾夫',type:'球秘',payee:'',bankCode:'',bankAcct:'',note:'帳戶待補'},
+    {id:'V004',name:'睿谹國際有限公司',type:'獎品/會員禮',payee:'睿谹國際有限公司',bankCode:'050-1541',bankAcct:'15412030270',note:''}
+  ],
+  members: [{"id": "M001", "name": "江一平", "sex": "男", "cohort": "創1", "due": 10000, "last5": "33122", "method": "匯款", "confirm": "20260727", "phone": "0932321398", "status": "已繳", "note": ""}, {"id": "M002", "name": "江漢堂", "sex": "男", "cohort": "創1", "due": 10000, "last5": "55033", "method": "匯款", "confirm": "20260724", "phone": "0933705090", "status": "已繳", "note": "第1屆會長"}, {"id": "M003", "name": "葉步章", "sex": "男", "cohort": "創1", "due": 10000, "last5": "05305", "method": "匯款", "confirm": "20260728", "phone": "0926140469", "status": "已繳", "note": ""}, {"id": "M004", "name": "高有財", "sex": "男", "cohort": "創1", "due": 10000, "last5": "23808", "method": "匯款", "confirm": "20260724", "phone": "0935974851", "status": "已繳", "note": ""}, {"id": "M005", "name": "陳貴英", "sex": "女", "cohort": "創2", "due": 8000, "last5": "02686", "method": "匯款", "confirm": "20260724", "phone": "0910089792", "status": "已繳", "note": ""}, {"id": "M006", "name": "范揚錦", "sex": "男", "cohort": "創3", "due": 10000, "last5": "—", "method": "現金", "confirm": "20260723", "phone": "0933152104", "status": "⚠️待核", "note": "7/23付現,允甄帳未見入帳,現金流向待確認"}, {"id": "M007", "name": "尤繹宸", "sex": "男", "cohort": "創7", "due": 10000, "last5": "38693", "method": "匯款", "confirm": "20260724", "phone": "0936222862", "status": "已繳", "note": "第7屆總幹事"}, {"id": "M008", "name": "鍾盈盈", "sex": "女", "cohort": "創7", "due": 8000, "last5": "56666", "method": "匯款", "confirm": "", "phone": "0937189051", "status": "⚠️待核", "note": "已回報後5碼,允甄尚未確認入帳(第7屆財務)"}, {"id": "M009", "name": "高銘燦", "sex": "男", "cohort": "創7", "due": 10000, "last5": "73300", "method": "匯款", "confirm": "20260724", "phone": "0932930420", "status": "已繳", "note": ""}, {"id": "M010", "name": "孫毓媛", "sex": "女", "cohort": "創11", "due": 8000, "last5": "28642", "method": "匯款", "confirm": "20260525", "phone": "0918030602", "status": "已繳", "note": ""}, {"id": "M011", "name": "林憫惠", "sex": "女", "cohort": "創11", "due": 8000, "last5": "48283", "method": "匯款", "confirm": "20260525", "phone": "0958685758", "status": "已繳", "note": ""}, {"id": "M012", "name": "賴錦成", "sex": "男", "cohort": "創11", "due": 10000, "last5": "37991", "method": "匯款", "confirm": "20260525", "phone": "0987801079", "status": "已繳", "note": "第11屆會長"}, {"id": "M013", "name": "郭土水", "sex": "男", "cohort": "創11", "due": 10000, "last5": "72788", "method": "匯款", "confirm": "20260727", "phone": "0929138929", "status": "已繳", "note": ""}, {"id": "M014", "name": "鍾鎔聲", "sex": "男", "cohort": "創11", "due": 10000, "last5": "83156", "method": "匯款", "confirm": "20260727", "phone": "0970109818", "status": "已繳", "note": ""}, {"id": "M015", "name": "陳煜仁", "sex": "男", "cohort": "創11", "due": 10000, "last5": "71587", "method": "匯款", "confirm": "20260525", "phone": "0972757156", "status": "已繳", "note": "第11屆總幹事"}, {"id": "M016", "name": "劉桂妃", "sex": "女", "cohort": "創12", "due": 8000, "last5": "41556", "method": "匯款", "confirm": "20260526", "phone": "0920387388", "status": "已繳", "note": ""}, {"id": "M017", "name": "周塏晉", "sex": "男", "cohort": "創12", "due": 10000, "last5": "—", "method": "LINE Pay", "confirm": "20260523", "phone": "0925632132", "status": "已繳", "note": ""}, {"id": "M018", "name": "張允甄", "sex": "女", "cohort": "創12", "due": 8000, "last5": "89349", "method": "匯款", "confirm": "20260528", "phone": "0910946443", "status": "已繳", "note": "財務"}, {"id": "M019", "name": "張凌華", "sex": "女", "cohort": "創12", "due": 8000, "last5": "96603", "method": "匯款", "confirm": "20260525", "phone": "0905361633", "status": "已繳", "note": "總幹事(SYS)"}, {"id": "M020", "name": "徐怡靜", "sex": "女", "cohort": "創12", "due": 8000, "last5": "34752", "method": "匯款", "confirm": "20260528", "phone": "0961066369", "status": "已繳", "note": ""}, {"id": "M021", "name": "曾国治", "sex": "男", "cohort": "創12", "due": 10000, "last5": "58880", "method": "匯款", "confirm": "20260727", "phone": "0915391391", "status": "已繳", "note": ""}, {"id": "M022", "name": "李麗娜", "sex": "女", "cohort": "創12", "due": 8000, "last5": "—", "method": "現金", "confirm": "20260704", "phone": "", "status": "已繳", "note": "會長"}, {"id": "M023", "name": "林奕君", "sex": "女", "cohort": "創12", "due": 8000, "last5": "78385", "method": "匯款", "confirm": "20260525", "phone": "0919004220", "status": "已繳", "note": ""}, {"id": "M024", "name": "王雅慧", "sex": "女", "cohort": "創12", "due": 8000, "last5": "79358", "method": "匯款", "confirm": "20260526", "phone": "0916575272", "status": "已繳", "note": ""}, {"id": "M025", "name": "盧偉娟", "sex": "女", "cohort": "創12", "due": 8000, "last5": "60122", "method": "匯款", "confirm": "20260525", "phone": "0922868029", "status": "已繳", "note": ""}, {"id": "M026", "name": "蔡智光", "sex": "男", "cohort": "創12", "due": 10000, "last5": "—", "method": "現金", "confirm": "20260523", "phone": "0933161538", "status": "已繳", "note": ""}, {"id": "M027", "name": "郭盈均", "sex": "女", "cohort": "創12", "due": 8000, "last5": "72788", "method": "匯款", "confirm": "20260525", "phone": "0935361839", "status": "已繳", "note": ""}, {"id": "M028", "name": "黃揚清", "sex": "男", "cohort": "創12", "due": 10000, "last5": "35100", "method": "匯款", "confirm": "20260528", "phone": "0933817185", "status": "已繳", "note": ""}, {"id": "M029", "name": "黃文正", "sex": "男", "cohort": "創12", "due": 10000, "last5": "—", "method": "現金", "confirm": "20260523", "phone": "0938008297", "status": "已繳", "note": ""}, {"id": "M030", "name": "黃炳龍", "sex": "男", "cohort": "創12", "due": 10000, "last5": "31269", "method": "匯款", "confirm": "20260527", "phone": "0922072888", "status": "已繳", "note": ""}, {"id": "M031", "name": "黃銘輝", "sex": "男", "cohort": "創12", "due": 10000, "last5": "30941", "method": "匯款", "confirm": "20260610", "phone": "0958958143", "status": "已繳", "note": ""}, {"id": "M032", "name": "丁琪展", "sex": "男", "cohort": "創13", "due": 10000, "last5": "18765", "method": "匯款", "confirm": "20260525", "phone": "0977351530", "status": "已繳", "note": ""}, {"id": "M033", "name": "劉娟娟", "sex": "女", "cohort": "創13", "due": 8000, "last5": "29598", "method": "匯款", "confirm": "20260622", "phone": "0937825966", "status": "已繳", "note": ""}, {"id": "M034", "name": "嚴怡慧", "sex": "女", "cohort": "創13", "due": 8000, "last5": "83557", "method": "匯款", "confirm": "20260525", "phone": "0933115894", "status": "已繳", "note": ""}, {"id": "M035", "name": "曾文彣", "sex": "女", "cohort": "創13", "due": 8000, "last5": "00777", "method": "匯款", "confirm": "20260525", "phone": "0935123668", "status": "已繳", "note": ""}, {"id": "M036", "name": "林元騁", "sex": "男", "cohort": "創13", "due": 10000, "last5": "56077", "method": "匯款", "confirm": "20260525", "phone": "0920123054", "status": "已繳", "note": ""}, {"id": "M037", "name": "林博舜", "sex": "男", "cohort": "創13", "due": 10000, "last5": "51396", "method": "匯款", "confirm": "20260526", "phone": "0905655395", "status": "已繳", "note": ""}, {"id": "M038", "name": "林源發", "sex": "男", "cohort": "創13", "due": 10000, "last5": "36685", "method": "匯款", "confirm": "20260525", "phone": "0937029392", "status": "已繳", "note": ""}, {"id": "M039", "name": "楊宗烜", "sex": "男", "cohort": "創13", "due": 10000, "last5": "93889", "method": "匯款", "confirm": "20260529", "phone": "0908823029", "status": "已繳", "note": ""}, {"id": "M040", "name": "王昌蕾", "sex": "女", "cohort": "創13", "due": 8000, "last5": "90025", "method": "匯款", "confirm": "20260525", "phone": "0919336993", "status": "已繳", "note": ""}, {"id": "M041", "name": "管清智", "sex": "男", "cohort": "創13", "due": 10000, "last5": "06639", "method": "匯款", "confirm": "20260525", "phone": "0963763018", "status": "已繳", "note": ""}, {"id": "M042", "name": "莊馥瑋", "sex": "女", "cohort": "創13", "due": 8000, "last5": "01301", "method": "匯款", "confirm": "20260525", "phone": "0928001206", "status": "已繳", "note": ""}, {"id": "M043", "name": "郭怡楟", "sex": "女", "cohort": "創13", "due": 8000, "last5": "05666", "method": "匯款", "confirm": "20260528", "phone": "0960080783", "status": "已繳", "note": ""}, {"id": "M044", "name": "陳毅", "sex": "男", "cohort": "創13", "due": 10000, "last5": "—", "method": "LINE Pay", "confirm": "20260524", "phone": "0976069367", "status": "已繳", "note": ""}, {"id": "M045", "name": "陳燕惠", "sex": "女", "cohort": "創13", "due": 8000, "last5": "19898", "method": "匯款", "confirm": "20260525", "phone": "0922310537", "status": "已繳", "note": "現金轉帳"}, {"id": "M046", "name": "陳珮玉", "sex": "女", "cohort": "創13", "due": 8000, "last5": "23849", "method": "匯款", "confirm": "20260525", "phone": "0911366003", "status": "已繳", "note": ""}, {"id": "M047", "name": "陳筱雲", "sex": "女", "cohort": "創13", "due": 8000, "last5": "24673", "method": "匯款", "confirm": "20260525", "phone": "0939076194", "status": "已繳", "note": ""}, {"id": "M048", "name": "高至宏", "sex": "男", "cohort": "創13", "due": 10000, "last5": "99790", "method": "匯款", "confirm": "20260525", "phone": "0988042738", "status": "已繳", "note": ""}, {"id": "M049", "name": "黃俊誠", "sex": "男", "cohort": "創13", "due": 10000, "last5": "04137", "method": "匯款", "confirm": "20260525", "phone": "0935100826", "status": "已繳", "note": ""}, {"id": "M050", "name": "黃稚驊", "sex": "男", "cohort": "創13", "due": 10000, "last5": "06495", "method": "匯款", "confirm": "20260525", "phone": "0916181341", "status": "已繳", "note": ""}, {"id": "M051", "name": "楊宏興", "sex": "男", "cohort": "班媽/輔導員", "due": 10000, "last5": "09375", "method": "匯款", "confirm": "20260727", "phone": "0933604297", "status": "已繳", "note": ""}, {"id": "M052", "name": "竇立德", "sex": "男", "cohort": "班媽/輔導員", "due": 10000, "last5": "58039", "method": "匯款", "confirm": "20260529", "phone": "0935264417", "status": "已繳", "note": ""}, {"id": "M053", "name": "莊欣榮", "sex": "男", "cohort": "班媽/輔導員", "due": 10000, "last5": "09188", "method": "匯款", "confirm": "20260731", "phone": "0935958922", "status": "已繳", "note": ""}, {"id": "M054", "name": "謝宏宇", "sex": "男", "cohort": "班媽/輔導員", "due": 10000, "last5": "86100", "method": "匯款", "confirm": "20260525", "phone": "0911313693", "status": "已繳", "note": ""}, {"id": "M055", "name": "賴建芳", "sex": "男", "cohort": "班媽/輔導員", "due": 10000, "last5": "42905", "method": "匯款", "confirm": "", "phone": "0922793851", "status": "⚠️待核", "note": "已回報後5碼,允甄尚未確認入帳"}, {"id": "M056", "name": "陳姿親", "sex": "女", "cohort": "班媽/輔導員", "due": 8000, "last5": "08806", "method": "匯款", "confirm": "20260525", "phone": "0905501888", "status": "已繳", "note": ""}, {"id": "M057", "name": "陳淑珠", "sex": "女", "cohort": "班媽/輔導員", "due": 8000, "last5": "09684", "method": "匯款", "confirm": "20260724", "phone": "0933464185", "status": "已繳", "note": ""}, {"id": "M058", "name": "黃虹綺", "sex": "女", "cohort": "班媽/輔導員", "due": 8000, "last5": "00555", "method": "匯款", "confirm": "20260525", "phone": "0939383315", "status": "已繳", "note": ""}],
+  reqs: [
+    {ref:'R12-003',applyDate:20260731,applicant:'張凌華',pool:'[主]會費池',team:'創主班',cat:'會員禮',
+     desc:'會員禮-球標70個×450',amount:31500,payee:'睿谹國際有限公司',bankCode:'050-1541',
+     bankAcct:'15412030270',payDate:20260802,status:'已結案',vendorNotified:'已通知',note:''}
+  ],
+  recent: [{"id": "T062", "date": 20260802, "pool": "[主]會費池", "team": "創主班", "cat": "禮品", "desc": "會員禮-球標70個×450", "income": 0, "expense": 31500, "ref": "R12-003", "status": "已撥款", "note": "匯睿谹 20260802", "voided": false}, {"id": "T061", "date": 20260731, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 10000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T060", "date": 20260730, "pool": "[主]會費池", "team": "創主班", "cat": "移交款", "desc": "創11高球交接", "income": 20000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T059", "date": 20260728, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 10000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T058", "date": 20260727, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 50000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T057", "date": 20260724, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 56000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T056", "date": 20260723, "pool": "[私]花零用金池", "team": "創12", "cat": "獎品", "desc": "贈創11禮-提袋×5", "income": 0, "expense": 725, "ref": "", "status": "已支付", "note": "145×5", "voided": false}, {"id": "T055", "date": 20260723, "pool": "[私]花零用金池", "team": "創12", "cat": "獎品", "desc": "贈創11禮-帽×5", "income": 0, "expense": 3600, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T054", "date": 20260723, "pool": "[私]花零用金池", "team": "創12", "cat": "獎品", "desc": "贈創11禮-保溫瓶×5", "income": 0, "expense": 7510, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T053", "date": 20260721, "pool": "[私]花零用金池", "team": "創12", "cat": "代收款", "desc": "衣服代收", "income": 34500, "expense": 0, "ref": "", "status": "—", "note": "待轉付廠商", "voided": false}, {"id": "T052", "date": 20260716, "pool": "[主]會費池", "team": "創主班", "cat": "禮品", "desc": "0723會長交接伴手禮80份×300", "income": 0, "expense": 24000, "ref": "R12-002", "status": "已撥款", "note": "匯實心食品 20260715", "voided": false}, {"id": "T051", "date": 20260704, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 8000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T050", "date": 20260626, "pool": "[私]Lina贊助池", "team": "待分類", "cat": "比賽用品", "desc": "高爾夫球", "income": 0, "expense": 84000, "ref": "", "status": "已撥款", "note": "同日主班池購56,000;本筆疑120盒×700,待確認", "voided": false}, {"id": "T049", "date": 20260626, "pool": "[主]會費池", "team": "創主班", "cat": "比賽用品", "desc": "高爾夫球(3入/盒)80盒×700", "income": 0, "expense": 56000, "ref": "R12-001", "status": "已撥款", "note": "匯望勝 20260629", "voided": false}, {"id": "T048", "date": 20260622, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 16000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T047", "date": 20260622, "pool": "[主]會費池", "team": "創主班", "cat": "利息", "desc": "利息", "income": 387, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T046", "date": 20260610, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 10000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T045", "date": 20260609, "pool": "[私]花零用金池", "team": "創12", "cat": "內部調撥", "desc": "Lina池撥入", "income": 20000, "expense": 0, "ref": "F12-004", "status": "已撥款", "note": "", "voided": false}, {"id": "T044", "date": 20260609, "pool": "[私]Lina贊助池", "team": "創12", "cat": "內部調撥", "desc": "撥補創12零用金", "income": 0, "expense": 20000, "ref": "F12-004", "status": "已撥款", "note": "允甄原註「花日本費用」", "voided": false}, {"id": "T043", "date": 20260529, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 20000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T042", "date": 20260528, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 26000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T041", "date": 20260527, "pool": "[私]花零用金池", "team": "創12", "cat": "內部調撥", "desc": "Lina池撥入", "income": 100000, "expense": 0, "ref": "F12-003", "status": "已撥款", "note": "允甄帳記20260526", "voided": false}, {"id": "T040", "date": 20260527, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 10000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T039", "date": 20260526, "pool": "[私]花零用金池", "team": "創12", "cat": "內部調撥", "desc": "Lina池撥入", "income": 100000, "expense": 0, "ref": "F12-002", "status": "已撥款", "note": "", "voided": false}, {"id": "T038", "date": 20260526, "pool": "[私]Lina贊助池", "team": "創12", "cat": "內部調撥", "desc": "撥補創12零用金", "income": 0, "expense": 100000, "ref": "F12-003", "status": "已撥款", "note": "零用金帳記20260527入帳", "voided": false}, {"id": "T037", "date": 20260526, "pool": "[私]Lina贊助池", "team": "創12", "cat": "內部調撥", "desc": "撥補創12零用金", "income": 0, "expense": 100000, "ref": "F12-002", "status": "已撥款", "note": "歸墊副會長盃等代墊", "voided": false}, {"id": "T036", "date": 20260526, "pool": "[私]Lina贊助池", "team": "共用", "cat": "贊助收入", "desc": "麗娜會長贊助", "income": 300000, "expense": 0, "ref": "", "status": "—", "note": "原檔日期20250526疑誤,已更正", "voided": false}, {"id": "T035", "date": 20260526, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 36000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T034", "date": 20260525, "pool": "[私]花零用金池", "team": "創12", "cat": "獎品", "desc": "5/23禮品", "income": 0, "expense": 14590, "ref": "", "status": "已支付", "note": "手套×3、揮速訓練器×2、按摩器×3", "voided": false}, {"id": "T033", "date": 20260525, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 20000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T032", "date": 20260525, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 20000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T031", "date": 20260525, "pool": "[主]會費池", "team": "創主班", "cat": "會費收入", "desc": "會費收入", "income": 210000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T030", "date": 20260523, "pool": "[私]花零用金池", "team": "創12", "cat": "其他", "desc": "5/23城市會所場地費", "income": 0, "expense": 90000, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T029", "date": 20260523, "pool": "[私]花零用金池", "team": "創12", "cat": "餐飲", "desc": "5/23外燴尾款", "income": 0, "expense": 32187, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T028", "date": 20260523, "pool": "[私]Lina贊助池", "team": "創12", "cat": "餐飲", "desc": "龜記", "income": 0, "expense": 3168, "ref": "", "status": "已撥款", "note": "5/23城市會所活動當日", "voided": false}, {"id": "T027", "date": 20260523, "pool": "[私]Lina贊助池", "team": "創12", "cat": "餐飲", "desc": "豆花", "income": 0, "expense": 500, "ref": "", "status": "已撥款", "note": "5/23城市會所活動當日", "voided": false}, {"id": "T026", "date": 20260430, "pool": "[私]花零用金池", "team": "創12", "cat": "餐飲", "desc": "5/23外燴訂金", "income": 0, "expense": 12991, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T025", "date": 20260425, "pool": "[私]花零用金池", "team": "創12", "cat": "獎品", "desc": "副會長盃獎金", "income": 0, "expense": 9200, "ref": "", "status": "已支付", "note": "18獎項+4 Birdie", "voided": false}, {"id": "T024", "date": 20260425, "pool": "[私]花零用金池", "team": "創12", "cat": "餐飲", "desc": "副會長盃晚餐", "income": 0, "expense": 45815, "ref": "", "status": "已支付", "note": "¥248160-¥20000隴西學長現金", "voided": false}, {"id": "T023", "date": 20260414, "pool": "[私]花零用金池", "team": "創12", "cat": "餐飲", "desc": "球敘餐費", "income": 0, "expense": 4660, "ref": "", "status": "已支付", "note": "淨額記法:12660-收8000", "voided": false}, {"id": "T022", "date": 20260414, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "球敘點心", "income": 0, "expense": 659, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T021", "date": 20260309, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "球敘點心", "income": 0, "expense": 480, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T020", "date": 20260127, "pool": "[私]花零用金池", "team": "創12", "cat": "內部調撥", "desc": "Lina池撥入(東華訂金)", "income": 17000, "expense": 0, "ref": "F12-001", "status": "已撥款", "note": "允甄帳記20251129,日期待確認", "voided": false}, {"id": "T019", "date": 20260113, "pool": "[私]花零用金池", "team": "創12", "cat": "餐飲", "desc": "球敘餐費", "income": 0, "expense": 5253, "ref": "", "status": "已支付", "note": "淨額記法:16553-收7500-花爸贊助4000", "voided": false}, {"id": "T018", "date": 20251231, "pool": "[私]花零用金池", "team": "創12", "cat": "餐飲", "desc": "球敘餐費", "income": 0, "expense": 1800, "ref": "", "status": "已支付", "note": "淨額記法:8800-收5000-允甄匯2000", "voided": false}, {"id": "T017", "date": 20251222, "pool": "[私]Lina贊助池", "team": "共用", "cat": "利息", "desc": "利息", "income": 273, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}, {"id": "T016", "date": 20251129, "pool": "[私]Lina贊助池", "team": "創12", "cat": "內部調撥", "desc": "撥補創12零用金(東華訂金)", "income": 0, "expense": 17000, "ref": "F12-001", "status": "已撥款", "note": "零用金帳記20260127收到,日期待確認", "voided": false}, {"id": "T015", "date": 20251129, "pool": "[私]Lina贊助池", "team": "創12", "cat": "餐飲", "desc": "龍潭晚餐(允甄匯凌華2,000)", "income": 0, "expense": 2000, "ref": "", "status": "已撥款", "note": "疑=零用金帳20251231球敘備註;零用金帳為淨額記法未入此筆", "voided": false}, {"id": "T014", "date": 20251025, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "團體課點心", "income": 0, "expense": 616, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T013", "date": 20251014, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "團體課點心", "income": 0, "expense": 412, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T012", "date": 20251007, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "團體課點心", "income": 0, "expense": 265, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T011", "date": 20251004, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "團體課點心", "income": 0, "expense": 529, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T010", "date": 20250927, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "團體課點心", "income": 0, "expense": 461, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T009", "date": 20250926, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "團體課點心", "income": 0, "expense": 498, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T008", "date": 20250921, "pool": "[私]Lina贊助池", "team": "待分類", "cat": "餐飲", "desc": "英芳餐廳", "income": 0, "expense": 23190, "ref": "", "status": "已撥款", "note": "原註:黃金海岸球場;隊伍待凌華判定", "voided": false}, {"id": "T007", "date": 20250920, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "團體課點心", "income": 0, "expense": 1399, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T006", "date": 20250913, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "團體課點心", "income": 0, "expense": 982, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T005", "date": 20250903, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "團體課點心", "income": 0, "expense": 794, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T004", "date": 20250829, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "團體課點心", "income": 0, "expense": 539, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T003", "date": 20250809, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "團體課點心", "income": 0, "expense": 1304, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T002", "date": 20250802, "pool": "[私]花零用金池", "team": "創12", "cat": "雜支", "desc": "團體課點心", "income": 0, "expense": 1501, "ref": "", "status": "已支付", "note": "", "voided": false}, {"id": "T001", "date": 20250710, "pool": "[私]Lina贊助池", "team": "共用", "cat": "贊助收入", "desc": "麗娜會長贊助", "income": 100000, "expense": 0, "ref": "", "status": "—", "note": "", "voided": false}]
+};
+
+function mockPush(to, title, fields, buttons){
+  MOCK.lastPush = { to:to, title:title, fields:fields, buttons:buttons };
+}
+function recalcMock(){
+  var bal={'[主]會費池':0,'[私]Lina贊助池':0,'[私]花零用金池':0};
+  var ov={teamSpend:{'創主班':0,'創12':0,'共用':0,'待分類':0},
+    lina:{sponsor:0,interest:0,direct12:0,directMain:0,toTeam:0,toPetty:0,unclassified:0,privUse:0,balance:0},
+    petty:{spent:0,spent12:0,spentMain:0,funded:0,custody:0,balance:0}};
+  MOCK.recent.forEach(function(r){ if(r.voided) return;
+    bal[r.pool]+=r.income-r.expense;
+    if(r.expense>0&&r.cat!=='內部調撥'&&r.cat!=='贊助轉出'&&ov.teamSpend.hasOwnProperty(r.team)) ov.teamSpend[r.team]+=r.expense;
+    if(r.pool==='[私]Lina贊助池'){
+      if(r.cat==='贊助收入') ov.lina.sponsor+=r.income;
+      if(r.cat==='利息') ov.lina.interest+=r.income;
+      if(r.cat==='內部調撥') ov.lina.toPetty+=r.expense;
+      else if(r.cat==='贊助轉出') ov.lina.toTeam+=r.expense;
+      else if(r.expense>0){
+        if(r.team==='創12') ov.lina.direct12+=r.expense;
+        else if(r.team==='創主班') ov.lina.directMain+=r.expense;
+        else if(r.team==='Lina私用') ov.lina.privUse+=r.expense;
+        else if(r.team==='待分類') ov.lina.unclassified+=r.expense; } }
+    if(r.pool==='[私]花零用金池'){
+      if(r.expense>0&&r.cat!=='內部調撥'){ ov.petty.spent+=r.expense;
+        if(r.team==='創12') ov.petty.spent12+=r.expense;
+        else if(r.team==='創主班') ov.petty.spentMain+=r.expense; }
+      if(r.income>0&&r.cat==='內部調撥') ov.petty.funded+=r.income;
+      if(r.income>0&&r.cat==='代收款') ov.petty.custody+=r.income; } });
+  ov.lina.balance=bal['[私]Lina贊助池']; ov.petty.balance=bal['[私]花零用金池'];
+  MOCK.balances=bal; MOCK.overview=ov;
+}
 
 var TPL = {
   '允甄':[
@@ -235,10 +281,114 @@ function ovActBack(){ ovActSel=null; renderOverview(); }
 var OV_VIEWS=[['pools','三池'],['team','隊伍'],['lina','會長'],['adv','代墊']];
 
 function api(payload){
-  payload.token = localStorage.getItem('gf_token');
-  return fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)})
-    .then(function(r){return r.json()})
-    .then(function(j){ if(!j.ok) throw new Error(j.error); return j; });
+  return new Promise(function(res,rej){ setTimeout(function(){
+    if(payload.action==='whoami') res({name:user});
+    else if(payload.action==='summary') res({balances:MOCK.balances, recent:MOCK.recent, overview:MOCK.overview, reqs:MOCK.reqs, recon:MOCK.recon, pubs:MOCK.pubs||[], vendors:MOCK.vendors||[]});
+    else if(payload.action==='add'){
+      var en=payload.entry, id='T'+('00'+(MOCK.seqT++)).slice(-3), ref='';
+      if(en.refType==='R') ref='R12-'+('00'+(MOCK.seqR++)).slice(-3);
+      if(en.refType==='F') ref='F12-'+('00'+(MOCK.seqF++)).slice(-3);
+      MOCK.balances[en.pool] += (en.income||0)-(en.expense||0);
+      MOCK.recent.unshift({id:id,date:en.date,pool:en.pool,team:en.team,cat:en.cat,desc:en.desc,
+        income:en.income||0,expense:en.expense||0,ref:ref,status:'—',note:'',voided:false});
+      res({txnId:id, ref:ref});
+    }
+    else if(payload.action==='sponsorTransfer'){
+      if(user!=='允甄'){ rej(new Error('銀行轉帳回報為財務(允甄)專屬')); return; }
+      var refS='F12-'+('00'+(MOCK.seqF++)).slice(-3), amtS=payload.amount;
+      MOCK.balances['[私]Lina贊助池']-=amtS; MOCK.balances['[主]會費池']+=amtS;
+      MOCK.overview.lina.toTeam+=amtS; MOCK.overview.lina.balance-=amtS;
+      var idA='T'+('00'+(MOCK.seqT++)).slice(-3), idB='T'+('00'+(MOCK.seqT++)).slice(-3);
+      MOCK.recent.unshift({id:idB,date:payload.date,pool:'[主]會費池',team:'創主班',cat:'贊助收入',
+        desc:'麗娜會長贊助(李麗娜,自Lina池轉入)',income:amtS,expense:0,ref:refS,status:'—',note:payload.note||'',voided:false});
+      MOCK.recent.unshift({id:idA,date:payload.date,pool:'[私]Lina贊助池',team:'創主班',cat:'贊助轉出',
+        desc:'轉入球隊帳(贊助創業主班)',income:0,expense:amtS,ref:refS,status:'已撥款',note:payload.note||'',voided:false});
+      res({ref:refS, txnIds:[idA,idB]});
+    }
+    else if(payload.action==='reqCreate'){
+      var q=payload.req, ref='R12-'+('00'+(MOCK.seqR++)).slice(-3);
+      MOCK.reqs.unshift({ref:ref,applyDate:20260808,applicant:user==='凌華'?'張凌華':'張允甄',
+        pool:q.pool,team:q.team,cat:q.cat,desc:q.desc,amount:q.amount,payee:q.payee,
+        bankCode:q.bankCode,bankAcct:q.bankAcct,payDate:'',status:'待匯款',vendorNotified:'—',note:q.note});
+      mockPush('允甄','💸 新付款請求 '+ref,
+        [['項目',q.desc],['金額','NT$ '+q.amount.toLocaleString()],['收款戶名',q.payee],['帳號',(q.bankCode?q.bankCode+' ':'')+(q.bankAcct||'')]],
+        [['查看明細',{ref:ref}],['確認已匯款',{ref:ref,act:'pay'}]]);
+      res({ref:ref});
+    }
+    else if(payload.action==='reqPay'){
+      var r=MOCK.reqs.find(function(x){return x.ref===payload.ref});
+      if(user!=='允甄'){ rej(new Error('匯款回報為財務(允甄)專屬')); return; }
+      r.status='已匯款'; r.payDate=20260808;
+      MOCK.balances[r.pool]-=r.amount;
+      var id2='T'+('00'+(MOCK.seqT++)).slice(-3);
+      MOCK.recent.unshift({id:id2,date:20260808,pool:r.pool,team:r.team,cat:r.cat,desc:r.desc,
+        income:0,expense:r.amount,ref:r.ref,status:'已撥款',note:'付款請求自動入帳',voided:false});
+      mockPush('凌華','✅ 允甄已匯款 '+r.ref,
+        [['項目',r.desc],['金額','NT$ '+r.amount.toLocaleString()],['匯款日','20260808']],
+        [['查看明細',{ref:r.ref}],['已通知廠商・結案',{ref:r.ref,act:'close'}]]);
+      res({ref:r.ref,txnId:id2});
+    }
+    else if(payload.action==='members'){
+      if(user==='麗娜'){ rej(new Error('會員名冊含個資,僅總幹事與財務可查')); return; }
+      res({members:MOCK.members});
+    }
+    else if(payload.action==='publishMonth'){
+      if(user!=='允甄'){ rej(new Error('月報發布為財務(允甄)專屬')); return; }
+      MOCK.pubs=MOCK.pubs||[];
+      MOCK.pubs=MOCK.pubs.filter(function(p){return p.ym!==payload.ym});
+      MOCK.pubs.push({ym:payload.ym,by:'允甄',at:'08/08 22:40'});
+      res({ym:payload.ym,closing:410887,reconOk:false});
+    }
+    else if(payload.action==='memberConfirm'){
+      if(user!=='允甄'){ rej(new Error('收款確認為財務(允甄)專屬')); return; }
+      var mm=MOCK.members.find(function(x){return x.id===payload.memberId});
+      if(mm.status==='已繳'){ rej(new Error(mm.name+' 已是已繳狀態')); return; }
+      mm.status='已繳'; mm.confirm='20260808';
+      var idM='T'+('00'+(MOCK.seqT++)).slice(-3);
+      MOCK.recent.unshift({id:idM,date:20260808,pool:'[主]會費池',team:'創主班',cat:'會費收入',
+        desc:'會費收入('+mm.name+')',income:mm.due,expense:0,ref:'',status:'—',note:'會員查詢確認收款',voided:false,fy:2026});
+      recalcMock();
+      res({memberId:mm.id,txnId:idM,amount:mm.due});
+    }
+    else if(payload.action==='memberSync'){
+      res({added:0,updated:0});
+    }
+    else if(payload.action==='reconCommit'){
+      var asf=0;
+      MOCK.recent.forEach(function(r){ if(!r.voided&&r.pool===payload.pool&&Number(r.date)<=payload.stmtDate) asf+=r.income-r.expense; });
+      if(payload.actual-asf!==0){ rej(new Error('差異 '+(payload.actual-asf)+' 元,不可勾稽')); return; }
+      MOCK.recent.forEach(function(r){ if(!r.voided&&r.pool===payload.pool&&Number(r.date)<=payload.stmtDate&&!r.rec) r.rec=true; });
+      MOCK.recon[payload.pool]={date:payload.stmtDate,actual:payload.actual,by:user};
+      res({batch:'RC-'+payload.stmtDate,stamped:1,asof:asf});
+    }
+    else if(payload.action==='editEntry'){
+      var er=MOCK.recent.find(function(x){return x.id===payload.txnId});
+      var ch=payload.changes;
+      if(er.rec && ch.pool && ch.pool!==er.pool){ rej(new Error('此筆已完成銀行勾稽,不可變更資金池')); return; }
+      if(ch.cat==='球秘請款'||ch.cat==='球秘執行費') ch.team='創主班';
+      er.pool=ch.pool||er.pool; er.team=ch.team||er.team; er.cat=ch.cat||er.cat;
+      if('fy' in ch) er.fy = ch.fy===''?null:ch.fy;
+      if('act' in ch) er.act = ch.act;
+      er.edited=true; recalcMock();
+      res({txnId:er.id,changed:true});
+    }
+    else if(payload.action==='void'){
+      var vr=MOCK.recent.find(function(x){return x.id===payload.txnId});
+      if(vr.rec){ rej(new Error('此筆已完成銀行勾稽,不可作廢')); return; }
+      vr.voided=true; recalcMock();
+      res({txnId:vr.id});
+    }
+    else if(payload.action==='reqClose'){
+      var r2=MOCK.reqs.find(function(x){return x.ref===payload.ref});
+      r2.status='已結案'; r2.vendorNotified='已通知'; MOCK.lastPush=null;
+      res({ref:r2.ref});
+    }
+  }, 200); });
+}
+
+function cardBtnTap(refObj){
+  deepLink = { ref: refObj.ref, act: refObj.act||null };
+  refresh();
 }
 function toast(msg,ms){ var t=document.getElementById('toast'); t.textContent=msg; t.style.display='block';
   clearTimeout(t._h); t._h=setTimeout(function(){t.style.display='none'},ms||2200); }
@@ -978,6 +1128,19 @@ function handleDeepLink(){
 function renderReqs(){
   var el=document.getElementById('reqList'); el.innerHTML='';
   if(!lastData||!lastData.reqs){ el.innerHTML='<p class="sub">載入中…</p>'; return; }
+  if(MOCK.lastPush){
+    var p=MOCK.lastPush, pc=document.createElement('div');
+    pc.className='card';
+    pc.style.cssText='background:#F0F4F8;border:2px solid #06C755;border-radius:16px';
+    var ph='<p class="sub" style="color:#06C755;font-weight:600">📱 LINE 推播模擬 → 傳送給 '+p.to+'</p>'+
+      '<b style="font-size:14px">'+esc(p.title)+'</b><div style="margin:8px 0">';
+    p.fields.forEach(function(fd){ ph+='<p style="font-size:13px"><span class="sub" style="display:inline-block;width:64px">'+fd[0]+'</span>'+esc(String(fd[1]))+'</p>'; });
+    ph+='</div>';
+    p.buttons.forEach(function(b,i){
+      ph+='<button class="btn'+(i===0?' ghost':'')+'" style="margin-bottom:6px" onclick=\'cardBtnTap('+JSON.stringify(b[1])+')\'>'+b[0]+'</button>';
+    });
+    pc.innerHTML=ph; el.appendChild(pc);
+  }
   document.getElementById('reqNewBtn').classList.toggle('hide', user==='麗娜');
   lastData.reqs.forEach(function(r){
     var d=document.createElement('div'); d.className='card';
@@ -1420,10 +1583,17 @@ function refresh(){
   }).catch(function(e){ toast('讀取失敗:'+e.message); });
 }
 
-if(localStorage.getItem('gf_token')){
-  api({action:'whoami'}).then(function(j){ user=j.name; enter(); })
-    .catch(function(){ localStorage.removeItem('gf_token'); });
+function switchRole(r){
+  user = r; cur = null; photoData = null;
+  var fm0=document.getElementById('form'); if(fm0) fm0.classList.add('hide');
+  document.getElementById('chips').innerHTML = '';
+  document.getElementById('fields').innerHTML = '';
+  document.getElementById('saveBtn').classList.add('hide');
+  var rf = document.getElementById('reqForm'); if(rf) rf.classList.add('hide');
+  enter();
+  var sel = document.getElementById('roleSwitch'); if(sel) sel.value = r;
 }
+user='麗娜'; enter();
 </script>
 <div id="navBar" class="nav hide"></div>
 <div id="moreWrap" class="hide">
