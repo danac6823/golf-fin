@@ -89,7 +89,7 @@ label{font-size:12px;color:var(--sub)}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L1 build 2026-08-08f</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L1 build 2026-08-08l</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -104,6 +104,7 @@ label{font-size:12px;color:var(--sub)}
     <div id="mList"></div>
   </div>
   <datalist id="memberList"></datalist>
+  <datalist id="actList"></datalist>
 
   <div id="reconSec" class="hide">
     <div id="reconBody"></div>
@@ -153,7 +154,10 @@ label{font-size:12px;color:var(--sub)}
   </div>
 
   <div id="ovSec" class="hide">
-    <div id="ovPills" style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:8px;background:#fff"></div>
+    <div class="card" style="padding:10px">
+      <div id="ovPills" style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff"></div>
+      <div id="ovSub" style="display:none;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:8px;background:#fff"></div>
+    </div>
     <div id="ovBody"></div>
   </div>
 
@@ -202,7 +206,9 @@ var TPL = {
 };
 var TEAMS = ['創12','創主班','共用','Lina私用'];
 var CATS = ['餐飲','雜支','手續費','獎品','獎金','比賽用品','禮品','會員禮','球場費','球場訂金','球秘請款','出席補助','慶弔','贊助轉出','其他'];
-var user=null, cur=null, photoData=null, lastData=null, ovView='flow', landed=true;
+var user=null, cur=null, photoData=null, lastData=null, ovMain='pool', ovView='pools', landed=true, ovActSel=null;
+function setOvMain(t){ ovMain=t; ovActSel=null; renderOverview(); }
+function ovActBack(){ ovActSel=null; renderOverview(); }
 var OV_VIEWS=[['pools','三池'],['team','隊伍'],['lina','會長'],['adv','代墊']];
 
 function api(payload){
@@ -234,7 +240,7 @@ function enter(){
   document.getElementById('uname').textContent = '張'===user.slice(0,1)?user:user;
   document.getElementById('uname').textContent = ({'凌華':'張凌華','允甄':'張允甄','麗娜':'麗娜會長'})[user];
   document.getElementById('urole').textContent = roleName+'(已登入)';
-  ovView = ({'麗娜':'lina','凌華':'adv','允甄':'pools'})[user];
+  ovMain='pool'; ovView = ({'麗娜':'lina','凌華':'adv','允甄':'pools'})[user]; ovActSel=null;
   detTab = (user==='凌華') ? 'priv' : 'main'; privSub='';
   memberCache=null;
   if(user!=='麗娜') loadMembers();
@@ -319,6 +325,8 @@ function fyLabel(fy){ return fy+'/8–'+(fy+1)+'/7 年度'; }
 
 function drill(f){
   initCatSel();
+  detAct = f.act||'';
+  if(f.act){ detTab='priv'; privSub=''; if(!f.pool && !f.team){} }
   if(f.pool==='[主]會費池'){ detTab='main'; privSub=''; }
   else if(f.pool){ detTab='priv'; privSub=f.pool; }
   else { detTab = (f.team==='創主班') ? 'main' : 'priv'; privSub=''; }
@@ -354,6 +362,7 @@ function openEditor(tr){
     '<select id="eTeam" style="margin-bottom:6px">'+opt(ALL_TEAMS,r.team)+'</select>'+
     '<select id="eCat" onchange="catGuard(this,\'eTeam\')" style="margin-bottom:6px">'+opt(ALL_CATS,r.cat)+'</select>'+
     '<select id="eFy" style="margin-bottom:6px">'+fyOptions(r)+'</select>'+
+    '<input type="text" id="eAct" list="actList" value="'+esc(r.act||'')+'" placeholder="活動(選填)" style="margin-bottom:6px">'+
     '<input type="text" id="eReason" placeholder="異動原因(留痕用,建議填)" style="margin-bottom:8px">'+
     '<button class="btn" style="margin-bottom:6px" onclick="saveEdit(\''+txn+'\')">儲存變更(留異動紀錄)</button>'+
     '<div style="display:flex;gap:8px">'+
@@ -381,9 +390,10 @@ function saveEdit(txn){
   var ch={ pool:document.getElementById('ePool').value,
            team:document.getElementById('eTeam').value,
            cat:document.getElementById('eCat').value,
-           fy: fyVal===''?'':Number(fyVal) };
+           fy: fyVal===''?'':Number(fyVal),
+           act: document.getElementById('eAct').value.trim() };
   var fyCur=r.fy||'';
-  if(ch.pool===r.pool && ch.team===r.team && ch.cat===r.cat && String(ch.fy)===String(fyCur)){ toast('未變更任何欄位'); return; }
+  if(ch.pool===r.pool && ch.team===r.team && ch.cat===r.cat && String(ch.fy)===String(fyCur) && ch.act===(r.act||'')){ toast('未變更任何欄位'); return; }
   api({action:'editEntry',txnId:txn,changes:ch,
        reason:document.getElementById('eReason').value.trim()}).then(function(){
     toast(txn+' 已更新,異動已留痕'); refresh();
@@ -417,6 +427,16 @@ function loadMembers(cb){
   }).catch(function(e){ toast('名冊載入失敗:'+e.message); });
 }
 
+function memberConfirm(mid){
+  var m=memberCache.find(function(x){return x.id===mid});
+  if(!m) return;
+  if(!confirm('確認 '+m.name+'('+m.cohort+')已繳 NT$ '+money(m.due)+'?\n將同時:①名冊改已繳(今日) ②總帳入一筆會費收入(帳屬本年度)\n※若此筆先前已手動入過帳,請按取消,改至試算表更新名冊即可')) return;
+  api({action:'memberConfirm',memberId:mid}).then(function(j){
+    toast('✓ '+m.name+' 已繳,已入帳 '+j.txnId+'(+'+money(j.amount)+')');
+    memberCache=null; loadMembers(renderMembers); refresh();
+  }).catch(function(e){ toast('失敗:'+e.message); });
+}
+
 function memberSync(){
   api({action:'memberSync'}).then(function(j){
     toast('同步完成:新增 '+j.added+'・補齊 '+j.updated);
@@ -434,8 +454,15 @@ function renderMembers(){
     if(kw&&(m.last5+m.name+m.phone).indexOf(kw)<0) return false;
     return true;
   });
+  rows.sort(function(a,b){
+    var ap=a.status==='已繳'?1:0, bp=b.status==='已繳'?1:0;
+    if(ap!==bp) return ap-bp;
+    return a.id<b.id?-1:1;
+  });
   var paid=rows.filter(function(m){return m.status==='已繳'}).length;
-  document.getElementById('mSum').innerHTML='<span class="sub" style="font-size:12px">'+rows.length+' 人・已繳 '+paid+'・待核 '+(rows.length-paid)+'</span>';
+  var pend=rows.length-paid;
+  document.getElementById('mSum').innerHTML='<span class="sub" style="font-size:12px">'+rows.length+' 人・已繳 '+paid+
+    (pend>0?'・<b style="color:#8a4a00">⚠️ '+pend+' 筆待確認(置頂)</b>':'・待核 0')+'</span>';
   el.innerHTML='';
   rows.forEach(function(m){
     var d=document.createElement('div'); d.className='card'; d.style.padding='9px 11px';
@@ -448,7 +475,8 @@ function renderMembers(){
       (m.last5&&m.last5!=='—'?'<span class="chip c-ref" style="font-family:monospace">後5碼 '+esc(m.last5)+'</span>':'<span class="chip c-cat">'+esc(m.method)+'</span>')+
       '</div>'+
       '<p class="sub" style="font-size:12px">'+(m.confirm?'確認日 '+m.confirm+'・':'')+esc(m.phone||'')+
-      (m.note?'<br>'+esc(m.note):'')+'</p>';
+      (m.note?'<br>'+esc(m.note):'')+'</p>'+
+      (!ok && user==='允甄' ? '<button class="btn" style="margin-top:8px" onclick="memberConfirm(\''+m.id+'\')">✓ 確認已收款 — 入帳 NT$ '+money(m.due)+'</button>' : '');
     el.appendChild(d);
   });
   if(!rows.length) el.innerHTML='<p class="sub" style="text-align:center;padding:20px">查無符合會員</p>';
@@ -533,7 +561,8 @@ function reconCommit(pool){
   }).catch(function(e){ toast('失敗:'+e.message); });
 }
 
-var detTab='main', privSub='';
+var detTab='main', privSub='', detAct='';
+function clearDetAct(){ detAct=''; renderDetail(); }
 function styleDetTabs(){
   var m=document.getElementById('dtMain'), p=document.getElementById('dtPriv');
   m.style.background = detTab==='main' ? '#1F3864' : '#fff';
@@ -552,6 +581,7 @@ function styleDetTabs(){
 function setDetTab(t){ detTab=t; if(t==='main') privSub=''; styleDetTabs(); renderDetail(); }
 function setPrivSub(p){ privSub=p; styleDetTabs(); renderDetail(); }
 function detPools(){
+  if(detAct) return ['[主]會費池','[私]Lina贊助池','[私]花零用金池'];
   if(detTab==='main') return ['[主]會費池'];
   return privSub ? [privSub] : ['[私]Lina贊助池','[私]花零用金池'];
 }
@@ -571,11 +601,15 @@ function renderDetail(){
     if(r.voided) return false;
     if(pools.indexOf(r.pool)<0) return false;
     if(fySel&&String(attrFy(r))!==fySel) return false;
+    if(detAct){
+      if(detAct==='(未標活動)'){ if(r.act) return false; }
+      else if(r.act!==detAct) return false;
+    }
     if(team&&r.team!==team) return false;
     if(cat&&r.cat!==cat) return false;
     if(dir==='in'&&!r.income) return false;
     if(dir==='out'&&!r.expense) return false;
-    if(kw&&(String(r.desc)+String(r.ref)+String(r.note||'')).indexOf(kw)<0) return false;
+    if(kw&&(String(r.desc)+String(r.ref)+String(r.note||'')+String(r.act||'')).indexOf(kw)<0) return false;
     return true;
   });
   var tin=0,tout=0;
@@ -584,9 +618,10 @@ function renderDetail(){
     pools.map(function(p){
       return ' <span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:'+POOL_ROW[p][0]+';border:2px solid '+POOL_ROW[p][1]+';vertical-align:-1px"></span>';
     }).join('');
+  var actChip = detAct ? '<span onclick="clearDetAct()" style="cursor:pointer;background:#EEEDFE;color:#3C3489;border-radius:999px;padding:2px 8px;margin-left:6px">🎯'+esc(detAct)+' ✕</span>' : '';
   var headBar =
-    '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12px">'+
-    '<span class="sub">'+rows.length+' 筆'+legend+'</span>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12px;flex-wrap:wrap">'+
+    '<span class="sub">'+rows.length+' 筆'+legend+actChip+'</span>'+
     '<span><span class="amt-in">+'+money(tin)+'</span><span class="sub"> −</span><b>'+money(tout)+'</b>'+
     '<span class="sub"> 淨 </span><b>'+money(tin-tout)+'</b></span></div>';
   var el=document.getElementById('dList'); el.innerHTML='';
@@ -602,7 +637,7 @@ function renderDetail(){
     });
   }
   var disp = rows.slice().sort(function(a,b){
-    return (b.date-a.date) || (b.id<a.id?1:-1);
+    return (b.date-a.date) || (a.id<b.id?1:-1);
   });
   var fmtD = function(d){ var s=String(d); return s.length===8 ? s.slice(4,6)+'/'+s.slice(6,8) : s; };
   var h='<div class="card" style="padding:0;overflow:hidden">'+headBar;
@@ -619,6 +654,7 @@ function renderDetail(){
     var yr = String(r.date).slice(0,4);
     var prevYr = i>0 ? String(disp[i-1].date).slice(0,4) : yr;
     var sub=[];
+    if(r.act) sub.push('🎯'+r.act);
     if(r.fy && r.fy!==fyOf(r.date)) sub.push('📅→'+r.fy+'年度');
     if(pools.length>1) sub.push(r.pool);
     if(!team) sub.push(r.team);
@@ -754,7 +790,7 @@ function renderReqs(){
   });
 }
 
-function setOvView(v){ ovView=v; renderOverview(); }
+function setOvView(v){ ovView=v; ovActSel=null; renderOverview(); }
 
 function statCard(label, value, hint, strong, drillF){
   var c = ['#ffffff','#c9ced6','#5a5f66'];
@@ -838,13 +874,25 @@ function buildFlowSvg(o,bal){
 
 function renderOverview(){
   var pills = document.getElementById('ovPills'); pills.innerHTML='';
-  OV_VIEWS.forEach(function(vv,i){
-    var b=document.createElement('button'); b.textContent=vv[1];
-    b.style.cssText='flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;font-size:13px;text-align:center'+
+  [['pool','💰 帳池'],['act','🎯 活動']].forEach(function(mm,i){
+    var b=document.createElement('button'); b.textContent=mm[1];
+    b.style.cssText='flex:1;padding:10px 4px;margin:0;border:none;border-radius:0;font-size:13px;text-align:center'+
       (i>0?';border-left:1px solid var(--line)':'')+
-      (vv[0]===ovView?';background:#1F3864;color:#fff':';background:#fff');
-    b.onclick=function(){ setOvView(vv[0]) }; pills.appendChild(b);
+      (mm[0]===ovMain?';background:#1F3864;color:#fff':';background:#fff');
+    b.onclick=function(){ setOvMain(mm[0]) }; pills.appendChild(b);
   });
+  var subEl = document.getElementById('ovSub');
+  subEl.style.display = ovMain==='pool' ? 'flex' : 'none';
+  subEl.innerHTML='';
+  if(ovMain==='pool'){
+    OV_VIEWS.forEach(function(vv,i){
+      var b=document.createElement('button'); b.textContent=vv[1];
+      b.style.cssText='flex:1;padding:8px 4px;margin:0;border:none;border-radius:0;font-size:12px;text-align:center'+
+        (i>0?';border-left:1px solid var(--line)':'')+
+        (vv[0]===ovView?';background:#3C3489;color:#fff':';background:#fff');
+      b.onclick=function(){ setOvView(vv[0]) }; subEl.appendChild(b);
+    });
+  }
   var body=document.getElementById('ovBody');
   if(!lastData){ body.innerHTML='<p class="sub">載入中…</p>'; return; }
   var o=lastData.overview, bal=lastData.balances, h='';
@@ -858,17 +906,57 @@ function renderOverview(){
     };
     return;
   }
-  if(ovView==='pools'){
+  if(ovMain==='pool' && ovView==='pools'){
     ['[主]會費池','[私]Lina贊助池','[私]花零用金池'].forEach(function(p){
       h += statCard(p+' 餘額', money(bal[p]), '', false, {pool:p});
     });
   }
-  if(ovView==='team'){
+  if(ovMain==='act'){
+    function actMatch(r,k){ return k==='(未標活動)' ? !r.act : r.act===k; }
+    if(ovActSel){
+      var cats={}, ti=0, to=0;
+      (lastData.recent||[]).forEach(function(r){
+        if(r.voided || !actMatch(r,ovActSel)) return;
+        ti+=r.income; to+=r.expense;
+        var c=r.cat; cats[c]=cats[c]||{i:0,o:0}; cats[c].i+=r.income; cats[c].o+=r.expense;
+      });
+      h += '<button class="ghost" style="width:auto;padding:7px 12px;font-size:12px;margin-bottom:8px" onclick="ovActBack()">‹ 活動列表</button>';
+      h += '<b style="display:block;font-size:15px;margin-bottom:6px">🎯 '+esc(ovActSel)+'</b>';
+      h += statCard('支出合計', money(to), '', true);
+      if(ti>0){ h += statCard('收入合計', '+'+money(ti)); h += statCard('淨支出', money(to-ti)); }
+      h += '<p class="sub" style="margin:8px 0 4px;font-size:11px">依類別(點入逐筆)</p>';
+      Object.keys(cats).sort(function(a,b){ return cats[b].o-cats[a].o; }).forEach(function(c){
+        var cd=cats[c];
+        h += statCard(c, cd.o>0?money(cd.o):'+'+money(cd.i),
+          (cd.o>0&&cd.i>0)?'另有收入 '+money(cd.i):'',
+          false, ovActSel==='(未標活動)' ? {act:'(未標活動)',cat:c} : {act:ovActSel,cat:c});
+      });
+      h += statCard('全部逐筆明細', '›', '', false, ovActSel==='(未標活動)' ? {act:'(未標活動)'} : {act:ovActSel});
+    } else {
+      var g={};
+      (lastData.recent||[]).forEach(function(r){
+        if(r.voided) return;
+        if(r.act){ g[r.act]=g[r.act]||{i:0,o:0}; g[r.act].i+=r.income; g[r.act].o+=r.expense; }
+        else if(r.expense>0){ g['(未標活動)']=g['(未標活動)']||{i:0,o:0}; g['(未標活動)'].o+=r.expense; }
+      });
+      Object.keys(g).sort(function(a,b){
+        if(a==='(未標活動)') return 1; if(b==='(未標活動)') return -1;
+        return g[b].o-g[a].o;
+      }).forEach(function(k){
+        h += '<div class="card" data-actsel="'+esc(k)+'" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;margin-bottom:6px;border-left:4px solid #c9ced6;cursor:pointer">'+
+          '<span style="min-width:0"><span style="font-size:12.5px;color:#5a5f66">🎯 '+esc(k)+'</span>'+
+          (g[k].i>0?'<br><span class="sub" style="font-size:10.5px">收入 '+money(g[k].i)+'・淨支出 '+money(g[k].o-g[k].i)+'</span>':'')+'</span>'+
+          '<b style="font-size:16px;white-space:nowrap">'+money(g[k].o)+' <span style="color:#5a5f66;font-weight:400">›</span></b></div>';
+      });
+      if(!Object.keys(g).length) h+='<p class="sub">尚無活動標記;登帳時填「活動」欄或編輯既有帳補標</p>';
+    }
+  }
+  if(ovMain==='pool' && ovView==='team'){
     h += statCard('創主班 累計支出', money(o.teamSpend['創主班']), '全數出自[主]會費池', false, {team:'創主班',dir:'out'});
     h += statCard('創12 累計支出', money(o.teamSpend['創12']), 'Lina池直付+零用金支出(調撥已排除,不重複計)', false, {team:'創12',dir:'out'});
     if(o.teamSpend['待分類']>0) h += statCard('⚠️ 待分類支出', money(o.teamSpend['待分類']), '請至總帳裁定隊伍歸屬', false, {team:'待分類',dir:'out'});
   }
-  if(ovView==='lina'){
+  if(ovMain==='pool' && ovView==='lina'){
     h += statCard('麗娜會長 贊助總額', money(o.lina.sponsor), '利息另 +'+money(o.lina.interest), true, {pool:'[私]Lina贊助池',dir:'in'});
     h += statCard('→ 直付創12', money(o.lina.direct12), '', false, {pool:'[私]Lina贊助池',team:'創12',dir:'out'});
     h += statCard('→ 轉入球隊帳(正式贊助・記名致謝)', money(o.lina.toTeam||0), '同單號另見[主]會費池贊助收入', false, {pool:'[私]Lina贊助池',cat:'贊助轉出'});
@@ -880,7 +968,7 @@ function renderOverview(){
     if(o.lina.unclassified>0) h += statCard('→ 待分類', money(o.lina.unclassified), '凌華裁定後歸隊', false, {pool:'[私]Lina贊助池',team:'待分類',dir:'out'});
     h += statCard('尚在池中(餘額)', money(o.lina.balance), '', false, {pool:'[私]Lina贊助池'});
   }
-  if(ovView==='adv'){
+  if(ovMain==='pool' && ovView==='adv'){
     var netPos = o.petty.balance - o.petty.custody;
     h += statCard('凌華 累計墊付支出', money(o.petty.spent), '創12 '+money(o.petty.spent12)+'|創主班 '+money(o.petty.spentMain), true, {pool:'[私]花零用金池',dir:'out'});
     h += statCard('允甄 已撥補給凌華', money(o.petty.funded), 'F 單號調撥合計', false, {pool:'[私]花零用金池',cat:'內部調撥',dir:'in'});
@@ -889,9 +977,11 @@ function renderOverview(){
       money(Math.abs(netPos)),
       netPos<0 ? '允甄下次撥補時補足' : '無代墊,持有隊款');
   }
-  h = '<p class="sub" style="margin-bottom:6px;font-size:11px">點卡片看逐筆明細</p>'+h;
+  if(ovMain==='pool') h = '<p class="sub" style="margin-bottom:6px;font-size:11px">點卡片看逐筆明細</p>'+h;
   body.innerHTML=h;
   body.onclick = function(ev){
+    var a = ev.target.closest('[data-actsel]');
+    if(a){ ovActSel = a.getAttribute('data-actsel'); renderOverview(); return; }
     var c = ev.target.closest('[data-drill]');
     if(c) drill(JSON.parse(c.getAttribute('data-drill')));
   };
@@ -925,6 +1015,7 @@ function pick(tp){
   h+='<input type="number" id="fAmt" placeholder="金額" inputmode="numeric">';
   if(tp.catSel) h+='<select id="fCat" onchange="catGuard(this,\'fTeamE\')">'+CATS.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select>';
   h+='<input type="text" id="fDesc" placeholder="明細,例:8/27長庚月例賽">';
+  h+='<input type="text" id="fAct" list="actList" placeholder="活動(選填,例:9月例賽)">';
   if(tp.payer) h+='<input type="text" id="fPayer" placeholder="繳款人/贊助者姓名(必填)">';
   if(tp.refManual) h+='<input type="text" id="fRefM" placeholder="對應調撥單號,例:F12-005">';
   if(tp.pair){ h='<input type="date" id="fDate" value="'+today+'">'+
@@ -974,7 +1065,9 @@ function save(){
   var desc=document.getElementById('fDesc').value || cur.t;
   if(payerEl && payerEl.value) desc += '('+payerEl.value.trim()+')';
   var refM=document.getElementById('fRefM');
+  var actEl=document.getElementById('fAct');
   var en={
+    act: actEl?actEl.value.trim():'',
     date: document.getElementById('fDate').value.replace(/-/g,''),
     pool: poolEl?poolEl.value:cur.pool,
     team: teamEl?teamEl.value:cur.team,
@@ -1008,6 +1101,10 @@ function refresh(){
       tb.textContent = (user==='允甄' ? '⏳ '+pendCount+' 筆待匯款,點此前往處理 ›' : '📣 '+pendCount+' 筆已匯款,點此前往通知廠商 ›');
       tb.classList.remove('hide');
     } else tb.classList.add('hide');
+    var acts={};
+    (j.recent||[]).forEach(function(r){ if(!r.voided&&r.act) acts[r.act]=1; });
+    document.getElementById('actList').innerHTML =
+      Object.keys(acts).sort().map(function(a){return '<option value="'+esc(a)+'">'}).join('');
     if(curTab==='home') renderHome();
     if(curTab==='det') renderDetail();
     if(curTab==='recon') renderRecon();
