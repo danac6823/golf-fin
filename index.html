@@ -97,7 +97,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-08s</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-08u</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -629,7 +629,16 @@ function renderPub(){
     months[s.slice(0,4)+'-'+s.slice(4,6)]=1;
   });
   var ms=Object.keys(months).sort().reverse();
-  var h='<div class="card"><p class="sub">發布=將該月[主]會費池收支快照至公開網頁(僅球隊帳・不含私池・會費不列個人名)。可重複發布覆蓋更新。</p>'+
+  var h='';
+  if(lastPubMsg){
+    h+='<div class="card" style="background:#EAF3DE;border-color:#27500A">'+
+      '<b style="font-size:14px;color:#27500A">✓ '+lastPubMsg.ym.replace('-','年')+'月已發布 — 群組貼文如下</b>'+
+      '<div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;white-space:pre-wrap;word-break:break-all">'+esc(lastPubMsg.msg)+'</div>'+
+      '<button class="btn" onclick="copyPubMsg()" style="margin-bottom:6px">📋 複製貼文(到 LINE 大群貼上)</button>'+
+      '<a href="'+lastPubMsg.link+'" target="_blank" style="display:block;text-align:center;font-size:13px;color:#1F3864;padding:8px">🔗 開啟公開頁確認 ›</a>'+
+      '</div>';
+  }
+  h+='<div class="card"><p class="sub">發布=將該月[主]會費池收支快照至公開網頁(僅球隊帳・不含私池・會費不列個人名)。可重複發布覆蓋更新。</p>'+
     '<p style="font-size:12px;word-break:break-all;margin-top:4px">公開頁:'+REPORT_URL+'</p></div>';
   ms.forEach(function(ym){
     var tin=0,tout=0;
@@ -649,6 +658,12 @@ function renderPub(){
   el.innerHTML=h;
 }
 
+var lastPubMsg=null;
+function copyPubMsg(){
+  if(!lastPubMsg) return;
+  if(navigator.clipboard) navigator.clipboard.writeText(lastPubMsg.msg).then(function(){ toast('已複製,到 LINE 大群貼上即可'); });
+  else toast('請長按下方文字手動複製');
+}
 function publishMonth(ym){
   var rc=(lastData.recon||{})['[主]會費池'];
   var warn = (!rc || Number(rc.date) < Number(ym.replace('-',''))*100+28)
@@ -665,9 +680,43 @@ function publishMonth(ym){
   if(!confirm('發布 '+ym.replace('-','年')+'月 月報至公開網頁?'+warn+spWarn)) return;
   api({action:'publishMonth',ym:ym}).then(function(j){
     var link=REPORT_URL+'?ym='+ym;
-    var msg='⛳ 第12屆高球隊 '+ym.replace('-','年')+'月財務月報已發布\n期末結餘 NT$ '+money(j.closing)+'\n'+link;
-    toast('已發布!群組貼文已備妥');
-    if(navigator.clipboard) navigator.clipboard.writeText(msg).then(function(){ toast('已發布,貼文已複製,可直接貼到大群'); });
+    var ym6=ym.replace('-','');
+    var tin=0,tout=0,incCat={},actSum={};
+    (lastData.recent||[]).forEach(function(r){
+      if(r.voided||r.pool!=='[主]會費池') return;
+      if(String(r.date).slice(0,6)!==ym6) return;
+      tin+=r.income; tout+=r.expense;
+      if(r.income>0) incCat[r.cat]=(incCat[r.cat]||0)+r.income;
+      if(r.expense>0){ var k=r.act||'一般支出'; actSum[k]=(actSum[k]||0)+r.expense; }
+    });
+    var opening=j.closing-tin+tout;
+    var msg='⛳ 政大EMBA創業主班 高爾夫球聯誼會\n'+
+      '第12屆 '+ym.replace('-','年')+'月財務月報\n'+
+      '──────────\n'+
+      '期初結餘 '+money(opening)+'\n'+
+      '本月收入 +'+money(tin)+'\n'+
+      '本月支出 −'+money(tout)+'\n'+
+      '期末結餘 '+money(j.closing)+'\n';
+    var incKeys=Object.keys(incCat);
+    if(incKeys.length){
+      msg+='──────────\n收入:\n';
+      incKeys.forEach(function(c){ msg+='・'+c+' '+money(incCat[c])+'\n'; });
+    }
+    var actKeys=Object.keys(actSum).sort(function(a,b){return actSum[b]-actSum[a]});
+    if(actKeys.length){
+      msg+='──────────\n支出:\n';
+      actKeys.slice(0,5).forEach(function(k){ msg+='・'+k+' '+money(actSum[k])+'\n'; });
+      if(actKeys.length>5){
+        var rest=0; actKeys.slice(5).forEach(function(k){rest+=actSum[k]});
+        msg+='・其他 '+money(rest)+'\n';
+      }
+    }
+    msg+='──────────\n'+
+      (j.reconOk?'✓ 財務已完成銀行對帳\n':'')+
+      '完整明細與繳費確認:\n'+link;
+    lastPubMsg={ym:ym,msg:msg,link:link};
+    toast('✓ '+ym.replace('-','年')+'月已發布');
+    if(navigator.clipboard){ try{ navigator.clipboard.writeText(msg); }catch(e){} }
     refresh();
   }).catch(function(e){ toast('失敗:'+e.message); });
 }
@@ -1416,6 +1465,7 @@ function refresh(){
     if(curTab==='recon') renderRecon();
     if(!document.getElementById('ovSec').classList.contains('hide')) renderOverview();
     if(!document.getElementById('paySec').classList.contains('hide')) renderReqs();
+    if(!document.getElementById('pubSec').classList.contains('hide')) renderPub();
     handleDeepLink();
     ['[主]會費池','[私]Lina贊助池','[私]花零用金池'].forEach(function(p,i){
       document.getElementById('b'+i).textContent = money(j.balances[p]);
