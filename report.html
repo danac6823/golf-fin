@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1F3864">
 <title>政大EMBA創業主班 高爾夫球聯誼會 第12屆|財務月報</title>
 <link rel="apple-touch-icon" href="golf-icon.png">
@@ -11,7 +11,7 @@
 :root{--navy:#1F3864;--bg:#F5F6F8;--card:#fff;--line:#E3E6EB;--sub:#6b7280;
 --blue:#EFF6FD;--blueT:#0C447C;--amber:#FAEEDA;--amberT:#633806;--green:#EAF3DE;--greenT:#27500A}
 *{box-sizing:border-box;margin:0}
-body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:#1c1c1e;max-width:520px;margin:0 auto;padding:14px}
+body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:#1c1c1e;max-width:520px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left))}
 .hd{background:var(--navy);color:#fff;border-radius:14px;padding:16px 14px;margin-bottom:12px}
 .hd h1{font-size:20px}.hd p{font-size:14px;opacity:.9;margin-top:3px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
@@ -229,7 +229,9 @@ function render(){
         byAct[k].forEach(function(x){
           h+='<tr><td style="width:44px;color:var(--sub)">'+fmtD(x.d)+'</td>'+
              '<td>'+esc(x.desc)+'<br><span class="sub" style="font-size:12px">'+esc(x.cat)+
-             (x.ref?'・'+esc(x.ref):'')+(x.rcp?'・憑證✓':'・<span style="color:#8a4a00">⚠缺憑</span>')+'</span></td>'+
+             (x.ref?'・'+esc(x.ref):'')+
+             ((x.rcps&&x.rcps.length)?'・<a href="javascript:void(0)" onclick="viewRcp('+esc(JSON.stringify(x.rcps)).replace(/"/g,'&quot;')+')" style="color:#0C447C;text-decoration:underline">憑證✓ 查看</a>'
+               : (x.rcp?'・憑證✓':'・<span style="color:#8a4a00">⚠缺憑</span>'))+'</span></td>'+
              '<td class="r">'+money(x.amt)+'</td></tr>';
         });
       });
@@ -240,6 +242,35 @@ function render(){
     body.innerHTML=h;
   }).catch(function(){ body.innerHTML='<div class="card"><p class="sub">載入失敗,請稍後再試</p></div>'; });
 }
+</script>
+<div id="lightbox" onclick="closeLb()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:99;align-items:center;justify-content:center;flex-direction:column">
+  <img id="lbImg" style="max-width:94vw;max-height:76vh;border-radius:10px;background:#fff" alt="憑證">
+  <div id="lbNav" style="margin-top:12px"></div>
+  <p style="color:#fff;font-size:14px;margin-top:8px;opacity:.85">點任意處關閉</p>
+</div>
+<script>
+var lbList=[], lbIdx=0;
+function driveId(u){
+  var m = String(u).match(/\/d\/([\w-]{20,})/) || String(u).match(/[?&]id=([\w-]{20,})/);
+  return m ? m[1] : null;
+}
+function viewRcp(list){
+  lbList = list||[]; lbIdx = 0;
+  if(!lbList.length) return;
+  lbShow();
+  document.getElementById('lightbox').style.display='flex';
+}
+function lbShow(){
+  var id = driveId(lbList[lbIdx]);
+  document.getElementById('lbImg').src = id ? 'https://drive.google.com/thumbnail?id='+id+'&sz=w1600' : '';
+  var nav=document.getElementById('lbNav');
+  nav.innerHTML = lbList.length>1
+    ? lbList.map(function(_,i){
+        return '<button onclick="event.stopPropagation();lbIdx='+i+';lbShow()" style="margin:0 4px;padding:8px 14px;border-radius:8px;border:1px solid #fff;background:'+(i===lbIdx?'#fff':'transparent')+';color:'+(i===lbIdx?'#1F3864':'#fff')+';font-size:14px">'+(i+1)+'</button>';
+      }).join('')
+    : '';
+}
+function closeLb(){ document.getElementById('lightbox').style.display='none'; }
 </script>
 </body>
 </html>

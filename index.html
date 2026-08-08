@@ -8,14 +8,14 @@
 <link rel="apple-touch-icon" href="golf-icon.png">
 <link rel="icon" type="image/png" href="golf-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="高球隊財務">
 <style>
 :root{--navy:#1F3864;--bg:#F5F6F8;--card:#fff;--line:#E3E6EB;--txt:#1c1c1e;--sub:#6b7280;
 --blue:#E6F1FB;--blueT:#0C447C;--green:#EAF3DE;--greenT:#27500A;--amber:#FAEEDA;--amberT:#633806;
 --purple:#EEEDFE;--purpleT:#3C3489;--red:#FCEBEB;--redT:#791F1F;}
 *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--txt);padding:14px;max-width:480px;margin:0 auto}
+body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--txt);padding:calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) 14px calc(14px + env(safe-area-inset-left));max-width:480px;margin:0 auto}
 h1{font-size:17px;font-weight:600}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
 .row{display:flex;align-items:center;gap:10px}
@@ -1074,6 +1074,21 @@ function vendorPick(idx){
 }
 
 var reqPhotoQ=[], reqUpRef=null;
+
+function driveId(u){
+  var m = String(u).match(/\/d\/([\w-]{20,})/) || String(u).match(/[?&]id=([\w-]{20,})/);
+  return m ? m[1] : null;
+}
+
+function viewReceipt(u){
+  var id = driveId(u);
+  if(!id){ window.open(u, '_blank'); return; }
+  document.getElementById('lbImg').src = 'https://drive.google.com/thumbnail?id='+id+'&sz=w1800';
+  document.getElementById('lbLink').href = u;
+  document.getElementById('lightbox').style.display='flex';
+}
+
+function closeLb(){ document.getElementById('lightbox').style.display='none'; }
 function reqUpStart(ref){ reqUpRef=ref; document.getElementById('reqUpFile').click(); }
 function reqUpGo(inp){
   var files=Array.prototype.slice.call(inp.files||[]);
@@ -1260,7 +1275,7 @@ function renderReqs(){
       var rc=(r.receipts||[]).length;
       if(rc){
         h+='<p class="sub">📎 憑證 '+rc+' 張:'+
-          r.receipts.map(function(u,i){ return '<a href="'+esc(u)+'" target="_blank" style="color:#1F3864">查看'+(rc>1?(i+1):'')+'</a>'; }).join('・')+'</p>';
+          r.receipts.map(function(u,i){ return '<a href="javascript:void(0)" onclick="viewReceipt(\''+esc(u)+'\')" style="color:#1F3864;text-decoration:underline">查看'+(rc>1?(i+1):'')+'</a>'; }).join('・')+'</p>';
       } else if(!closed){
         h+='<p class="sub" style="color:#8a4a00">⚠ 未附憑證</p>';
       }
@@ -1702,6 +1717,11 @@ if(localStorage.getItem('gf_token')){
 }
 </script>
 <input type="file" id="reqUpFile" accept="image/*" multiple class="hide" onchange="reqUpGo(this)">
+<div id="lightbox" onclick="closeLb()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:99;align-items:center;justify-content:center;flex-direction:column">
+  <img id="lbImg" style="max-width:94vw;max-height:78vh;border-radius:10px;background:#fff" alt="憑證">
+  <p style="color:#fff;font-size:13px;margin-top:12px;opacity:.85">點任意處關閉</p>
+  <a id="lbLink" href="#" target="_blank" onclick="event.stopPropagation()" style="color:#9ec5ff;font-size:12.5px;margin-top:4px">在 Drive 開啟原檔 ›</a>
+</div>
 <div id="navBar" class="nav hide"></div>
 <div id="moreWrap" class="hide">
   <div class="sheetBk" onclick="toggleMore(false)"></div>
