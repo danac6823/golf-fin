@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1F3864">
+<title>政大EMBA創業主班 高爾夫球聯誼會 第12屆|財務月報</title>
+<style>
+:root{--navy:#1F3864;--bg:#F5F6F8;--card:#fff;--line:#E3E6EB;--sub:#6b7280;
+--blue:#EFF6FD;--blueT:#0C447C;--amber:#FAEEDA;--amberT:#633806;--green:#EAF3DE;--greenT:#27500A}
+*{box-sizing:border-box;margin:0}
+body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:#1c1c1e;max-width:520px;margin:0 auto;padding:14px}
+.hd{background:var(--navy);color:#fff;border-radius:14px;padding:16px 14px;margin-bottom:12px}
+.hd h1{font-size:20px}.hd p{font-size:14px;opacity:.9;margin-top:3px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.sub{font-size:13.5px;color:var(--sub)}
+.months{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px}
+.months button{flex-shrink:0;padding:10px 16px;font-size:15px;border:1px solid var(--line);border-radius:999px;background:#fff}
+.months button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.stat{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;border:1px solid var(--line);border-left:4px solid var(--blueT);background:var(--blue);border-radius:10px;margin-bottom:6px}
+.stat span{font-size:14.5px;color:var(--blueT)}.stat b{font-size:19px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{padding:9px 6px;text-align:left;color:var(--sub);font-weight:600;background:#F0F2F5}
+td{padding:9px 6px;border-top:1px solid var(--line);vertical-align:top}
+.r{text-align:right}
+.actH{background:var(--amber);color:var(--amberT);font-weight:600;font-size:14px;padding:8px 10px}
+.badge{display:inline-block;font-size:13px;padding:3px 10px;border-radius:999px;background:var(--green);color:var(--greenT)}
+.foot{text-align:center;font-size:12.5px;color:var(--sub);margin:16px 0}
+</style>
+</head>
+<body>
+<div class="hd">
+  <h1>⛳ 政大EMBA創業主班 高爾夫球聯誼會</h1>
+  <p>第12屆 財務月報|球隊帳・由財務發布</p>
+</div>
+<div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:10px;background:#fff" id="tabBar">
+  <button data-v="rpt" onclick="setView('rpt')" style="flex:1;padding:12px 2px;border:none;font-size:14.5px;background:#1F3864;color:#fff">📄 月報</button>
+  <button data-v="sum" onclick="setView('sum')" style="flex:1;padding:12px 2px;border:none;border-left:1px solid var(--line);font-size:14.5px;background:#fff">📊 本屆總表</button>
+  <button data-v="roster" onclick="setView('roster')" style="flex:1;padding:12px 2px;border:none;border-left:1px solid var(--line);font-size:14.5px;background:#fff">👥 繳費確認</button>
+</div>
+<div class="months" id="months"></div>
+<div id="body"><p class="sub" style="text-align:center;padding:30px 0">載入中…</p></div>
+<p class="foot">本頁僅呈現球隊正式帳已發布之月結資料<br>第12屆</p>
+<script>
+var curView='rpt', msList=[], repCache={};
+function setView(v){
+  curView=v;
+  Array.prototype.forEach.call(document.getElementById('tabBar').children,function(b){
+    var on = b.getAttribute('data-v')===v;
+    b.style.background = on ? '#1F3864' : '#fff';
+    b.style.color = on ? '#fff' : '#1c1c1e';
+  });
+  document.getElementById('months').style.display = v==='rpt' ? 'flex' : 'none';
+  if(v==='roster') renderRoster();
+  else if(v==='sum') renderSummary();
+  else render();
+}
+
+function fetchReport(ym){
+  if(repCache[ym]) return Promise.resolve(repCache[ym]);
+  return fetch(GAS_URL+'?pub=report&ym='+ym).then(function(r){return r.json()}).then(function(j){
+    if(j.ok) repCache[ym]=j.report;
+    return j.report;
+  });
+}
+
+function renderSummary(){
+  var body=document.getElementById('body');
+  if(!msList.length){ body.innerHTML='<div class="card"><p class="sub">尚未有已發布之月報</p></div>'; return; }
+  body.innerHTML='<p class="sub" style="text-align:center;padding:30px 0">彙總中…</p>';
+  Promise.all(msList.map(fetchReport)).then(function(reps){
+    reps = reps.filter(Boolean).sort(function(a,b){ return a.ym<b.ym?-1:1; });
+    var first=reps[0], last=reps[reps.length-1];
+    var tin=0,tout=0,byCat={},feeM=0,feeF=0,sponsors=[],byAct={},byXCat={};
+    reps.forEach(function(d){
+      tin+=d.income.total; tout+=d.expense.total;
+      Object.keys(d.income.byCat).forEach(function(c){ byCat[c]=(byCat[c]||0)+d.income.byCat[c]; });
+      feeM+=d.income.feeM||0; feeF+=d.income.feeF||0;
+      (d.income.sponsors||[]).forEach(function(s){ sponsors.push(s); });
+      d.expense.items.forEach(function(x){
+        var k=x.act||'一般支出';
+        byAct[k]=(byAct[k]||0)+x.amt;
+        byXCat[x.cat]=(byXCat[x.cat]||0)+x.amt;
+      });
+    });
+    var h='<div class="card">';
+    h+='<b style="font-size:17px">第12屆 累計總表</b>';
+    h+='<p class="sub" style="margin:2px 0 8px">彙總已發布月報:'+first.ym.replace('-','/')+' ~ '+last.ym.replace('-','/')+'</p>';
+    h+='<div class="stat"><span>期初</span><b>'+money(first.opening)+'</b></div>';
+    h+='<div class="stat" style="background:#EAF3DE;border-left-color:#27500A"><span style="color:#27500A">累計收入</span><b>+'+money(tin)+'</b></div>';
+    h+='<div class="stat" style="background:#FCEBEB;border-left-color:#791F1F"><span style="color:#791F1F">累計支出</span><b>−'+money(tout)+'</b></div>';
+    h+='<div class="stat"><span>目前結餘</span><b>'+money(last.closing)+'</b></div>';
+    h+='</div>';
+    h+='<div class="card"><b style="font-size:15px">累計收入摘要</b><table style="margin-top:6px"><tbody>';
+    Object.keys(byCat).forEach(function(c){
+      var note = (c==='會費收入'&&(feeM||feeF)) ? ' <span class="sub">(累計 '+feeM+'男・'+feeF+'女)</span>':'';
+      h+='<tr><td>'+esc(c)+note+'</td><td class="r">+'+money(byCat[c])+'</td></tr>';
+    });
+    h+='</tbody></table>';
+    if(sponsors.length){
+      h+='<p style="font-size:14px;font-weight:600;margin:10px 0 5px">🙏 本屆贊助芳名錄</p><table><tbody>';
+      sponsors.forEach(function(s){ h+='<tr><td>'+esc(s.desc)+'</td><td class="r">+'+money(s.amt)+'</td></tr>'; });
+      h+='</tbody></table>';
+    }
+    h+='</div>';
+    h+='<div class="card"><b style="font-size:15px">累計支出|依活動</b><table style="margin-top:6px"><tbody>';
+    Object.keys(byAct).sort(function(a,b){return byAct[b]-byAct[a]}).forEach(function(k){
+      h+='<tr><td>🎯 '+esc(k)+'</td><td class="r">'+money(byAct[k])+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+    h+='<div class="card"><b style="font-size:15px">累計支出|依類別</b><table style="margin-top:6px"><tbody>';
+    Object.keys(byXCat).sort(function(a,b){return byXCat[b]-byXCat[a]}).forEach(function(k){
+      h+='<tr><td>'+esc(k)+'</td><td class="r">'+money(byXCat[k])+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+    h+='<p class="sub" style="text-align:center">總表隨月報發布自動累計</p>';
+    body.innerHTML=h;
+  }).catch(function(){ body.innerHTML='<div class="card"><p class="sub">彙總失敗,請稍後再試</p></div>'; });
+}
+
+var rosterCache=null;
+function renderRoster(){
+  var body=document.getElementById('body');
+  if(rosterCache){ drawRoster(rosterCache); return; }
+  body.innerHTML='<p class="sub" style="text-align:center;padding:30px 0">載入中…</p>';
+  fetch(GAS_URL+'?pub=roster').then(function(r){return r.json()}).then(function(j){
+    rosterCache=j; drawRoster(j);
+  }).catch(function(){ body.innerHTML='<div class="card"><p class="sub">載入失敗,請稍後再試</p></div>'; });
+}
+
+function drawRoster(j){
+  var body=document.getElementById('body');
+  var h='<div class="card"><b style="font-size:16px">第12屆 會員名單暨繳費確認</b>'+
+    '<p class="sub" style="margin-top:2px">共 '+j.total+' 位・已確認繳費 '+j.paid+' 位</p>'+
+    '<p class="sub" style="margin-top:5px;font-size:12.5px">請核對您的繳費狀態;若已繳費但顯示「確認中」,請洽財務允甄</p></div>';
+  var byC={};
+  (j.members||[]).forEach(function(m){ (byC[m.c]=byC[m.c]||[]).push(m); });
+  var order=Object.keys(byC).sort(function(a,b){
+    function k(c){ return c.indexOf('創')===0 ? (parseInt(c.slice(1))||99) : 100; }
+    return k(a)-k(b);
+  });
+  h+='<div class="card" style="padding:0;overflow:hidden"><table>';
+  order.forEach(function(c){
+    h+='<tr><td colspan="2" class="actH">'+esc(c)+'<span style="float:right" class="sub">'+byC[c].length+' 位</span></td></tr>';
+    byC[c].forEach(function(m){
+      h+='<tr><td>'+esc(m.n)+'</td><td class="r">'+
+        (m.p?'<span class="badge">✓ 已繳'+(m.d?' '+m.d.slice(4,6)+'/'+m.d.slice(6,8):'')+'</span>'
+            :'<span class="sub">確認中</span>')+'</td></tr>';
+    });
+  });
+  h+='</table></div>';
+  body.innerHTML=h;
+}
+
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbxTK9_7dOFlML5gO-uHP7gAb2Vr0aF88li4s6t0FSWH-MnLuczZ0RIzVvFTvHGqvbeIwA/exec';
+var curYm = new URLSearchParams(location.search).get('ym') || '';
+
+function money(n){ return Number(n).toLocaleString('zh-Hant'); }
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
+function fmtD(d){ var s=String(d); return s.slice(4,6)+'/'+s.slice(6,8); }
+
+fetch(GAS_URL+'?pub=months').then(function(r){return r.json()}).then(function(j){
+  var ms = j.months||[]; msList = ms;
+  if(!ms.length){ document.getElementById('body').innerHTML='<div class="card"><p class="sub">尚未有已發布之月報</p></div>'; return; }
+  if(!curYm || ms.indexOf(curYm)<0) curYm = ms[0];
+  var el=document.getElementById('months');
+  ms.forEach(function(m){
+    var b=document.createElement('button');
+    b.textContent = m.replace('-','年')+'月';
+    if(m===curYm) b.className='on';
+    b.onclick=function(){ curYm=m; history.replaceState(null,'','?ym='+m); render(); markOn(); };
+    el.appendChild(b);
+  });
+  function markOn(){ Array.prototype.forEach.call(el.children,function(b,i){ b.className = ms[i]===curYm?'on':''; }); }
+  render();
+}).catch(function(){ document.getElementById('body').innerHTML='<div class="card"><p class="sub">載入失敗,請稍後再試</p></div>'; });
+
+function render(){
+  var body=document.getElementById('body');
+  body.innerHTML='<p class="sub" style="text-align:center;padding:30px 0">載入中…</p>';
+  fetch(GAS_URL+'?pub=report&ym='+curYm).then(function(r){return r.json()}).then(function(j){
+    if(!j.ok){ body.innerHTML='<div class="card"><p class="sub">'+esc(j.error||'讀取失敗')+'</p></div>'; return; }
+    var d=j.report, h='';
+    h+='<div class="card">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'+
+       '<b style="font-size:17px">'+d.ym.replace('-','年')+'月 月結</b>'+
+       (d.reconOk?'<span class="badge">✓ 財務已完成銀行對帳</span>':'')+'</div>';
+    h+='<div class="stat"><span>期初結餘</span><b>'+money(d.opening)+'</b></div>';
+    h+='<div class="stat" style="background:#EAF3DE;border-left-color:#27500A"><span style="color:#27500A">本月收入</span><b>+'+money(d.income.total)+'</b></div>';
+    h+='<div class="stat" style="background:#FCEBEB;border-left-color:#791F1F"><span style="color:#791F1F">本月支出</span><b>−'+money(d.expense.total)+'</b></div>';
+    h+='<div class="stat"><span>期末結餘</span><b>'+money(d.closing)+'</b></div>';
+    h+='</div>';
+
+    h+='<div class="card"><b style="font-size:15px">收入摘要</b><table style="margin-top:6px"><tbody>';
+    Object.keys(d.income.byCat).forEach(function(c){
+      var note = '';
+      if(c==='會費收入'){
+        note = (d.income.feeM||d.income.feeF)
+          ? '(本月確認 '+(d.income.feeM||0)+'男・'+(d.income.feeF||0)+'女)'
+          : '('+d.income.feeCount+' 筆)';
+      }
+      h+='<tr><td>'+esc(c)+' <span class="sub">'+note+'</span></td><td class="r">+'+money(d.income.byCat[c])+'</td></tr>';
+    });
+    if(!Object.keys(d.income.byCat).length) h+='<tr><td class="sub">本月無收入</td><td></td></tr>';
+    h+='</tbody></table>';
+    if(d.income.sponsors && d.income.sponsors.length){
+      h+='<p style="font-size:14px;font-weight:600;margin:10px 0 5px">🙏 贊助芳名錄</p><table><tbody>';
+      d.income.sponsors.forEach(function(s){
+        h+='<tr><td>'+esc(s.desc)+'</td><td class="r">+'+money(s.amt)+'</td></tr>';
+      });
+      h+='</tbody></table>';
+    }
+    h+='</div>';
+
+    h+='<div class="card"><b style="font-size:15px">支出明細</b>';
+    if(!d.expense.items.length){ h+='<p class="sub" style="margin-top:6px">本月無支出</p>'; }
+    else {
+      var byAct={};
+      d.expense.items.forEach(function(x){ var k=x.act||'一般支出'; (byAct[k]=byAct[k]||[]).push(x); });
+      h+='<table style="margin-top:6px">';
+      Object.keys(byAct).sort(function(a,b){
+        var sa=byAct[a].reduce(function(s,x){return s+x.amt},0), sb=byAct[b].reduce(function(s,x){return s+x.amt},0);
+        return sb-sa;
+      }).forEach(function(k){
+        var tot=byAct[k].reduce(function(s,x){return s+x.amt},0);
+        h+='<tr><td colspan="3" class="actH">🎯 '+esc(k)+'<span style="float:right">'+money(tot)+'</span></td></tr>';
+        byAct[k].forEach(function(x){
+          h+='<tr><td style="width:44px;color:var(--sub)">'+fmtD(x.d)+'</td>'+
+             '<td>'+esc(x.desc)+'<br><span class="sub" style="font-size:12px">'+esc(x.cat)+
+             (x.ref?'・'+esc(x.ref):'')+(x.rcp?'・憑證✓':'・<span style="color:#8a4a00">⚠缺憑</span>')+'</span></td>'+
+             '<td class="r">'+money(x.amt)+'</td></tr>';
+        });
+      });
+      h+='</table>';
+    }
+    h+='</div>';
+    h+='<p class="sub" style="text-align:center">發布:'+esc(d.publishedBy)+'・'+esc(d.publishedAt)+'</p>';
+    body.innerHTML=h;
+  }).catch(function(){ body.innerHTML='<div class="card"><p class="sub">載入失敗,請稍後再試</p></div>'; });
+}
+</script>
+</body>
+</html>

@@ -89,7 +89,7 @@ label{font-size:12px;color:var(--sub)}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L1 build 2026-08-08l</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-08p</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -105,6 +105,10 @@ label{font-size:12px;color:var(--sub)}
   </div>
   <datalist id="memberList"></datalist>
   <datalist id="actList"></datalist>
+
+  <div id="pubSec" class="hide">
+    <div id="pubBody"></div>
+  </div>
 
   <div id="reconSec" class="hide">
     <div id="reconBody"></div>
@@ -249,7 +253,7 @@ function enter(){
 }
 
 var curTab='home';
-var PAGE_TITLES={entry:'✏️ 登帳',pay:'💸 付款請求',ov:'📊 報表視角',det:'📋 帳本明細',recon:'🔗 對帳勾稽',mem:'👥 會員查詢'};
+var PAGE_TITLES={entry:'✏️ 登帳',pay:'💸 付款請求',ov:'📊 報表視角',det:'📋 帳本明細',recon:'🔗 對帳勾稽',mem:'👥 會員查詢',pub:'📣 月結發布'};
 function showTab(t){
   if(t==='entry'&&user==='麗娜') t='home';
   curTab=t;
@@ -260,6 +264,7 @@ function showTab(t){
   document.getElementById('detSec').classList.toggle('hide', t!=='det');
   document.getElementById('reconSec').classList.toggle('hide', t!=='recon');
   document.getElementById('memberSec').classList.toggle('hide', t!=='mem');
+  document.getElementById('pubSec').classList.toggle('hide', t!=='pub');
   document.getElementById('pageHead').classList.toggle('hide', t==='home');
   if(t!=='home') document.getElementById('pageTitle').textContent = PAGE_TITLES[t]||'';
   if(t==='home') renderHome();
@@ -268,6 +273,7 @@ function showTab(t){
   if(t==='det'){ initCatSel(); renderDetail(); }
   if(t==='recon') renderRecon();
   if(t==='mem') loadMembers(renderMembers);
+  if(t==='pub') renderPub();
 }
 
 var pendCount=0;
@@ -285,6 +291,7 @@ function renderHome(){
     tiles.push(['entry','✏️','登帳','記一筆收支']);
     tiles.push(['pay','💸','付款請求', pendCount>0 ? ('<span style="color:#A32D2D;font-weight:600">'+pendCount+' 筆待處理</span>') : '請款・匯款・結案']);
   }
+  if(user==='允甄') tiles.push(['pub','📣','月結發布','當月明細→公開網頁']);
   if(user==='允甄') tiles.push(['recon','🔗','對帳勾稽','核對銀行・蓋檢查點']);
   if(user==='凌華') tiles.push(['recon','🔗','對帳勾稽','零用金實點']);
   if(user!=='麗娜') tiles.push(['mem','👥','會員查詢','後5碼・電話・繳費狀態']);
@@ -326,10 +333,11 @@ function fyLabel(fy){ return fy+'/8–'+(fy+1)+'/7 年度'; }
 function drill(f){
   initCatSel();
   detAct = f.act||'';
-  if(f.act){ detTab='priv'; privSub=''; if(!f.pool && !f.team){} }
+  detAll = false;
   if(f.pool==='[主]會費池'){ detTab='main'; privSub=''; }
   else if(f.pool){ detTab='priv'; privSub=f.pool; }
-  else { detTab = (f.team==='創主班') ? 'main' : 'priv'; privSub=''; }
+  else if(f.team){ detAll=true; }
+  else { detTab='main'; privSub=''; }
   document.getElementById('dTeam').value = f.team||'';
   document.getElementById('dCat').value  = f.cat||'';
   document.getElementById('dDir').value  = f.dir||'';
@@ -482,6 +490,68 @@ function renderMembers(){
   if(!rows.length) el.innerHTML='<p class="sub" style="text-align:center;padding:20px">查無符合會員</p>';
 }
 
+var REPORT_URL = location.origin + location.pathname.replace(/[^/]*$/,'') + 'report.html';
+
+function renderPub(){
+  var el=document.getElementById('pubBody');
+  if(!lastData){ el.innerHTML='<p class="sub">載入中…</p>'; return; }
+  if(user!=='允甄'){
+    el.innerHTML='<div class="card"><p class="sub">月報發布為財務(允甄)專屬。公開月報頁:</p>'+
+      '<p style="font-size:12px;word-break:break-all;margin-top:4px">'+REPORT_URL+'</p></div>';
+    return;
+  }
+  var pubMap={};
+  (lastData.pubs||[]).forEach(function(p){ pubMap[p.ym]=p; });
+  var months={};
+  (lastData.recent||[]).forEach(function(r){
+    if(r.voided||r.pool!=='[主]會費池') return;
+    var s=String(r.date);
+    months[s.slice(0,4)+'-'+s.slice(4,6)]=1;
+  });
+  var ms=Object.keys(months).sort().reverse();
+  var h='<div class="card"><p class="sub">發布=將該月[主]會費池收支快照至公開網頁(僅球隊帳・不含私池・會費不列個人名)。可重複發布覆蓋更新。</p>'+
+    '<p style="font-size:12px;word-break:break-all;margin-top:4px">公開頁:'+REPORT_URL+'</p></div>';
+  ms.forEach(function(ym){
+    var tin=0,tout=0;
+    (lastData.recent||[]).forEach(function(r){
+      if(r.voided||r.pool!=='[主]會費池') return;
+      if(String(r.date).slice(0,6)!==ym.replace('-','')) return;
+      tin+=r.income; tout+=r.expense;
+    });
+    var p=pubMap[ym];
+    h+='<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;margin-bottom:6px">'+
+      '<span><b style="font-size:14px">'+ym.replace('-','年')+'月</b><br>'+
+      '<span class="sub" style="font-size:10.5px">收 '+money(tin)+'・支 '+money(tout)+
+      (p?'<br><span style="color:#27500A">✓ 已發布 '+p.at+'</span>':'<br><span style="color:#8a4a00">未發布</span>')+'</span></span>'+
+      '<button class="btn" style="width:auto;padding:9px 14px;margin:0;font-size:13px" onclick="publishMonth(\''+ym+'\')">'+
+      (p?'重新發布':'發布')+'</button></div>';
+  });
+  el.innerHTML=h;
+}
+
+function publishMonth(ym){
+  var rc=(lastData.recon||{})['[主]會費池'];
+  var warn = (!rc || Number(rc.date) < Number(ym.replace('-',''))*100+28)
+    ? '\n⚠️ 該月尚未完成銀行對帳勾稽,建議先勾稽再發布(仍可發布)。' : '';
+  var sp=[];
+  (lastData.recent||[]).forEach(function(r){
+    if(r.voided||r.pool!=='[主]會費池'||r.cat!=='贊助收入') return;
+    if(String(r.date).slice(0,6)!==ym.replace('-','')) return;
+    if(String(r.desc).indexOf('暫不公開')>=0) return;
+    sp.push(r.desc);
+  });
+  var spWarn = sp.length ? '\n🙏 芳名錄將公開(本名・須已逐位確認):\n・'+sp.join('\n・')+
+    '\n(未經本人同意者請先在該筆明細加註「暫不公開」)' : '';
+  if(!confirm('發布 '+ym.replace('-','年')+'月 月報至公開網頁?'+warn+spWarn)) return;
+  api({action:'publishMonth',ym:ym}).then(function(j){
+    var link=REPORT_URL+'?ym='+ym;
+    var msg='⛳ 第12屆高球隊 '+ym.replace('-','年')+'月財務月報已發布\n期末結餘 NT$ '+money(j.closing)+'\n'+link;
+    toast('已發布!群組貼文已備妥');
+    if(navigator.clipboard) navigator.clipboard.writeText(msg).then(function(){ toast('已發布,貼文已複製,可直接貼到大群'); });
+    refresh();
+  }).catch(function(e){ toast('失敗:'+e.message); });
+}
+
 var RECON_MINE={'允甄':['[主]會費池','[私]Lina贊助池'],'凌華':['[私]花零用金池'],'麗娜':[]};
 var RECON_TEAM_DEFAULT={'[主]會費池':'創主班','[私]Lina贊助池':'共用','[私]花零用金池':'創12'};
 var reconInput={};
@@ -561,8 +631,9 @@ function reconCommit(pool){
   }).catch(function(e){ toast('失敗:'+e.message); });
 }
 
-var detTab='main', privSub='', detAct='';
+var detTab='main', privSub='', detAct='', detAll=false;
 function clearDetAct(){ detAct=''; renderDetail(); }
+function clearDetAll(){ detAll=false; renderDetail(); }
 function styleDetTabs(){
   var m=document.getElementById('dtMain'), p=document.getElementById('dtPriv');
   m.style.background = detTab==='main' ? '#1F3864' : '#fff';
@@ -578,10 +649,10 @@ function styleDetTabs(){
     subs[i].style.color = on ? '#fff' : 'var(--txt)';
   }
 }
-function setDetTab(t){ detTab=t; if(t==='main') privSub=''; styleDetTabs(); renderDetail(); }
-function setPrivSub(p){ privSub=p; styleDetTabs(); renderDetail(); }
+function setDetTab(t){ detTab=t; detAll=false; if(t==='main') privSub=''; styleDetTabs(); renderDetail(); }
+function setPrivSub(p){ privSub=p; detAll=false; styleDetTabs(); renderDetail(); }
 function detPools(){
-  if(detAct) return ['[主]會費池','[私]Lina贊助池','[私]花零用金池'];
+  if(detAct||detAll) return ['[主]會費池','[私]Lina贊助池','[私]花零用金池'];
   if(detTab==='main') return ['[主]會費池'];
   return privSub ? [privSub] : ['[私]Lina贊助池','[私]花零用金池'];
 }
@@ -619,6 +690,7 @@ function renderDetail(){
       return ' <span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:'+POOL_ROW[p][0]+';border:2px solid '+POOL_ROW[p][1]+';vertical-align:-1px"></span>';
     }).join('');
   var actChip = detAct ? '<span onclick="clearDetAct()" style="cursor:pointer;background:#EEEDFE;color:#3C3489;border-radius:999px;padding:2px 8px;margin-left:6px">🎯'+esc(detAct)+' ✕</span>' : '';
+  if(detAll) actChip += '<span onclick="clearDetAll()" style="cursor:pointer;background:#E6F1FB;color:#0C447C;border-radius:999px;padding:2px 8px;margin-left:6px">🌐跨帳 ✕</span>';
   var headBar =
     '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12px;flex-wrap:wrap">'+
     '<span class="sub">'+rows.length+' 筆'+legend+actChip+'</span>'+
@@ -834,6 +906,8 @@ function buildFlowSvg(o,bal){
   function S(fn,fld){ var s=0; L.forEach(function(r){ if(!r.voided&&fn(r)) s+=r[fld]; }); return s; }
   var mainFee = S(function(r){return r.pool==='[主]會費池'&&r.cat==='會費收入'},'income');
   var mainOther = S(function(r){return r.pool==='[主]會費池'&&(r.cat==='利息'||r.cat==='移交款')},'income');
+  var mainSpon = S(function(r){return r.pool==='[主]會費池'&&r.cat==='贊助收入'},'income') - (o.lina.toTeam||0);
+  if(mainSpon<0) mainSpon=0;
   var mainSpend = S(function(r){return r.pool==='[主]會費池'},'expense');
   var netPos = o.petty.balance - o.petty.custody;
   var unc=o.teamSpend['待分類'], priv=o.lina.privUse||0;
@@ -842,7 +916,7 @@ function buildFlowSvg(o,bal){
   var svg='<svg viewBox="0 0 360 '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">';
   svg+='<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a8f98"/></marker></defs>';
   svg+=node(8,6,164,50,'#EAF3DE','#27500A','麗娜會長 出資','NT$ '+money(o.lina.sponsor),'',{pool:'[私]Lina贊助池',dir:'in'});
-  svg+=node(188,6,164,50,'#EAF3DE','#27500A','會員會費+其他','NT$ '+money(mainFee+mainOther),'會費 '+money(mainFee),{pool:'[主]會費池',dir:'in'});
+  svg+=node(188,6,164,50,'#EAF3DE','#27500A','會員會費+贊助+其他','NT$ '+money(mainFee+mainOther+mainSpon),'會費 '+money(mainFee)+(mainSpon>0?'・贊助 '+money(mainSpon):''),{pool:'[主]會費池',dir:'in'});
   svg+=arrow(90,56,90,92,'',0,0);
   svg+=arrow(270,56,270,92,'',0,0);
   svg+=node(8,92,164,56,'#EEEDFE','#3C3489','[私]Lina贊助池 餘額','NT$ '+money(o.lina.balance),'',{pool:'[私]Lina贊助池'});
@@ -952,9 +1026,21 @@ function renderOverview(){
     }
   }
   if(ovMain==='pool' && ovView==='team'){
-    h += statCard('創主班 累計支出', money(o.teamSpend['創主班']), '全數出自[主]會費池', false, {team:'創主班',dir:'out'});
-    h += statCard('創12 累計支出', money(o.teamSpend['創12']), 'Lina池直付+零用金支出(調撥已排除,不重複計)', false, {team:'創12',dir:'out'});
-    if(o.teamSpend['待分類']>0) h += statCard('⚠️ 待分類支出', money(o.teamSpend['待分類']), '請至總帳裁定隊伍歸屬', false, {team:'待分類',dir:'out'});
+    var tp={};
+    (lastData.recent||[]).forEach(function(r){
+      if(r.voided || !r.expense || r.cat==='內部調撥' || r.cat==='贊助轉出') return;
+      tp[r.team]=tp[r.team]||{m:0,p:0};
+      if(r.pool==='[主]會費池') tp[r.team].m+=r.expense; else tp[r.team].p+=r.expense;
+    });
+    function tHint(k){
+      var t=tp[k]||{m:0,p:0}, ps=[];
+      if(t.m) ps.push('會費池 '+money(t.m));
+      if(t.p) ps.push('私帳 '+money(t.p));
+      return ps.join('・');
+    }
+    h += statCard('創主班 累計支出', money(o.teamSpend['創主班']), tHint('創主班'), false, {team:'創主班',dir:'out'});
+    h += statCard('創12 累計支出', money(o.teamSpend['創12']), tHint('創12')+'(調撥已排除)', false, {team:'創12',dir:'out'});
+    if(o.teamSpend['待分類']>0) h += statCard('⚠️ 待分類支出', money(o.teamSpend['待分類']), tHint('待分類')+'・請裁定歸屬', false, {team:'待分類',dir:'out'});
   }
   if(ovMain==='pool' && ovView==='lina'){
     h += statCard('麗娜會長 贊助總額', money(o.lina.sponsor), '利息另 +'+money(o.lina.interest), true, {pool:'[私]Lina贊助池',dir:'in'});
