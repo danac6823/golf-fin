@@ -159,6 +159,7 @@ body.appOn{padding-bottom:92px}
         <select id="rCat" onchange="catGuard(this,'rTeam')"></select>
         <input type="text" id="rPayee" placeholder="收款戶名(廠商)">
         <input type="text" id="rBank" placeholder="銀行代碼,例:012-7288">
+        <input type="text" id="rBranch" placeholder="銀行分行(中文),例:南京東路分行">
         <input type="text" id="rAcct" placeholder="銀行帳號">
         <input type="text" id="rNote" placeholder="備註(選填)">
         <button class="btn" onclick="reqCreate()">送出給允甄匯款</button>
@@ -895,6 +896,7 @@ function vendorPick(idx){
   if(!v) return;
   document.getElementById('rPayee').value = v.payee || v.name;
   document.getElementById('rBank').value = v.bankCode || '';
+  document.getElementById('rBranch').value = v.branch || '';
   document.getElementById('rAcct').value = v.bankAcct || '';
   if(v.type==='球秘'){
     var rc=document.getElementById('rCat');
@@ -909,13 +911,14 @@ function reqCreate(){
     amount:parseInt(document.getElementById('rAmt').value||'0',10),
     pool:document.getElementById('rPool').value, team:document.getElementById('rTeam').value,
     cat:document.getElementById('rCat').value, payee:document.getElementById('rPayee').value.trim(),
-    bankCode:document.getElementById('rBank').value.trim(), bankAcct:document.getElementById('rAcct').value.trim(),
+    bankCode:document.getElementById('rBank').value.trim(), branch:document.getElementById('rBranch').value.trim(),
+    bankAcct:document.getElementById('rAcct').value.trim(),
     note:document.getElementById('rNote').value.trim() };
   if(!q.desc||!q.amount||!q.payee){ toast('項目、金額、收款戶名必填'); return; }
   api({action:'reqCreate',req:q}).then(function(j){
     toast('已建立 '+j.ref+',允甄開啟付款頁即可匯款');
     document.getElementById('reqForm').classList.add('hide');
-    ['rDesc','rAmt','rPayee','rBank','rAcct','rNote'].forEach(function(id){document.getElementById(id).value='';});
+    ['rDesc','rAmt','rPayee','rBank','rBranch','rAcct','rNote'].forEach(function(id){document.getElementById(id).value='';});
     refresh();
   }).catch(function(e){ toast('失敗:'+e.message); });
 }
@@ -989,7 +992,7 @@ function renderReqs(){
     } else {
       h+='<p class="sub" style="margin:2px 0">'+r.pool+'</p>';
     }
-    if(r.payee) h+='<p class="sub" style="font-family:monospace">'+esc(r.payee)+(r.bankCode?'|'+esc(r.bankCode):'')+(r.bankAcct?'|'+esc(r.bankAcct):'')+'</p>';
+    if(r.payee) h+='<p class="sub" style="font-family:monospace">'+esc(r.payee)+(r.bankCode?'|'+esc(r.bankCode):'')+(r.bankAcct?'|'+esc(r.bankAcct):'')+(r.branch?'|'+esc(r.branch):'')+'</p>';
     if(r.payDate) h+='<p class="sub">匯款日 '+r.payDate+'</p>';
     if(r.note) h+='<p class="sub">'+esc(r.note)+'</p>';
     d.id='req-'+r.ref;
