@@ -138,7 +138,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10t</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10v</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -162,6 +162,24 @@ body.appOn{padding-bottom:92px}
 
   <div id="pubSec" class="hide">
     <div id="pubBody"></div>
+  </div>
+
+  <div id="actmSec" class="hide">
+    <div id="actmBody" onclick="actmClick(event)"></div>
+    <div class="card hide" id="actmForm">
+      <b id="actmFormTitle" style="font-size:13px">➕ 新增活動</b>
+      <p class="sub" style="margin:2px 0 8px" id="actmFormHint">建檔後全站活動欄可下拉選,避免同活動打成兩個名字</p>
+      <input type="text" id="amName" placeholder="活動名稱(例:8月例賽)">
+      <input type="date" id="amDate">
+      <select id="amStatus"><option>規劃中</option><option>進行中</option><option>已結案</option></select>
+      <select id="amTeam"><option value="">隊伍(選填,僅分組顯示)</option><option>創主班</option><option>創12</option><option>共用</option></select>
+      <input type="text" id="amNote" placeholder="備註(選填,例:球場/桌數)">
+      <button class="btn" onclick="actmSave()">儲存活動</button>
+      <div style="display:flex;gap:8px" id="actmEditBtns" class="hide">
+        <button class="ghost" style="flex:1;margin:0" onclick="actmReset()">取消編輯</button>
+        <button class="ghost" style="flex:1;margin:0;color:#791F1F" onclick="actmDel()">刪除主檔列</button>
+      </div>
+    </div>
   </div>
 
   <div id="budSec" class="hide">
@@ -381,8 +399,8 @@ var NAV_DEF = {
   '麗娜':[['home','🏠','首頁'],['det','📋','明細'],['mem','👥','會員'],['ov','📊','報表'],['bud','📐','預算']]
 };
 var MORE_DEF = {
-  '凌華':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽(零用金)'],['mem','👥 會員查詢'],['vch','🧾 會費傳票'],['bud','📐 年度預算']],
-  '允甄':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽'],['mem','👥 會員查詢'],['vch','🧾 會費傳票'],['pub','📣 月結發布'],['bud','📐 年度預算']],
+  '凌華':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽(零用金)'],['mem','👥 會員查詢'],['vch','🧾 會費傳票'],['bud','📐 年度預算'],['actm','🎯 活動管理']],
+  '允甄':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽'],['mem','👥 會員查詢'],['vch','🧾 會費傳票'],['pub','📣 月結發布'],['bud','📐 年度預算'],['actm','🎯 活動管理']],
   '麗娜':[]
 };
 
@@ -430,7 +448,7 @@ function navBadge(){
   else bd.classList.add('hide');
 }
 
-var PAGE_TITLES={entry:'✏️ 登帳',pay:'💸 付款請求',ov:'📊 報表視角',det:'📋 帳本明細',recon:'🔗 對帳勾稽',mem:'👥 會員查詢',pub:'📣 月結發布',vch:'🧾 會費傳票',bud:'📐 年度預算'};
+var PAGE_TITLES={entry:'✏️ 登帳',pay:'💸 付款請求',ov:'📊 報表視角',det:'📋 帳本明細',recon:'🔗 對帳勾稽',mem:'👥 會員查詢',pub:'📣 月結發布',vch:'🧾 會費傳票',bud:'📐 年度預算',actm:'🎯 活動管理'};
 function showTab(t){
   if(t==='entry'&&user==='麗娜') t='home';
   if(curTab==='bud' && t!=='bud' && budView==='table' && typeof budDirty==='function' && budDirty()){
@@ -448,6 +466,7 @@ function showTab(t){
   document.getElementById('memberSec').classList.toggle('hide', t!=='mem');
   document.getElementById('pubSec').classList.toggle('hide', t!=='pub');
   document.getElementById('budSec').classList.toggle('hide', t!=='bud');
+  document.getElementById('actmSec').classList.toggle('hide', t!=='actm');
   document.getElementById('pageHead').classList.toggle('hide', t==='home');
   var bb=document.getElementById('backBtn');
   var dc=document.getElementById('detCtrl'), df=document.getElementById('detFilterLink');
@@ -473,6 +492,7 @@ function showTab(t){
   }
   if(t==='pub') renderPub();
   if(t==='bud') renderBudget();
+  if(t==='actm') renderActm();
 }
 
 var pendCount=0;
@@ -1111,6 +1131,156 @@ function drill(f){
   document.getElementById('dDir').value  = f.dir||'';
   document.getElementById('dKw').value   = '';
   showTab('det');
+}
+
+/* ============ 活動管理 ============ */
+var actmEditRow=null;
+function actStats(name){
+  var s={i:0,o:0,reqs:0,bud:0,act:0};
+  ((lastData&&lastData.recent)||[]).forEach(function(r){
+    if(r.voided||(r.act||'')!==name) return;
+    if(r.cat==='代收款'||r.cat==='代收轉付') return; /* 過手錢不計 */
+    s.i+=r.income; s.o+=r.expense;
+  });
+  ((lastData&&lastData.reqs)||[]).forEach(function(q){
+    if((q.act||'')===name && q.status!=='已撤銷') s.reqs++;
+  });
+  ((lastData&&lastData.budget)||[]).forEach(function(b){
+    if(b.act===name){ s.bud+=b.amt; s.act+=budActual(b); }
+  });
+  return s;
+}
+function renderActm(){
+  var el=document.getElementById('actmBody');
+  if(!lastData){ el.innerHTML='<p class="sub">載入中…</p>'; return; }
+  var edit=(user==='凌華');
+  document.getElementById('actmForm').classList.toggle('hide', !edit);
+  var master=(lastData.actMaster||[]).slice();
+  var known={}; master.forEach(function(a){ known[a.name]=1; });
+  var derived={};
+  ((lastData.recent)||[]).forEach(function(r){ if(!r.voided&&r.act&&!known[r.act]) derived[r.act]=1; });
+  ((lastData.budget)||[]).forEach(function(b){ if(b.act&&!known[b.act]) derived[b.act]=1; });
+  master.sort(function(a,b){ return (a.date||'99999999') < (b.date||'99999999') ? -1 : 1; });
+  var ST_COL={'規劃中':['#E6F1FB','#0C447C'],'進行中':['#EAF3DE','#27500A'],'已結案':['#EFF0F3','#6b7280']};
+  var TM_COL={'創主班':['#E6F1FB','#0C447C'],'創12':['#FDEFF4','#B03A73'],'共用':['#EAF3DE','#27500A']};
+  var h='';
+  var totB=0,totA=0;
+  master.forEach(function(a){ var s=actStats(a.name); totB+=s.bud; totA+=s.act; });
+  h+='<div class="card" style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center">'+
+    '<span class="sub">主檔 '+master.length+' 場'+(Object.keys(derived).length?'・未建檔標籤 '+Object.keys(derived).length:'')+'</span>'+
+    '<span style="font-size:12px;font-variant-numeric:tabular-nums">預算執行 '+money(totA)+' / '+money(totB)+'</span></div>';
+  var GRP=[['創主班','🔵 創主班'],['創12','🟠 創12'],['共用','🟢 共用'],['','未標隊伍']];
+  GRP.forEach(function(gp){
+    var grp=master.filter(function(a){ return (a.team||'')===gp[0]; });
+    if(!grp.length) return;
+    if(master.some(function(a){return a.team;}))
+      h+='<p style="font-size:12.5px;font-weight:600;margin:8px 0 5px;color:#556">'+gp[1]+'（'+grp.length+'）</p>';
+    grp.forEach(renderCard);
+  });
+  function renderCard(a){
+    var s=actStats(a.name), sc=ST_COL[a.status]||ST_COL['規劃中'];
+    var pct=budPct(s.act,s.bud);
+    h+='<div class="card" data-actgo="'+esc(a.name)+'" style="padding:10px 12px;cursor:pointer">'+
+      '<div style="display:flex;align-items:center;gap:6px">'+
+      '<b style="font-size:13.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">🎯 '+esc(a.name)+'</b>'+
+      '<span style="background:'+sc[0]+';color:'+sc[1]+';border-radius:6px;padding:1px 7px;font-size:10.5px">'+esc(a.status)+'</span>'+
+      (a.team&&TM_COL[a.team]?'<span style="background:'+TM_COL[a.team][0]+';color:'+TM_COL[a.team][1]+';border-radius:6px;padding:1px 7px;font-size:10.5px">'+esc(a.team)+'</span>':'')+
+      (edit?'<button class="ghost" data-actedit="'+a.row+'" style="width:auto;padding:2px 9px;margin:0;font-size:11px">✎</button>':'')+
+      '</div>'+
+      '<p class="sub" style="font-size:11px;margin-top:2px">'+(a.date?d8fmt(a.date)+'・':'')+
+        '收 '+money(s.i)+'・支 '+money(s.o)+'・淨 '+money(s.i-s.o)+(s.reqs?'・請款 '+s.reqs+' 張':'')+
+        (a.note?'・'+esc(a.note):'')+'</p>'+
+      (s.bud>0?'<div style="display:flex;align-items:center;gap:8px;margin-top:5px">'+
+        '<div style="flex:1">'+budBar(pct,7)+'</div>'+
+        '<span style="font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;color:'+(pct>100?'#C0392B':'#556')+'">'+money(s.act)+' / '+money(s.bud)+'('+pct+'%)</span></div>':'')+
+      '</div>';
+  }
+  var dk=Object.keys(derived).sort();
+  if(dk.length){
+    h+='<p style="font-size:13px;font-weight:600;margin:10px 0 6px;color:#8a5a00">⚠️ 帳上有標籤但未建檔('+dk.length+')</p>';
+    dk.forEach(function(n){
+      var s=actStats(n);
+      h+='<div class="card" data-actgo="'+esc(n)+'" style="padding:9px 12px;cursor:pointer;background:#FFFBF0;border-color:#E8D9B0">'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
+        '<b style="font-size:13px;flex:1;min-width:0">'+esc(n)+'</b>'+
+        (edit?'<button class="ghost" data-actadopt="'+esc(n)+'" style="width:auto;padding:3px 10px;margin:0;font-size:11.5px">＋ 入主檔</button>':'')+
+        '</div>'+
+        '<p class="sub" style="font-size:11px;margin-top:2px">收 '+money(s.i)+'・支 '+money(s.o)+(s.reqs?'・請款 '+s.reqs+' 張':'')+'</p></div>';
+    });
+  }
+  if(!master.length && !dk.length){
+    h+='<div class="card"><p class="sub">尚無活動'+(edit?',由下方表單建檔':'')+'</p></div>';
+  }
+  el.innerHTML=h;
+}
+function actmClick(ev){
+  var e1=ev.target.closest('[data-actedit]');
+  if(e1){ actmOpenEdit(Number(e1.getAttribute('data-actedit'))); return; }
+  var e2=ev.target.closest('[data-actadopt]');
+  if(e2){
+    var n=e2.getAttribute('data-actadopt');
+    document.getElementById('amName').value=n;
+    document.getElementById('amDate').value=''; document.getElementById('amNote').value='';
+    document.getElementById('amStatus').value='進行中';
+    actmSave();
+    return;
+  }
+  var c=ev.target.closest('[data-actgo]');
+  if(c){ /* 點卡 → 報表活動視角該活動 */
+    ovMain='act'; ovActSel=c.getAttribute('data-actgo');
+    showTab('ov');
+  }
+}
+function actmOpenEdit(row){
+  var a=((lastData&&lastData.actMaster)||[]).find(function(x){return x.row===row});
+  if(!a) return;
+  actmEditRow=row;
+  document.getElementById('actmFormTitle').textContent='✎ 編輯活動('+a.name+')';
+  document.getElementById('actmFormHint').textContent='改名將自動歸戶:帳列/請款/預算上同名標籤一併改為新名';
+  document.getElementById('amName').value=a.name;
+  document.getElementById('amDate').value=a.date?(a.date.slice(0,4)+'-'+a.date.slice(4,6)+'-'+a.date.slice(6,8)):'';
+  document.getElementById('amStatus').value=a.status;
+  document.getElementById('amTeam').value=a.team||'';
+  document.getElementById('amNote').value=a.note||'';
+  document.getElementById('actmEditBtns').classList.remove('hide');
+  var f=document.getElementById('actmForm');
+  if(f.scrollIntoView) f.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function actmReset(){
+  actmEditRow=null;
+  document.getElementById('actmFormTitle').textContent='➕ 新增活動';
+  document.getElementById('actmFormHint').textContent='建檔後全站活動欄可下拉選,避免同活動打成兩個名字';
+  ['amName','amDate','amNote'].forEach(function(i){document.getElementById(i).value='';});
+  document.getElementById('amStatus').value='規劃中';
+  document.getElementById('amTeam').value='';
+  document.getElementById('actmEditBtns').classList.add('hide');
+}
+function actmSave(){
+  var name=document.getElementById('amName').value.trim();
+  if(!name){ toast('活動名稱必填'); return; }
+  api({action:'actUpsert', a:{row:actmEditRow, name:name,
+    date:document.getElementById('amDate').value.replace(/-/g,''),
+    status:document.getElementById('amStatus').value,
+    team:document.getElementById('amTeam').value,
+    note:document.getElementById('amNote').value.trim()}}).then(function(j){
+    var rt=j.retag||{};
+    var moved=(rt.led||0)+(rt.req||0)+(rt.bud||0);
+    toast(j.mode==='add' ? '✓ 已建檔「'+name+'」'
+      : ('✓ 已更新'+(moved?'・歸戶 帳列'+(rt.led||0)+'/請款'+(rt.req||0)+'/預算'+(rt.bud||0):'')));
+    actmReset();
+    return api({action:'summary'});
+  }).then(function(j){ lastData=j; renderActm(); })
+  .catch(function(e){ toast('儲存失敗:'+e.message); });
+}
+function actmDel(){
+  if(!actmEditRow) return;
+  if(!confirm('刪除此主檔列?(僅移除主檔,帳列/請款/預算上的活動標籤全部保留)')) return;
+  api({action:'actDel', row:actmEditRow}).then(function(){
+    toast('✓ 已刪除主檔列(標籤未動)');
+    actmReset();
+    return api({action:'summary'});
+  }).then(function(j){ lastData=j; renderActm(); })
+  .catch(function(e){ toast('刪除失敗:'+e.message); });
 }
 
 /* ============ 年度預算 ============ */
@@ -2897,6 +3067,7 @@ function refresh(){
     }).length;
     navBadge();
     var acts={};
+    (j.actMaster||[]).forEach(function(a){ acts[a.name]=1; });
     (j.recent||[]).forEach(function(r){ if(!r.voided&&r.act) acts[r.act]=1; });
     document.getElementById('actList').innerHTML =
       Object.keys(acts).sort().map(function(a){return '<option value="'+esc(a)+'">'}).join('');
@@ -2907,6 +3078,7 @@ function refresh(){
     if(!document.getElementById('paySec').classList.contains('hide')) renderReqs();
     if(!document.getElementById('pubSec').classList.contains('hide')) renderPub();
     if(!document.getElementById('budSec').classList.contains('hide') && !(budView==='table'&&budDirty())) renderBudget();
+    if(!document.getElementById('actmSec').classList.contains('hide')) renderActm();
     handleDeepLink();
     ['[主]會費池','[私]Lina贊助池','[私]花零用金池'].forEach(function(p,i){
       document.getElementById('b'+i).textContent = money(j.balances[p]);
