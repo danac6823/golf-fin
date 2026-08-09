@@ -136,7 +136,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10n</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10o</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -429,6 +429,9 @@ function navBadge(){
 var PAGE_TITLES={entry:'✏️ 登帳',pay:'💸 付款請求',ov:'📊 報表視角',det:'📋 帳本明細',recon:'🔗 對帳勾稽',mem:'👥 會員查詢',pub:'📣 月結發布',vch:'🧾 會費傳票',bud:'📐 年度預算'};
 function showTab(t){
   if(t==='entry'&&user==='麗娜') t='home';
+  if(curTab==='bud' && t!=='bud' && budView==='table' && typeof budDirty==='function' && budDirty()){
+    if(!confirm('年度預算表格有未儲存的變更,離開將捨棄。確定離開?')) return;
+  }
   curTab=t;
   document.getElementById('homeSec').classList.toggle('hide', t!=='home');
   document.getElementById('entrySec').classList.toggle('hide', t!=='entry');
@@ -1099,9 +1102,32 @@ function budTableHtml(){
   }
   return h;
 }
-function budHidden(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
-function budHide(k,v){ var a=budHidden(k); if(a.indexOf(v)<0){ a.push(v); localStorage.setItem(k,JSON.stringify(a)); } }
-function budUnhideAll(){ localStorage.removeItem('gf_budHideActs'); localStorage.removeItem('gf_budHideCats'); renderBudget(); }
+var budStoreMem={};
+function budStoreGet(k){ try{ return localStorage.getItem(k); }catch(e){ return (k in budStoreMem)?budStoreMem[k]:null; } }
+function budStoreSet(k,v){ budStoreMem[k]=v; try{ localStorage.setItem(k,v); }catch(e){} }
+function budStoreDel(k){ delete budStoreMem[k]; try{ localStorage.removeItem(k); }catch(e){} }
+function budHidden(k){ try{ return JSON.parse(budStoreGet(k)||'[]'); }catch(e){ return []; } }
+function budHide(k,v){ var a=budHidden(k); if(a.indexOf(v)<0){ a.push(v); budStoreSet(k,JSON.stringify(a)); } }
+function budUnhide(k,v){
+  budStoreSet(k, JSON.stringify(budHidden(k).filter(function(x){ return x!==v; })));
+}
+function budSnapshot(){
+  var s={amt:{},note:{}};
+  budCells().forEach(function(i){ s.amt[i.getAttribute('data-bcell')]=i.value; });
+  Array.prototype.forEach.call(document.querySelectorAll('#budBody [data-bnote]'),function(i){
+    s.note[i.getAttribute('data-bnote')]=i.value;
+  });
+  return s;
+}
+function budRestore(s){
+  if(!s) return;
+  budCells().forEach(function(i){ var k=i.getAttribute('data-bcell'); if(k in s.amt) i.value=s.amt[k]; });
+  Array.prototype.forEach.call(document.querySelectorAll('#budBody [data-bnote]'),function(i){
+    var k=i.getAttribute('data-bnote'); if(k in s.note) i.value=s.note[k];
+  });
+  budRecalc();
+}
+function budUnhideAll(){ budStoreDel('gf_budHideActs'); budStoreDel('gf_budHideCats'); renderBudget(); }
 function budCatSrcOf(c){
   for(var i=0;i<budExtraCats.length;i++) if(budExtraCats[i].c===c) return budExtraCats[i].src;
   return null;
@@ -1117,14 +1143,23 @@ function budFocusCat(){
 function budAddAct(){
   var a=document.getElementById('budNewAct').value.trim();
   if(!a){ toast('請輸入活動名稱'); return; }
-  if(budDirty() && !confirm('加列會重畫表格,未儲存的變更將捨棄。先儲存再加列較安全。仍要繼續?')) return;
-  budExtraActs.push(a); renderBudget();
+  if(budMatrix().acts.indexOf(a)>-1){ toast('「'+a+'」列已在表上'); return; }
+  budUnhide('gf_budHideActs', a);
+  var s=budSnapshot();
+  budExtraActs.push(a);
+  renderBudget(); budRestore(s);
+  document.getElementById('budNewAct').value='';
+  toast('✓ 已加列「'+a+'」(未儲存的輸入已保留)');
 }
 function budAddCat(){
   var c=document.getElementById('budNewCat').value;
-  var s=document.getElementById('budNewCatSrc').value;
-  if(budDirty() && !confirm('加欄會重畫表格,未儲存的變更將捨棄。先儲存再加欄較安全。仍要繼續?')) return;
-  budExtraCats.push({c:c,src:s}); renderBudget();
+  var src=document.getElementById('budNewCatSrc').value;
+  if(budMatrix().cats.indexOf(c)>-1){ toast('「'+c+'」欄已在表上'); return; }
+  budUnhide('gf_budHideCats', c);
+  var s=budSnapshot();
+  budExtraCats.push({c:c,src:src});
+  renderBudget(); budRestore(s);
+  toast('✓ 已加欄「'+c+'」('+src+';未儲存的輸入已保留)');
 }
 function budCells(){ return Array.prototype.slice.call(document.querySelectorAll('#budBody [data-bcell]')); }
 function budDirty(){
@@ -1160,18 +1195,22 @@ function budRecalc(){ /* 定點更新小計,不重建任何輸入元素 */
   var ge=document.querySelector('#budBody [data-bgsum]'); if(ge) ge.textContent=money(g);
 }
 function budDelRun(hits, hideKey, hideVal, label){
-  if(budDirty() && !confirm('表格有未儲存的變更,刪除會重畫並捨棄。仍要繼續?')) return;
   var finish=function(){
     budHide(hideKey, hideVal);
     budExtraActs=budExtraActs.filter(function(x){ return x!==hideVal; });
     budExtraCats=budExtraCats.filter(function(x){ return x.c!==hideVal; });
-    renderBudget();
+    var s=budSnapshot();
+    renderBudget(); budRestore(s);
   };
-  if(!hits.length){ finish(); toast('已移除'+label+'(未編任何預算,僅隱藏格線)'); return; }
-  if(!confirm('刪除'+label+'將一併刪除其 '+hits.length+' 格已編預算(不影響任何帳列)。確定?')) return;
+  if(!hits.length){
+    if(!confirm('移除'+label+'?(未編任何預算,僅隱藏格線,可由「↺ 還原」找回;其他格未儲存的輸入會保留)')) return;
+    finish(); toast('已移除'+label); return;
+  }
+  if(!confirm('刪除'+label+'將一併刪除其 '+hits.length+' 格已編預算(不影響任何帳列;其他格未儲存的輸入會保留)。確定?')) return;
+  var s0=budSnapshot();
   api({action:'budgetBatch', ops:hits.map(function(b){ return {op:'del', row:b.row}; })}).then(function(){
     return api({action:'summary'});
-  }).then(function(j){ lastData=j; finish(); toast('✓ 已刪除'+label+'及其 '+hits.length+' 格預算'); })
+  }).then(function(j){ lastData=j; finish(); budRestore(s0); toast('✓ 已刪除'+label+'及其 '+hits.length+' 格預算'); })
   .catch(function(e){ toast('刪除失敗:'+e.message); });
 }
 function budDelAct(a){
@@ -1203,7 +1242,6 @@ function budTableSave(){
   toast('儲存中…');
   api({action:'budgetBatch', ops:ops}).then(function(j){
     toast('✓ 更新'+(j.set||0)+'・新增'+(j.add||0)+'・刪除'+(j.del||0));
-    budExtraActs=[]; budExtraCats=[];
     return api({action:'summary'});
   }).then(function(j){ lastData=j; renderBudget(); })
   .catch(function(e){ toast('儲存失敗:'+e.message); });
