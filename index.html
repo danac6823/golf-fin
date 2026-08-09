@@ -79,11 +79,25 @@ body.appOn{padding-bottom:92px}
     <button id="pdfOvCloseBtn" style="display:none;width:100%;margin-top:12px;background:#fff;color:#1F3864;border:none;border-radius:12px;padding:13px;font-size:14.5px;font-weight:700" onclick="pdfOvClose()">關閉預覽</button>
   </div>
 </div>
+<div id="docOverlay" style="display:none;position:fixed;inset:0;background:#fff;z-index:85;overflow-y:auto">
+  <div style="position:sticky;top:0;background:#fff;border-bottom:1px solid #ddd;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;display:flex;gap:8px;align-items:center;z-index:1">
+    <b id="docOvTitle" style="flex:1;font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>
+    <button class="ghost" style="width:auto;margin:0;padding:8px 12px;font-size:12.5px" onclick="docOvExport()">🖨 匯出 PDF</button>
+    <button class="ghost" style="width:auto;margin:0;padding:8px 12px;font-size:12.5px" onclick="docOvClose()">✕ 關閉</button>
+  </div>
+  <div id="docOvBody" style="padding:14px 12px 60px;max-width:600px;margin:0 auto"></div>
+</div>
 <input type="file" id="reqUpFile" accept="image/*" multiple class="hide" onchange="reqUpGo(this)">
 <div id="lightbox" onclick="closeLb()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:99;align-items:center;justify-content:center;flex-direction:column">
   <img id="lbImg" style="max-width:94vw;max-height:78vh;border-radius:10px;background:#fff" alt="憑證">
   <p style="color:#fff;font-size:13px;margin-top:12px;opacity:.85">點任意處關閉</p>
   <a id="lbLink" href="#" target="_blank" onclick="event.stopPropagation()" style="color:#9ec5ff;font-size:12.5px;margin-top:4px">在 Drive 開啟原檔 ›</a>
+</div>
+<div id="reqOverlay" style="display:none;position:fixed;inset:0;background:#fff;z-index:82;overflow-y:auto;padding:calc(14px + env(safe-area-inset-top)) 14px 90px">
+  <div style="max-width:480px;margin:0 auto">
+    <button class="ghost" style="width:auto;padding:7px 14px;margin:0 0 10px" onclick="closeReqOverlay()">‹ 返回付款頁</button>
+    <div id="reqDoc"></div>
+  </div>
 </div>
 <div id="vchOverlay" style="display:none;position:fixed;inset:0;background:#fff;z-index:80;overflow-y:auto;padding:calc(14px + env(safe-area-inset-top)) 14px 90px">
   <div class="vchBtns" style="display:flex;gap:8px;max-width:560px;margin:0 auto 12px">
@@ -141,7 +155,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-11g</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-11n</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -228,7 +242,7 @@ body.appOn{padding-bottom:92px}
       <input type="text" id="dKw" placeholder="🔍 搜尋明細/單號…" oninput="renderDetail()" style="margin:6px 0 0;font-size:13px;padding:9px">
     </div>
     <p id="detFilterLink" style="display:none;margin:0 0 8px"><a href="javascript:void(0)" onclick="document.getElementById('detCtrl').style.display='block';this.parentNode.style.display='none'" style="font-size:12.5px;color:#1F3864">⚙ 顯示篩選條件(目前依報表鑽取自動設定)</a></p>
-    <button class="ghost" style="margin:0 0 8px;padding:9px;font-size:13px" onclick="printDetail()">🖨 匯出明細 PDF(上摘要・下明細・日期升冪)</button>
+    <button class="ghost" style="margin:0 0 8px;padding:9px;font-size:13px" onclick="printDetail()">📄 預覽/匯出明細(上摘要・下明細・日期升冪)</button>
     <div id="dList"></div>
   </div>
 
@@ -278,7 +292,7 @@ body.appOn{padding-bottom:92px}
       <div id="ovPills" style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff"></div>
       <div id="ovSub" style="display:none;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:8px;background:#fff"></div>
     </div>
-    <button class="ghost" style="margin:8px 0;padding:9px;font-size:13px" onclick="printReport()">🖨 匯出本頁報表 PDF(依目前視角)</button>
+    <button class="ghost" style="margin:8px 0;padding:9px;font-size:13px" onclick="printReport()">📄 預覽/匯出本頁報表(依目前視角)</button>
     <div id="ovBody"></div>
   </div>
 
@@ -328,6 +342,7 @@ var TPL = {
     {k:'priv',t:'零用金支出',pool:'[私]花零用金池',team:'創12',cat:'餐飲',dir:-1,teamSel:1,catSel:1},
     {k:'priv',t:'零用金收入(代收)',pool:'[私]花零用金池',team:'創12',cat:'代收款',dir:1,payer:1,note:'過手錢:不入隊伍支出/活動彙總'},
     {k:'priv',t:'代收轉付(付教練等)',pool:'[私]花零用金池',team:'創12',cat:'代收轉付',dir:-1,note:'與代收款成對・掛同活動・備註收款人'},
+    {k:'priv',t:'代收留用轉贊助(麗娜同意)',ckeep:1,note:'成對:沖銷在管+記名贊助留池'},
     {k:'priv',t:'零用金撥入確認',pool:'[私]花零用金池',team:'創12',cat:'內部調撥',dir:1,refManual:1},
     {k:'priv',t:'🎁 會長直付代記(麗娜直接付廠商)',dgift:1},
     {k:'priv',t:'Lina池記帳',pool:'[私]Lina贊助池',team:'創12',cat:'其他',dir:-1,teamSel:1,catSel:1},
@@ -350,7 +365,7 @@ var OV_VIEWS=[['pools','📊 總表'],['team','隊伍'],['lina','會長'],['adv'
 
 var MUT_ACTIONS={add:1,'void':1,editEntry:1,reqCreate:1,reqEdit:1,reqCancel:1,reqPay:1,reqClose:1,reqReceipt:1,
   sponsorTransfer:1,directGift:1,reconCommit:1,publishMonth:1,memberConfirm:1,memberSync:1,
-  budgetSave:1,budgetDel:1,budgetBatch:1,actUpsert:1,actDel:1,exportPdf:1,incomeConfirm:1};
+  budgetSave:1,budgetDel:1,budgetBatch:1,actUpsert:1,actDel:1,exportPdf:1,incomeConfirm:1,pettyFundConfirm:1,custodyKeep:1};
 var apiInflight=null;
 function api(payload){
   if(MUT_ACTIONS[payload.action]){
@@ -745,6 +760,7 @@ function renderVch(){
     return !r.voided && r.pool==='[主]會費池';
   });
   var inc=all.filter(function(r){ return r.income>0 && r.cat!=='內部調撥'; });
+  inc.sort(function(a,b){ return a.id<b.id?1:-1; }); /* 收款票照傳票編號排序(大→小,最新在上) */
   var exp=all.filter(function(r){ return r.expense>0 && r.cat!=='內部調撥'; });
   var ti=0,te=0;
   inc.forEach(function(r){ ti+=r.income; });
@@ -965,22 +981,33 @@ function _oldPrintVchDoc(){
   }, 60);
 }
 
-function pdfStageOut(subT, html, fname){
-  var stage=document.getElementById('pdfStage');
-  if(!stage){
-    stage=document.createElement('div'); stage.id='pdfStage';
-    stage.style.cssText='position:fixed;left:-9999px;top:0;width:560px;background:#fff;padding:20px;z-index:-1';
-    document.body.appendChild(stage);
-  }
-  stage.innerHTML='<h2 style="font-size:17px;margin:0 0 2px">⛳ 政大EMBA創業主班 高爾夫球聯誼會|第12屆</h2>'+
+function stageDocHtml(subT, html){
+  return '<h2 style="font-size:17px;margin:0 0 2px">⛳ 政大EMBA創業主班 高爾夫球聯誼會|第12屆</h2>'+
     '<p style="color:#555;font-size:11px;margin-bottom:12px">'+esc(subT)+'・製表:'+esc(user)+'・'+tpDate()+'</p>'+
     html.replace(/<h3>/g,'<h3 style="font-size:14px;margin:16px 0 6px;border-left:4px solid #1F3864;padding-left:8px">')
         .replace(/<table>/g,'<table style="border-collapse:collapse;width:100%;font-size:12px">')
         .replace(/<th>/g,'<th style="border:1px solid #999;padding:5px 7px;background:#EFF3F8;text-align:left">')
         .replace(/<td /g,'<td style="border:1px solid #999;padding:5px 7px" ')
         .replace(/<td>/g,'<td style="border:1px solid #999;padding:5px 7px">');
-  elementToPdf(stage, fname);
 }
+/* 預覽優先(與傳票同模式):報表組好即開站內浮層,零等待;PDF 於浮層內按匯出才產生 */
+var docPending=null;
+function pdfStageOut(subT, html, fname){
+  var staged=stageDocHtml(subT, html);
+  var stage=document.getElementById('pdfStage');
+  if(!stage){
+    stage=document.createElement('div'); stage.id='pdfStage';
+    stage.style.cssText='position:fixed;left:-9999px;top:0;width:560px;background:#fff;padding:20px;z-index:-1';
+    document.body.appendChild(stage);
+  }
+  stage.innerHTML=staged; /* 離屏暫存:內容=匯出內容,測試與 PDF 同源 */
+  docPending={html:staged, name:fname};
+  document.getElementById('docOvTitle').textContent='📄 '+subT;
+  document.getElementById('docOvBody').innerHTML=staged;
+  document.getElementById('docOverlay').style.display='block';
+}
+function docOvClose(){ document.getElementById('docOverlay').style.display='none'; }
+function docOvExport(){ if(!docPending) return; docOvClose(); elementToPdf(docPending.html, docPending.name); }
 function _num(n){ return '<td style="text-align:right">'+money(n)+'</td>'; }
 function _T(title, heads, body){
   return '<h3>'+title+'</h3><table><thead><tr>'+heads.map(function(x){return '<th>'+x+'</th>'}).join('')+'</tr></thead><tbody>'+body+'</tbody></table>';
@@ -1014,9 +1041,10 @@ function _teamT(teams){
     (tg?'<tr class="tt"><td>含直付總計</td>'+_num(tm)+_num(tp+tg)+_num(tm+tp+tg)+'</tr>':''));
 }
 function _linaHtml(rows, o){
-  var gift=o.lina.directGift||0, total=o.lina.sponsor+gift, html='';
+  var gift=o.lina.directGift||0, dp=o.lina.directPetty||0, total=o.lina.sponsor+gift+dp, html='';
   html+=_T('會長贊助總覽',['項目','金額 NT$'],
     '<tr><td>注入 Lina 贊助池(現金/留用)</td>'+_num(o.lina.sponsor)+'</tr>'+
+    (dp?'<tr><td>直入花零用金池(代收留用等,未經Lina池)</td>'+_num(dp)+'</tr>':'')+
     '<tr><td>池外直付廠商(隊服等)</td>'+_num(gift)+'</tr>'+
     '<tr class="tt"><td>贊助貢獻合計</td>'+_num(total)+'</tr>');
   html+=_T('資金流向',['流向','金額 NT$'],
@@ -1243,7 +1271,7 @@ function renderActm(){
   h+='<div class="card" style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center">'+
     '<span class="sub">主檔 '+master.length+' 場'+(Object.keys(derived).length?'・未建檔標籤 '+Object.keys(derived).length:'')+'</span>'+
     '<span style="font-size:12px;font-variant-numeric:tabular-nums">預算執行 '+money(totA)+' / '+money(totB)+'</span></div>';
-  h+='<button class="ghost" style="margin:2px 0 8px;padding:8px;font-size:12.5px" onclick="printActSummary()">🖨 匯出活動彙總 PDF</button>';
+  h+='<button class="ghost" style="margin:2px 0 8px;padding:8px;font-size:12.5px" onclick="printActSummary()">📄 預覽/匯出活動彙總</button>';
   var GRP=[['創主班','🔵 創主班'],['創12','🟠 創12'],['共用','🟢 共用'],['','未標隊伍']];
   GRP.forEach(function(gp){
     var grp=master.filter(function(a){ return (a.team||'')===gp[0]; });
@@ -1385,7 +1413,7 @@ function renderBudget(){
     '<button onclick="setBudView(\'table\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;font-size:13px;'+(budView==='table'?'background:#1F3864;color:#fff':'background:#fff')+'">🧮 表格'+(user==='凌華'?'輸入':'')+'</button>'+
     '<button onclick="setBudView(\'cards\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;border-left:1px solid var(--line);font-size:13px;'+(budView==='cards'?'background:#1F3864;color:#fff':'background:#fff')+'">📊 執行進度</button>'+
     '</div>';
-  var expBtn='<button class="ghost" style="margin:0 0 10px;padding:9px;font-size:13px" onclick="printBudget()">🖨 匯出預算執行 PDF(含 Lina 對帳)</button>';
+  var expBtn='<button class="ghost" style="margin:0 0 10px;padding:9px;font-size:13px" onclick="printBudget()">📄 預覽/匯出預算執行(含 Lina 對帳)</button>';
   if(budView==='table'){ el.innerHTML = pills + expBtn + budTableHtml(); budTableWire(); return; }
   el.innerHTML = pills + expBtn + budCardsHtml();
 }
@@ -2232,7 +2260,11 @@ function renderDetail(){
     var prevYr = i>0 ? String(disp[i-1].date).slice(0,4) : yr;
     var sub=[];
     if(r.status==='待對帳') sub.push('⏳待對帳');
+    else if(r.status==='待存入') sub.push('💰待存入');
+    else if(r.status==='待撥入確認') sub.push('💸待撥入');
     else if(r.status==='已對帳') sub.push('✓已對帳');
+    else if(r.status==='已撥入') sub.push('✓已撥入');
+    if(r.method&&r.method!=='匯款'&&r.income>0) sub.push('💵'+r.method);
     if(r.act) sub.push('🎯'+r.act);
     if(r.fy && r.fy!==fyOf(r.date)) sub.push('📅→'+r.fy+'年度');
     if(pools.length>1) sub.push(r.pool);
@@ -2589,8 +2621,61 @@ function handleDeepLink(){
   }, 350);
 }
 
+function pettyFundConfirmGo(ref){
+  if(!confirm('確認這筆撥補已進你的零用金戶頭?系統將自動記一筆花池撥入(同 F 單號、日期=今日)')) return;
+  api({action:'pettyFundConfirm', ref:ref})
+    .then(function(j){ toast('✓ 已成對入帳 '+j.txnId+'|'+ref+',已通知允甄'); refresh(); })
+    .catch(function(e){ toast('失敗:'+e.message, 5000); });
+}
+
+/* 請款單燈箱:完整明細+匯款資訊+動作鈕(列表只留摘要列) */
+function openReqDetail(ref){
+  var r=((lastData&&lastData.reqs)||[]).filter(function(x){ return x.ref===ref; })[0];
+  if(!r) return;
+  var closed=r.status==='已結案';
+  var pc = String(r.pool||'').indexOf('[主]')===0 ? ['#E6F1FB','#0C447C'] : ['#EEEDFE','#3C3489'];
+  var h='<div style="display:flex;justify-content:space-between;gap:8px;font-size:15px"><b style="min-width:0">'+esc(r.desc)+'</b><b style="white-space:nowrap">'+money(r.amount)+'</b></div>';
+  h+='<div class="chips" style="margin:6px 0"><span class="chip c-ref">'+r.ref+'</span><span class="chip c-team">'+esc(r.team||'')+'</span>'+statusChip(r.status)+'</div>';
+  h+='<p style="font-size:13px;font-weight:600;background:'+pc[0]+';color:'+pc[1]+';border-radius:8px;padding:6px 10px;margin:4px 0">🏦 由 '+esc(r.pool)+' 戶頭匯出</p>';
+  h+='<table style="width:100%;font-size:12.5px;line-height:1.9;margin:4px 0">'+
+    '<tr><td style="color:#6b7280;width:74px;vertical-align:top">請款人</td><td>'+esc(r.applicant||'—')+'</td></tr>'+
+    '<tr><td style="color:#6b7280;vertical-align:top">申請日期</td><td>'+d8fmt(r.applyDate)+'</td></tr>'+
+    (r.cat?'<tr><td style="color:#6b7280;vertical-align:top">類別</td><td>'+esc(r.cat)+'</td></tr>':'')+
+    (r.act?'<tr><td style="color:#6b7280;vertical-align:top">活動</td><td>🎯'+esc(r.act)+'</td></tr>':'')+
+    '<tr><td style="color:#6b7280;vertical-align:top">匯款資訊</td><td>'+esc(r.payee||'—')+'<br><span style="font-family:monospace">'+esc(r.bankCode||'—')+(r.branch?' '+esc(r.branch):'')+'|'+esc(r.bankAcct||'—')+'</span></td></tr>'+
+    (r.payDate?'<tr><td style="color:#6b7280;vertical-align:top">匯款日</td><td>'+d8fmt(r.payDate)+'</td></tr>':'')+
+    (r.note?'<tr><td style="color:#6b7280;vertical-align:top">備註</td><td>'+esc(r.note)+'</td></tr>':'')+
+    '</table>';
+  if(r.items && r.items.length){
+    h+='<div style="background:#F7F8FA;border-radius:8px;padding:7px 10px;margin:4px 0;font-size:12.5px">'+
+      r.items.map(function(it){ return '<div style="display:flex;justify-content:space-between"><span>'+esc(it.n)+'</span><span>'+money(it.amt)+'</span></div>'; }).join('')+'</div>';
+  }
+  var rc=(r.receipts||[]).length;
+  if(rc){
+    h+='<p class="sub">📎 憑證 '+rc+' 張:'+
+      r.receipts.map(function(u,i){ return '<a href="javascript:void(0)" onclick="viewReceipt(\''+esc(u)+'\')" style="color:#1F3864;text-decoration:underline">查看'+(rc>1?(i+1):'')+'</a>'; }).join('・')+'</p>';
+  } else if(!closed){
+    h+='<p class="sub" style="color:#8a4a00">⚠ 未附憑證</p>';
+  }
+  h+='<button class="ghost" style="margin-top:6px;padding:8px;font-size:12.5px" onclick="closeReqOverlay();reqUpStart(\''+r.ref+'\')">📎 補傳憑證</button>';
+  var myName=({'凌華':'張凌華','允甄':'張允甄'})[user];
+  if(r.status==='待匯款' && (user==='凌華' || r.applicant===myName)){
+    h+='<div style="display:flex;gap:8px;margin-top:6px">'+
+      '<button class="ghost" style="flex:1;margin:0;padding:9px;font-size:12.5px" onclick="closeReqOverlay();reqOpenEdit(\''+r.ref+'\')">✎ 編輯</button>'+
+      '<button class="ghost" style="flex:1;margin:0;padding:9px;font-size:12.5px;color:#791F1F" onclick="closeReqOverlay();reqCancelGo(\''+r.ref+'\')">🗑 撤銷</button>'+
+      '</div>';
+  }
+  if(r.status==='待匯款' && user==='允甄')
+    h+='<button class="btn" style="margin-top:8px" onclick="closeReqOverlay();confirmPay(\''+r.ref+'\')">已匯款(今日)— 自動入帳</button>';
+  if(r.status==='已匯款' && user==='凌華')
+    h+='<button class="btn" style="margin-top:8px" onclick="closeReqOverlay();reqClose(\''+r.ref+'\')">已通知廠商,結案</button>';
+  document.getElementById('reqDoc').innerHTML=h;
+  document.getElementById('reqOverlay').style.display='block';
+}
+function closeReqOverlay(){ document.getElementById('reqOverlay').style.display='none'; }
+
 function incomeConfirmGo(id){
-  if(!confirm('確認銀行已收到這筆入帳?確認後狀態改為「已對帳」並通知凌華')) return;
+  if(!confirm('確認這筆錢已進銀行戶頭(匯款入帳/現金・LINE Pay 已存入)?確認後狀態改為「已對帳」並通知凌華')) return;
   api({action:'incomeConfirm', txnId:id})
     .then(function(){ toast('✓ 已對帳,已通知凌華'); refresh(); })
     .catch(function(e){ toast('失敗:'+e.message, 5000); });
@@ -2614,78 +2699,58 @@ function renderReqs(){
       '<p style="font-size:13px;font-weight:600;margin:6px 0 6px;color:'+(color||(active?'#1F3864':'#6b7280'))+'">'+txt+'</p>');
   }
 
+  /* 摘要列:一列一單,點開燈箱看完整明細與匯款資訊(openReqDetail) */
   function buildCard(r){
     var d=document.createElement('div'); d.className='card';
     var closed = r.status==='已結案';
-    if(closed){
-      d.style.cssText='opacity:.8;padding:8px 12px;margin-bottom:5px';
-      var rc0=(r.receipts||[]).length;
-      var right = (rc0
-          ? '📎'+rc0+' '+r.receipts.map(function(u,i){ return '<a href="javascript:void(0)" onclick="viewReceipt(\''+esc(u)+'\')" style="color:#1F3864;text-decoration:underline">查看'+(rc0>1?(i+1):'')+'</a>'; }).join('・')
-          : '<span style="color:#8a4a00">無憑證</span>')+
-        '<br><a href="javascript:void(0)" onclick="reqUpStart(\''+r.ref+'\')" style="color:#1F3864">📎 補傳</a>';
-      d.innerHTML =
-        '<div style="display:flex;justify-content:space-between;font-size:13px"><b style="min-width:0">'+esc(r.desc)+'</b><b style="white-space:nowrap;margin-left:8px">'+money(r.amount)+'</b></div>'+
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:11px;color:#6b7280;margin-top:3px;line-height:1.6">'+
-        '<span>'+r.ref+'・'+r.team+'・✓已結案'+(r.act?'・🎯'+esc(r.act):'')+'<br>匯款日 '+(r.payDate||'—')+'</span>'+
-        '<span style="text-align:right;white-space:nowrap">'+right+'</span>'+
-        '</div>';
-      el.appendChild(d);
-      return;
-    }
-    var h='<div class="top" style="display:flex;justify-content:space-between;font-size:14px"><b>'+esc(r.desc)+'</b><b>'+money(r.amount)+'</b></div>';
-    h+='<div class="chips"><span class="chip c-ref">'+r.ref+'</span><span class="chip c-team">'+r.team+'</span>'+statusChip(r.status)+'</div>';
-    if(r.status==='待匯款'){
-      var pc = r.pool.indexOf('[主]')===0 ? ['#E6F1FB','#0C447C'] : ['#EEEDFE','#3C3489'];
-      h+='<p style="font-size:13px;font-weight:600;background:'+pc[0]+';color:'+pc[1]+';border-radius:8px;padding:6px 10px;margin:4px 0">🏦 由 '+r.pool+' 戶頭匯出</p>';
-    } else if(!closed){
-      h+='<p class="sub" style="margin:2px 0">'+r.pool+'</p>';
-    }
-    if(r.payee && !closed) h+='<p class="sub" style="font-family:monospace">'+esc(r.payee)+(r.bankCode?'|'+esc(r.bankCode):'')+(r.bankAcct?'|'+esc(r.bankAcct):'')+(r.branch?'|'+esc(r.branch):'')+'</p>';
-    if(r.act) h+='<p class="sub">🎯 '+esc(r.act)+'</p>';
-    if(r.items && r.items.length && !closed){
-      h+='<div style="background:#F7F8FA;border-radius:8px;padding:7px 10px;margin:4px 0;font-size:12.5px">'+
-        r.items.map(function(it){ return '<div style="display:flex;justify-content:space-between"><span>'+esc(it.n)+'</span><span>'+money(it.amt)+'</span></div>'; }).join('')+
-        '</div>';
-    }
-    if(r.payDate) h+='<p class="sub">匯款日 '+r.payDate+'</p>';
     var rc=(r.receipts||[]).length;
-    if(rc){
-      h+='<p class="sub">📎 憑證 '+rc+' 張:'+
-        r.receipts.map(function(u,i){ return '<a href="javascript:void(0)" onclick="viewReceipt(\''+esc(u)+'\')" style="color:#1F3864;text-decoration:underline">查看'+(rc>1?(i+1):'')+'</a>'; }).join('・')+'</p>';
-    } else if(!closed){
-      h+='<p class="sub" style="color:#8a4a00">⚠ 未附憑證</p>';
-    }
-    h+='<button class="ghost" style="margin-top:6px;padding:7px;font-size:12.5px" onclick="reqUpStart(\''+r.ref+'\')">📎 補傳憑證</button>';
-    if(r.note && !closed) h+='<p class="sub">'+esc(r.note)+'</p>';
+    var warn=(!rc && !closed)?' <span style="color:#8a4a00">⚠無憑證</span>':'';
+    d.style.cssText='padding:9px 12px;margin-bottom:6px;cursor:pointer'+(closed?';opacity:.78':'');
     d.id='req-'+r.ref;
-    var myName=({'凌華':'張凌華','允甄':'張允甄'})[user];
-    if(r.status==='待匯款' && (user==='凌華' || r.applicant===myName)){
-      h+='<div style="display:flex;gap:8px;margin-top:6px">'+
-        '<button class="ghost" style="flex:1;margin:0;padding:8px;font-size:12.5px" onclick="reqOpenEdit(\''+r.ref+'\')">✎ 編輯</button>'+
-        '<button class="ghost" style="flex:1;margin:0;padding:8px;font-size:12.5px;color:#791F1F" onclick="reqCancelGo(\''+r.ref+'\')">🗑 撤銷</button>'+
-        '</div>';
-    }
-    if(r.status==='待匯款' && user==='允甄')
-      h+='<button class="btn" style="margin-top:8px" onclick="confirmPay(\''+r.ref+'\')">已匯款(今日)— 自動入帳</button>';
-    if(r.status==='已匯款' && user==='凌華')
-      h+='<button class="btn" style="margin-top:8px" onclick="reqClose(\''+r.ref+'\')">已通知廠商,結案</button>';
-    d.innerHTML=h; el.appendChild(d);
+    d.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
+      '<span style="flex:1;min-width:0"><b style="font-size:13px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.desc)+'</b>'+
+      '<span class="sub" style="font-size:11px">'+r.ref+'・'+esc(r.team||'')+'・'+esc(String(r.pool||'').replace(/^\[.\]/,''))+'・'+esc(r.status)+(r.act?'・🎯'+esc(r.act):'')+warn+'</span></span>'+
+      '<b style="white-space:nowrap">'+money(r.amount)+' ›</b></div>';
+    d.onclick=function(){ openReqDetail(r.ref); };
+    el.appendChild(d);
   }
 
-  /* 允甄待辦:主池/Lina池入帳待對帳(登帳自動掛狀態,確認後→已對帳並通知凌華) */
+  /* 允甄待辦:①現金/LINE Pay 收款待存入 ②匯款入帳待對帳(確認皆→已對帳並通知凌華) */
   if(user==='允甄'){
+    function incCard(r, btnTxt){
+      var d=document.createElement('div'); d.className='card';
+      d.style.background='#FFFBF0'; d.style.borderColor='#E8D9B0';
+      d.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
+        '<div style="flex:1;min-width:0"><b style="font-size:13px">'+esc(r.desc)+'</b>'+
+        '<p class="sub" style="font-size:11px;margin-top:2px">'+d8fmt(r.date)+'・'+esc(String(r.pool).replace(/^\[.\]/,''))+'・'+esc(r.cat)+(r.method?'・💵'+esc(r.method):'')+'・'+r.id+'</p></div>'+
+        '<b class="amt-in" style="white-space:nowrap">+'+money(r.income)+'</b>'+
+        '<button class="btn" style="width:auto;padding:8px 12px;margin:0;font-size:12px" data-incok="'+r.id+'" onclick="incomeConfirmGo(\''+r.id+'\')">'+btnTxt+'</button></div>';
+      el.appendChild(d);
+    }
+    var incDep=(lastData.recent||[]).filter(function(r){ return !r.voided && r.status==='待存入'; });
+    if(incDep.length){
+      head('💰 待存入・現金/LINE Pay 收款,請存入戶頭('+incDep.length+')', 1, '#a3512d');
+      incDep.forEach(function(r){ incCard(r,'💰 已存入'); });
+    }
     var incP=(lastData.recent||[]).filter(function(r){ return !r.voided && r.status==='待對帳'; });
     if(incP.length){
       head('🏦 待你對帳・入帳確認('+incP.length+')', 1, '#8a5a00');
-      incP.forEach(function(r){
+      incP.forEach(function(r){ incCard(r,'✓ 已入帳'); });
+    }
+  }
+  /* 凌華待辦:允甄撥補零用金→一鍵確認撥入(自動成對:花池收入+原列結案) */
+  if(user==='凌華'){
+    var fundP=(lastData.recent||[]).filter(function(r){ return !r.voided && r.status==='待撥入確認'; });
+    if(fundP.length){
+      head('💸 允甄已撥補・待你確認撥入('+fundP.length+')', 1, '#8a5a00');
+      fundP.forEach(function(r){
         var d=document.createElement('div'); d.className='card';
         d.style.background='#FFFBF0'; d.style.borderColor='#E8D9B0';
         d.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
           '<div style="flex:1;min-width:0"><b style="font-size:13px">'+esc(r.desc)+'</b>'+
-          '<p class="sub" style="font-size:11px;margin-top:2px">'+d8fmt(r.date)+'・'+esc(String(r.pool).replace(/^\[.\]/,''))+'・'+esc(r.cat)+'・'+r.id+'</p></div>'+
-          '<b class="amt-in" style="white-space:nowrap">+'+money(r.income)+'</b>'+
-          '<button class="btn" style="width:auto;padding:8px 12px;margin:0;font-size:12px" data-incok="'+r.id+'" onclick="incomeConfirmGo(\''+r.id+'\')">✓ 已入帳</button></div>';
+          '<p class="sub" style="font-size:11px;margin-top:2px">'+d8fmt(r.date)+'・'+esc(r.ref||'')+'・確認後自動記花池撥入(同單號)</p></div>'+
+          '<b style="white-space:nowrap">'+money(r.expense)+'</b>'+
+          '<button class="btn" style="width:auto;padding:8px 12px;margin:0;font-size:12px" data-fundok="'+esc(r.ref)+'" onclick="pettyFundConfirmGo(\''+esc(r.ref)+'\')">✓ 確認撥入</button></div>';
         el.appendChild(d);
       });
     }
@@ -2954,6 +3019,7 @@ function renderOverview(){
     sub += statCard('→ 尚在池中(餘額)', money(o.lina.balance), '', false, {pool:'[私]Lina贊助池'});
     h += '<div style="padding-left:22px;border-left:3px solid #D9D5F5;margin:2px 0 12px 8px">'+
       '<p class="sub" style="font-size:11px;margin:2px 0 6px">↳ 這 40 萬的去向(點卡看逐筆)</p>'+sub+'</div>';
+    if(o.lina.directPetty) h += statCard('💠 直入花零用金贊助(代收留用等)', money(o.lina.directPetty), '未經Lina池・已在零用金戶頭・記名致謝', false, {pool:'[私]花零用金池',cat:'贊助收入'});
     if(o.lina.directGift) h += statCard('🎁 會長直接贊助(隊服/紅酒等・未經任何池)', money(o.lina.directGift), '池外獨立帳・另一筆實際撥出', true, {pool:'[外]會長直付',dir:'out'});
   }
   if(ovMain==='pool' && ovView==='adv'){
@@ -2993,7 +3059,16 @@ function setEntryTab(t){
 function renderTpls(){
   var g=document.getElementById('tpls'); g.innerHTML='';
   (TPL[user]||[]).filter(function(tp){ return tp.k===entryTab; }).forEach(function(tp){
-    var b=document.createElement('button'); b.textContent=tp.t;
+    var b=document.createElement('button');
+    /* 方向徽章(照 flowKind 語意):收/支=真收支、撥=池間移轉、手=代收過手、外=會長直付、自=自由 */
+    var tag='支', bg='#FCEBEB', fg='#791F1F';
+    if(tp.pair||tp.cat==='內部調撥'||tp.cat==='贊助轉出'){ tag='撥'; bg='#EEEDFE'; fg='#3C3489'; }
+    else if(tp.dgift){ tag='外'; bg='#FBF4E4'; fg='#8a6100'; }
+    else if(tp.free){ tag='自'; bg='#F1F3F6'; fg='#556'; }
+    else if(tp.cat==='代收款'||tp.cat==='代收轉付'||tp.ckeep){ tag='手'; bg='#FAEEDA'; fg='#854F0B'; }
+    else if(tp.dir>0){ tag='收'; bg='#EAF3DE'; fg='#27500A'; }
+    b.innerHTML='<span style="display:inline-block;min-width:20px;text-align:center;background:'+bg+';color:'+fg+';border-radius:6px;padding:1px 5px;margin-right:6px;font-size:11.5px;font-weight:700">'+tag+'</span>'+esc(tp.t.replace(/^🎁 /,''));
+    b.style.textAlign='left';
     b.onclick=function(){ pick(tp) }; g.appendChild(b);
   });
   var ft=FREE_TPL[entryTab];
@@ -3021,6 +3096,7 @@ function pick(tp){
     h+='<select id="fTeamE">'+to.map(function(x){return '<option>'+x+'</option>'}).join('')+'</select>';
   }
   h+='<input type="number" id="fAmt" placeholder="金額" inputmode="numeric">';
+  if(tp.dir>0) h+='<select id="fPay"><option>匯款</option><option>現金</option><option>LINE Pay</option></select>'; /* 收款方式:現金/LINE Pay→待存入提醒允甄 */
   if(tp.catSel) h+='<select id="fCat" onchange="catGuard(this,\'fTeamE\')">'+CATS.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select>';
   h+='<input type="text" id="fDesc" placeholder="明細,例:8/27長庚月例賽">';
   h+='<input type="text" id="fAct" list="actList" placeholder="活動(選填,例:9月例賽)">';
@@ -3032,6 +3108,7 @@ function pick(tp){
     if(poolOpts.length>1) h+='<select id="fPool">'+poolOpts.map(function(p){return '<option>'+p+'</option>'}).join('')+'</select>';
     h+='<select id="fDir"><option value="out">支出</option><option value="in">收入</option></select>';
     h+='<input type="number" id="fAmt" placeholder="金額" inputmode="numeric">';
+    h+='<select id="fPay"><option>匯款</option><option>現金</option><option>LINE Pay</option></select>'; /* 收款方式(收入適用;支出忽略) */
     h+='<select id="fCat" onchange="catGuard(this,\'fTeamE\')">'+ALL_CATS.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select>';
     h+='<select id="fTeamE">'+ALL_TEAMS.map(function(x){return '<option>'+x+'</option>'}).join('')+'</select>';
     h+='<input type="text" id="fDesc" placeholder="明細">';
@@ -3051,6 +3128,11 @@ function pick(tp){
     '<input type="text" id="fActP" list="actList" placeholder="活動(選填;與年度預算「贊助轉出」欄同名即對上進度)">'+
     '<input type="text" id="fNote" placeholder="備註(選填)">'+
     '<p class="sub">按下儲存將同時產生:[私]Lina贊助池 贊助轉出(支出)+[主]會費池 贊助收入・記名 李麗娜(收入),同掛一個 F 單號</p>'; }
+  else if(tp.ckeep){ h='<input type="date" id="fDate" value="'+today+'">'+
+    '<input type="number" id="fAmt" placeholder="留用金額" inputmode="numeric">'+
+    '<input type="text" id="fDesc" placeholder="明細,例:團體課代收結餘留用">'+
+    '<input type="text" id="fAct" list="actList" placeholder="活動(選填,同原代收活動)">'+
+    '<p class="sub">麗娜會長同意不退回的代收款,一鍵成對:代收轉付(沖銷在管)+贊助收入・記名 李麗娜(留在零用金池)。銀行不動、池餘額不變、在管淨額同額歸零;超過在管淨額會擋下。</p>'; }
   else if(tp.dgift){ h='<input type="date" id="fDate" value="'+today+'">'+
     '<input type="text" id="fDesc" placeholder="明細,例:幹部隊服 3,000×16套">'+
     '<input type="number" id="fAmt" placeholder="金額" inputmode="numeric">'+
@@ -3098,6 +3180,7 @@ function save(){
       income: dir==='in'?amt:'', expense: dir==='out'?amt:'',
       refType: refT,
       status: dir==='out'?(refT?'已撥款':'已支付'):'—',
+      method: dir==='in'?document.getElementById('fPay').value:'',
       note:''
     };
     if(photoData){ en0.photoBase64=photoData.b64; en0.photoMime=photoData.mime; }
@@ -3124,6 +3207,21 @@ function save(){
       document.getElementById('fAmt').value='';
       refresh();
     }).catch(function(e){ toast('失敗:'+e.message); btn0.disabled=false; btn0.textContent='儲存並登入總帳'; });
+    return;
+  }
+  if(cur.ckeep){
+    var dEl2=document.getElementById('fDesc');
+    if(!dEl2.value.trim()){ toast('請填明細'); return; }
+    var btn2=document.getElementById('saveBtn'); btn2.disabled=true; btn2.textContent='成對入帳中…';
+    api({action:'custodyKeep', amount:amt,
+      date:document.getElementById('fDate').value.replace(/-/g,''),
+      desc:dEl2.value.trim(),
+      act:document.getElementById('fAct').value.trim()}).then(function(j){
+      toast('✓ 已成對入帳 '+j.txnIds.join('+')+':代收沖銷+麗娜贊助留用');
+      btn2.disabled=false; btn2.textContent='儲存並登入總帳';
+      document.getElementById('fAmt').value=''; dEl2.value='';
+      refresh();
+    }).catch(function(e){ toast('失敗:'+e.message, 5000); btn2.disabled=false; btn2.textContent='儲存並登入總帳'; });
     return;
   }
   if(cur.dgift){
@@ -3160,6 +3258,7 @@ function save(){
     expense: cur.dir<0?amt:'',
     refType: cur.ref||'',
     status: cur.dir<0?(cur.ref?'已撥款':'已支付'):'—',
+    method: (cur.dir>0&&document.getElementById('fPay'))?document.getElementById('fPay').value:'',
     note: refM&&refM.value?('對應 '+refM.value):''
   };
   if(photoData){ en.photoBase64=photoData.b64; en.photoMime=photoData.mime; }
