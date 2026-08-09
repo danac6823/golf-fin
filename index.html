@@ -116,7 +116,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-09f</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-09g</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -1379,8 +1379,8 @@ function buildFlowSvg(o,bal){
   if(mainSpon<0) mainSpon=0;
   var mainSpend = S(function(r){return r.pool==='[主]會費池'},'expense');
   var netPos = o.petty.balance - o.petty.custody;
-  var unc=o.teamSpend['待分類'], priv=o.lina.privUse||0;
-  var extra = (unc>0||priv>0);
+  var unc=o.teamSpend['待分類'], priv=o.lina.privUse||0, gift=o.lina.directGift||0;
+  var extra = (unc>0||priv>0||gift>0);
   var H = extra ? 418 : 362;
   var svg='<svg viewBox="0 0 360 '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">';
   svg+='<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a8f98"/></marker></defs>';
@@ -1399,18 +1399,27 @@ function buildFlowSvg(o,bal){
   svg+=arrow(270,148,270,290,'匯款廠商/球秘 '+money(mainSpend),270,214);
   svg+=node(8,188,110,56,'#FDEFF4','#B03A73','[私]花零用金(凌華)','NT$ '+money(o.petty.balance),(netPos<0?'代墊中 '+money(-netPos):'含代收 '+money(o.petty.custody)),{pool:'[私]花零用金池'});
   svg+=arrow(60,244,60,290,'支出 '+money(o.petty.spent),60,272);
-  svg+=node(8,290,164,56,'#FAEEDA','#633806','創12 累計支出','NT$ '+money(o.teamSpend['創12']),'零用金+Lina直付',{team:'創12',dir:'out'});
+  svg+=node(8,290,164,56,'#FAEEDA','#633806','創12 累計支出','NT$ '+money(o.teamSpend['創12']),'零用金+Lina直付'+(gift>0?'+會長直付':''),{team:'創12',dir:'out'});
   svg+=node(188,290,164,56,'#FAEEDA','#633806','創主班 支出(球隊帳)','NT$ '+money(o.mainTeamSpend||0),
     (o.privToMain?'另私帳代付 '+money(o.privToMain):'球隊帳全額'),{team:'創主班',dir:'out'});
-  if(unc>0 && priv>0){
-    svg+=arrow(160,148,90,364,'',0,0,true);
-    svg+=node(8,364,164,44,'#FCEBEB','#791F1F','⚠️ 待分類','NT$ '+money(unc),'點入裁定',{team:'待分類',dir:'out'});
-    svg+=node(188,364,164,44,'#F4F3FE','#3C3489','Lina私人用途','NT$ '+money(priv),'非隊伍支出',{pool:'[私]Lina贊助池',team:'Lina私用',dir:'out'});
-  } else if(unc>0){
-    svg+=arrow(160,148,180,362,'',0,0,true);
-    svg+=node(96,364,168,44,'#FCEBEB','#791F1F','⚠️ 待分類','NT$ '+money(unc),'點入裁定',{team:'待分類',dir:'out'});
-  } else if(priv>0){
-    svg+=node(96,364,168,44,'#F4F3FE','#3C3489','Lina私人用途','NT$ '+money(priv),'非隊伍支出',{pool:'[私]Lina贊助池',team:'Lina私用',dir:'out'});
+  var bots=[];
+  if(gift>0) bots.push('gift');
+  if(unc>0) bots.push('unc');
+  if(priv>0) bots.push('priv');
+  if(bots.length){
+    var slots = bots.length===1 ? [[96,168]] : (bots.length===2 ? [[8,164],[188,164]] : [[6,112],[124,112],[242,112]]);
+    bots.forEach(function(kind,i){
+      var x=slots[i][0], w=slots[i][1], cx=x+w/2;
+      if(kind==='gift'){
+        svg+=arrow(cx,362,cx,348,'',0,0);
+        svg+=node(x,364,w,48,'#FBF4E4','#8a6100','🎁 會長直付','NT$ '+money(gift),'池外・直付廠商',{pool:'[外]會長直付',dir:'out'});
+      } else if(kind==='unc'){
+        svg+=arrow(160,148,cx,362,'',0,0,true);
+        svg+=node(x,364,w,48,'#FCEBEB','#791F1F','⚠️ 待分類','NT$ '+money(unc),'點入裁定',{team:'待分類',dir:'out'});
+      } else {
+        svg+=node(x,364,w,48,'#F4F3FE','#3C3489','Lina私人用途','NT$ '+money(priv),'非隊伍支出',{pool:'[私]Lina贊助池',team:'Lina私用',dir:'out'});
+      }
+    });
   }
   svg+='</svg>';
   return svg;
