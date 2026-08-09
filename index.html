@@ -68,12 +68,15 @@ body.appOn{padding-bottom:92px}
 </head>
 <body>
 <div id="pdfOverlay" style="display:none;position:fixed;inset:0;background:rgba(13,22,40,.97);z-index:97;overflow-y:auto">
-  <div style="max-width:340px;margin:26vh auto 0;text-align:center;padding:0 20px;color:#fff">
+  <div id="pdfOvBox" style="max-width:340px;margin:26vh auto 0;text-align:center;padding:0 20px;color:#fff">
     <div id="pdfOvIcon" style="font-size:44px">⏳</div>
     <b id="pdfOvMsg" style="display:block;font-size:17px;margin-top:12px">PDF 產生中…</b>
     <p id="pdfOvSub" style="color:#B9C6DD;font-size:12.5px;margin-top:6px">雲端轉檔約 3–10 秒,請勿重複按</p>
-    <a id="pdfOvLink" href="#" target="_blank" rel="noopener" onclick="pdfOvClose()" style="display:none;background:#fff;color:#1F3864;border-radius:12px;padding:14px 0;font-size:15px;font-weight:700;text-decoration:none;margin-top:20px">📄 開啟 PDF ›</a>
-    <button id="pdfOvCloseBtn" style="display:none;width:100%;margin-top:12px;background:transparent;color:#B9C6DD;border:1px solid #44506B;border-radius:12px;padding:11px;font-size:13.5px" onclick="pdfOvClose()">關閉</button>
+    <div id="pdfOvFrameWrap" style="display:none;margin-top:14px;background:#fff;border-radius:12px;overflow:hidden;height:56vh">
+      <iframe id="pdfOvFrame" src="about:blank" style="width:100%;height:100%;border:0" title="PDF 預覽"></iframe>
+    </div>
+    <a id="pdfOvLink" href="#" target="_blank" rel="noopener" style="display:none;color:#B9C6DD;font-size:12.5px;margin-top:10px;text-decoration:underline">在 Drive 開啟原檔(下載/分享)›</a>
+    <button id="pdfOvCloseBtn" style="display:none;width:100%;margin-top:12px;background:#fff;color:#1F3864;border:none;border-radius:12px;padding:13px;font-size:14.5px;font-weight:700" onclick="pdfOvClose()">關閉預覽</button>
   </div>
 </div>
 <input type="file" id="reqUpFile" accept="image/*" multiple class="hide" onchange="reqUpGo(this)">
@@ -138,7 +141,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10v</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10x</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -345,11 +348,31 @@ function setOvMain(t){ ovMain=t; ovActSel=null; renderOverview(); }
 function ovActBack(){ ovActSel=null; renderOverview(); }
 var OV_VIEWS=[['pools','📊 總表'],['team','隊伍'],['lina','會長'],['adv','代墊']];
 
+var MUT_ACTIONS={add:1,'void':1,editEntry:1,reqCreate:1,reqEdit:1,reqCancel:1,reqPay:1,reqClose:1,reqReceipt:1,
+  sponsorTransfer:1,directGift:1,reconCommit:1,publishMonth:1,memberConfirm:1,memberSync:1,
+  budgetSave:1,budgetDel:1,budgetBatch:1,actUpsert:1,actDel:1,exportPdf:1};
+var apiInflight=null;
 function api(payload){
+  if(MUT_ACTIONS[payload.action]){
+    if(apiInflight){
+      toast('⏳ 上一個動作('+apiInflight+')處理中,請勿連按');
+      return new Promise(function(){});   /* 重複送出:靜默吞掉,原請求繼續 */
+    }
+    apiInflight = payload.action;
+  }
+  var mine = MUT_ACTIONS[payload.action] ? payload.action : null;
   payload.token = localStorage.getItem('gf_token');
   return fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)})
     .then(function(r){return r.json()})
-    .then(function(j){ if(!j.ok) throw new Error(j.error); return j; });
+    .then(function(j){
+      if(mine && apiInflight===mine) apiInflight=null;
+      if(!j.ok) throw new Error(j.error);
+      return j;
+    })
+    .catch(function(e){
+      if(mine && apiInflight===mine) apiInflight=null;
+      throw e;
+    });
 }
 window.onerror=function(msg,src,line){ try{ toast('⚠️ 程式錯誤:'+msg+' @'+line, 6000); }catch(e){} return false; };
 window.addEventListener('unhandledrejection',function(ev){ try{ toast('⚠️ 未處理錯誤:'+(ev.reason&&ev.reason.message||ev.reason), 6000); }catch(e){} });
@@ -603,6 +626,7 @@ function aggTables(){
   });
   var g={};
   rows.forEach(function(r){
+    if(r.cat==='代收款'||r.cat==='代收轉付') return; /* 過手錢不入活動彙總(與 PDF 一致) */
     var k=r.act||(r.expense>0?'(未標活動)':null); if(!k) return;
     g[k]=g[k]||{i:0,o:0}; g[k].i+=r.income; g[k].o+=r.expense;
   });
@@ -860,12 +884,21 @@ function elementToPdf(el, fname){
   pdfOvShow();
   var html = (typeof el==='string') ? el : el.innerHTML;
   return api({action:'exportPdf', html:html, name:String(fname).replace(/\.pdf$/i,'')})
-    .then(function(j){ pdfOvDone(j.url, j.name); })
+    .then(function(j){ pdfOvDone(j.url, j.name, j.id, !!j.cached); })
     .catch(function(e){ pdfOvFail(e.message); });
+}
+/* 命名邏輯:高球12_{文件}_{範圍}_{YYYYMMDD};範圍去空白符號、上限24字 */
+function pdfName(type, scope){
+  var s=String(scope||'').replace(/[\\\/:*?"<>|,\s()()・|]+/g,'').slice(0,24);
+  return '高球12_'+type+(s?'_'+s:'')+'_'+tpDate().replace(/-/g,'');
 }
 var pdfBusy=false;
 function pdfOvShow(){
   pdfBusy=true;
+  var box=document.getElementById('pdfOvBox');
+  box.style.maxWidth='340px'; box.style.margin='26vh auto 0';
+  document.getElementById('pdfOvFrameWrap').style.display='none';
+  document.getElementById('pdfOvFrame').src='about:blank';
   document.getElementById('pdfOvIcon').textContent='⏳';
   document.getElementById('pdfOvMsg').textContent='PDF 產生中…';
   document.getElementById('pdfOvSub').textContent='雲端轉檔約 3–10 秒,請勿重複按';
@@ -873,12 +906,18 @@ function pdfOvShow(){
   document.getElementById('pdfOvCloseBtn').style.display='none';
   document.getElementById('pdfOverlay').style.display='block';
 }
-function pdfOvDone(url, name){
+function pdfOvDone(url, name, id, cached){
   pdfBusy=false;
-  document.getElementById('pdfOvIcon').textContent='✅';
-  document.getElementById('pdfOvMsg').textContent='PDF 已產生';
+  document.getElementById('pdfOvIcon').textContent = cached ? '⚡' : '✅';
+  document.getElementById('pdfOvMsg').textContent = cached ? 'PDF 快照(今日已產生・內容未變)' : 'PDF 已產生';
   document.getElementById('pdfOvSub').textContent=name||'';
-  var a=document.getElementById('pdfOvLink'); a.href=url; a.style.display='block';
+  var box=document.getElementById('pdfOvBox');
+  box.style.maxWidth='560px'; box.style.margin='6vh auto 0';
+  if(id){
+    document.getElementById('pdfOvFrame').src='https://drive.google.com/file/d/'+id+'/preview';
+    document.getElementById('pdfOvFrameWrap').style.display='block';
+  }
+  var a=document.getElementById('pdfOvLink'); a.href=url; a.style.display='inline-block';
   document.getElementById('pdfOvCloseBtn').style.display='block';
 }
 function pdfOvFail(msg){
@@ -888,13 +927,13 @@ function pdfOvFail(msg){
   document.getElementById('pdfOvSub').textContent=msg||'';
   document.getElementById('pdfOvCloseBtn').style.display='block';
 }
-function pdfOvClose(){ pdfBusy=false; document.getElementById('pdfOverlay').style.display='none'; }
+function pdfOvClose(){ pdfBusy=false; document.getElementById('pdfOvFrame').src='about:blank'; document.getElementById('pdfOverlay').style.display='none'; }
 
 function printVchDoc(){
   try{
     var r = curVchId ? (lastData.recent||[]).filter(function(x){ return x.id===curVchId; })[0] : null;
     var html = r ? vchDocHtml(r, true) : document.getElementById('vchDoc').innerHTML;
-    elementToPdf(html, '傳票_'+(curVchId||tpDate())+'.pdf');
+    elementToPdf(html, pdfName('傳票', curVchId||''));
   }catch(e){ toast('⚠️ 票面組版失敗:'+e.message, 6000); }
 }
 function _oldPrintVchDoc(){
@@ -971,12 +1010,15 @@ function printReport(){
     var rs=rows.filter(function(r){
       return ovActSel==='(未標活動)' ? (!r.act && r.expense>0) : (r.act||'')===ovActSel;
     });
-    var ti=0,to2=0,byCat={},byPool={};
-    rs.forEach(function(r){ ti+=r.income; to2+=r.expense;
+    var ti=0,to2=0,byCat={},byPool={},ptI2=0,ptO2=0;
+    rs.forEach(function(r){
+      if(r.cat==='代收款'||r.cat==='代收轉付'){ ptI2+=r.income; ptO2+=r.expense; return; } /* 過手錢不入摘要 */
+      ti+=r.income; to2+=r.expense;
       if(r.expense>0){ byCat[r.cat]=(byCat[r.cat]||0)+r.expense; byPool[r.pool]=(byPool[r.pool]||0)+r.expense; } });
     html+=_T('活動摘要',['項目','金額 NT$'],
       '<tr><td>收入合計</td>'+_num(ti)+'</tr><tr><td>支出合計</td>'+_num(to2)+'</tr>'+
-      '<tr class="tt"><td>淨支出</td>'+_num(to2-ti)+'</tr>');
+      '<tr class="tt"><td>淨支出</td>'+_num(to2-ti)+'</tr>'+
+      ((ptI2||ptO2)?'<tr><td>🔁 過手錢(不計入,明細列示)</td><td style="text-align:right">代收 '+money(ptI2)+'・轉付 '+money(ptO2)+'</td></tr>':''));
     html+=_T('支出組成(依類別)',['類別','金額 NT$'],
       Object.keys(byCat).sort(function(a,b){return byCat[b]-byCat[a]}).map(function(c){
         return '<tr><td>'+esc(c)+'</td>'+_num(byCat[c])+'</tr>'; }).join('')||'<tr><td colspan="2">無支出</td></tr>');
@@ -1070,7 +1112,9 @@ function printDetail(){
     '<tr><td>支出合計</td><td style="text-align:right">'+money(tout)+'</td></tr>'+
     '<tr class="tt"><td>淨額</td><td style="text-align:right">'+money(tin-tout)+'</td></tr>');
   html+=_detTable('明細', rs, f.pools.length>1);
-  pdfStageOut('帳本明細', html, '明細_'+tpDate()+'.pdf');
+  var scope = (f.pools.length>1?'跨帳':String(f.pools[0]).replace(/^\[.\]/,'').replace('池',''))+
+    (detAct?('_'+detAct):'')+(f.cat?('_'+f.cat):'')+(f.team?('_'+f.team):'')+(f.fySel?('_'+f.fySel):'');
+  pdfStageOut('帳本明細', html, pdfName('明細', scope));
   }catch(e){ toast('⚠️ 明細組表失敗:'+e.message, 6000); }
 }
 
@@ -1112,7 +1156,7 @@ function printBudget(){
           '<td style="text-align:right'+(pct>100?';color:#C0392B;font-weight:700':'')+'">'+pct+'%</td></tr>';
       }).join(''));
   });
-  pdfStageOut('年度預算|執行進度', html, '年度預算執行_'+tpDate()+'.pdf');
+  pdfStageOut('年度預算|執行進度', html, pdfName('預算執行',''));
   }catch(e){ toast('⚠️ 預算組表失敗:'+e.message, 6000); }
 }
 
@@ -2770,9 +2814,10 @@ function renderOverview(){
   if(ovMain==='act'){
     function actMatch(r,k){ return k==='(未標活動)' ? !r.act : r.act===k; }
     if(ovActSel){
-      var cats={}, ti=0, to=0;
+      var cats={}, ti=0, to=0, ptI=0, ptO=0;
       (lastData.recent||[]).forEach(function(r){
         if(r.voided || !actMatch(r,ovActSel)) return;
+        if(r.cat==='代收款'||r.cat==='代收轉付'){ ptI+=r.income; ptO+=r.expense; return; } /* 過手錢另計 */
         ti+=r.income; to+=r.expense;
         var c=r.cat; cats[c]=cats[c]||{i:0,o:0}; cats[c].i+=r.income; cats[c].o+=r.expense;
       });
@@ -2787,11 +2832,13 @@ function renderOverview(){
           (cd.o>0&&cd.i>0)?'另有收入 '+money(cd.i):'',
           false, ovActSel==='(未標活動)' ? {act:'(未標活動)',cat:c} : {act:ovActSel,cat:c});
       });
+      if(ptI>0||ptO>0) h += statCard('🔁 過手錢(不計入上方)', '代收 '+money(ptI)+'・轉付 '+money(ptO), '代收款/代收轉付僅過手,點入查逐筆', false, {act:ovActSel,cat:'代收款'});
       h += statCard('全部逐筆明細', '›', '', false, ovActSel==='(未標活動)' ? {act:'(未標活動)'} : {act:ovActSel});
     } else {
       var g={};
       (lastData.recent||[]).forEach(function(r){
         if(r.voided) return;
+        if(r.cat==='代收款'||r.cat==='代收轉付') return; /* 過手錢不入活動彙總(與 PDF 一致) */
         if(r.act){ g[r.act]=g[r.act]||{i:0,o:0}; g[r.act].i+=r.income; g[r.act].o+=r.expense; }
         else if(r.expense>0){ g['(未標活動)']=g['(未標活動)']||{i:0,o:0}; g['(未標活動)'].o+=r.expense; }
       });
