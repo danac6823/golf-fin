@@ -67,11 +67,13 @@ body.appOn{padding-bottom:92px}
 </style>
 </head>
 <body>
-<div id="pdfBar" style="display:none;position:fixed;left:0;right:0;bottom:calc(70px + env(safe-area-inset-bottom));margin:0 auto;max-width:440px;z-index:95;background:#1F3864;color:#fff;border-radius:14px;padding:10px 14px;box-shadow:0 6px 20px rgba(0,0,0,.3)">
-  <div style="display:flex;align-items:center;gap:10px">
-    <span style="flex:1;min-width:0;font-size:13px;overflow:hidden">✓ PDF 已產生<br><b id="pdfBarName" style="font-size:11.5px;font-weight:500;opacity:.85"></b></span>
-    <a id="pdfBarLink" href="#" target="_blank" rel="noopener" onclick="pdfBarClose()" style="background:#fff;color:#1F3864;border-radius:9px;padding:9px 16px;font-size:13.5px;font-weight:700;text-decoration:none;white-space:nowrap">開啟 ›</a>
-    <span onclick="pdfBarClose()" style="padding:6px 4px;cursor:pointer;font-size:15px;opacity:.8">✕</span>
+<div id="pdfOverlay" style="display:none;position:fixed;inset:0;background:rgba(13,22,40,.97);z-index:97;overflow-y:auto">
+  <div style="max-width:340px;margin:26vh auto 0;text-align:center;padding:0 20px;color:#fff">
+    <div id="pdfOvIcon" style="font-size:44px">⏳</div>
+    <b id="pdfOvMsg" style="display:block;font-size:17px;margin-top:12px">PDF 產生中…</b>
+    <p id="pdfOvSub" style="color:#B9C6DD;font-size:12.5px;margin-top:6px">雲端轉檔約 3–10 秒,請勿重複按</p>
+    <a id="pdfOvLink" href="#" target="_blank" rel="noopener" onclick="pdfOvClose()" style="display:none;background:#fff;color:#1F3864;border-radius:12px;padding:14px 0;font-size:15px;font-weight:700;text-decoration:none;margin-top:20px">📄 開啟 PDF ›</a>
+    <button id="pdfOvCloseBtn" style="display:none;width:100%;margin-top:12px;background:transparent;color:#B9C6DD;border:1px solid #44506B;border-radius:12px;padding:11px;font-size:13.5px" onclick="pdfOvClose()">關閉</button>
   </div>
 </div>
 <input type="file" id="reqUpFile" accept="image/*" multiple class="hide" onchange="reqUpGo(this)">
@@ -83,7 +85,7 @@ body.appOn{padding-bottom:92px}
 <div id="vchOverlay" style="display:none;position:fixed;inset:0;background:#fff;z-index:80;overflow-y:auto;padding:calc(14px + env(safe-area-inset-top)) 14px 90px">
   <div class="vchBtns" style="display:flex;gap:8px;max-width:560px;margin:0 auto 12px">
     <button class="ghost" style="flex:1;margin:0" onclick="closeVchOverlay()">✕ 關閉</button>
-    <button class="btn" style="flex:2;margin:0" onclick="toast('⏳ 準備票面…');printVchDoc()">🖨 列印 / 存 PDF</button>
+    <button class="btn" style="flex:2;margin:0" onclick="printVchDoc()">🖨 列印 / 存 PDF</button>
   </div>
   <div id="vchDoc"></div>
 </div>
@@ -136,7 +138,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10o</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10r</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -205,6 +207,7 @@ body.appOn{padding-bottom:92px}
       <input type="text" id="dKw" placeholder="🔍 搜尋明細/單號…" oninput="renderDetail()" style="margin:6px 0 0;font-size:13px;padding:9px">
     </div>
     <p id="detFilterLink" style="display:none;margin:0 0 8px"><a href="javascript:void(0)" onclick="document.getElementById('detCtrl').style.display='block';this.parentNode.style.display='none'" style="font-size:12.5px;color:#1F3864">⚙ 顯示篩選條件(目前依報表鑽取自動設定)</a></p>
+    <button class="ghost" style="margin:0 0 8px;padding:9px;font-size:13px" onclick="printDetail()">🖨 匯出明細 PDF(上摘要・下明細・日期升冪)</button>
     <div id="dList"></div>
   </div>
 
@@ -254,7 +257,7 @@ body.appOn{padding-bottom:92px}
       <div id="ovPills" style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff"></div>
       <div id="ovSub" style="display:none;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:8px;background:#fff"></div>
     </div>
-    <button class="ghost" style="margin:8px 0;padding:9px;font-size:13px" onclick="toast('⏳ 準備報表…');printReport()">🖨 匯出 PDF(表格版,可預覽/儲存/傳送)</button>
+    <button class="ghost" style="margin:8px 0;padding:9px;font-size:13px" onclick="printReport()">🖨 匯出本頁報表 PDF(依目前視角)</button>
     <div id="ovBody"></div>
   </div>
 
@@ -832,18 +835,39 @@ document.addEventListener('click', function(ev){
 /* PDF 匯出 v2:GAS 雲端轉檔(HTML→PDF 於後端完成,存 Drive 回連結)
    捨棄 html2canvas+jsPDF+share:iOS PWA 下 CDN 載入/canvas/share 三處都會斷 */
 function elementToPdf(el, fname){
-  toast('PDF 雲端產生中…');
+  if(pdfBusy){ return; }
+  pdfOvShow();
   var html = (typeof el==='string') ? el : el.innerHTML;
   return api({action:'exportPdf', html:html, name:String(fname).replace(/\.pdf$/i,'')})
-    .then(function(j){ pdfReady(j.url, j.name); })
-    .catch(function(e){ toast('PDF 失敗:'+e.message); });
+    .then(function(j){ pdfOvDone(j.url, j.name); })
+    .catch(function(e){ pdfOvFail(e.message); });
 }
-function pdfReady(url, name){
-  document.getElementById('pdfBarLink').href = url;
-  document.getElementById('pdfBarName').textContent = name || '';
-  document.getElementById('pdfBar').style.display = 'block';
+var pdfBusy=false;
+function pdfOvShow(){
+  pdfBusy=true;
+  document.getElementById('pdfOvIcon').textContent='⏳';
+  document.getElementById('pdfOvMsg').textContent='PDF 產生中…';
+  document.getElementById('pdfOvSub').textContent='雲端轉檔約 3–10 秒,請勿重複按';
+  document.getElementById('pdfOvLink').style.display='none';
+  document.getElementById('pdfOvCloseBtn').style.display='none';
+  document.getElementById('pdfOverlay').style.display='block';
 }
-function pdfBarClose(){ document.getElementById('pdfBar').style.display='none'; }
+function pdfOvDone(url, name){
+  pdfBusy=false;
+  document.getElementById('pdfOvIcon').textContent='✅';
+  document.getElementById('pdfOvMsg').textContent='PDF 已產生';
+  document.getElementById('pdfOvSub').textContent=name||'';
+  var a=document.getElementById('pdfOvLink'); a.href=url; a.style.display='block';
+  document.getElementById('pdfOvCloseBtn').style.display='block';
+}
+function pdfOvFail(msg){
+  pdfBusy=false;
+  document.getElementById('pdfOvIcon').textContent='⚠️';
+  document.getElementById('pdfOvMsg').textContent='PDF 產生失敗';
+  document.getElementById('pdfOvSub').textContent=msg||'';
+  document.getElementById('pdfOvCloseBtn').style.display='block';
+}
+function pdfOvClose(){ pdfBusy=false; document.getElementById('pdfOverlay').style.display='none'; }
 
 function printVchDoc(){
   try{
@@ -863,95 +887,210 @@ function _oldPrintVchDoc(){
   }, 60);
 }
 
-function printReport(){
-  try{
-  if(!lastData){ toast('資料載入中'); return; }
-  var o=lastData.overview, bal=lastData.balances;
-  var rows=(lastData.recent||[]).filter(function(r){ return !r.voided; });
-  function num(n){ return '<td style="text-align:right">'+money(n)+'</td>'; }
-  function T(title, heads, body){
-    return '<h3>'+title+'</h3><table><thead><tr>'+heads.map(function(x){return '<th>'+x+'</th>'}).join('')+'</tr></thead><tbody>'+body+'</tbody></table>';
-  }
-  var html='';
-  if(user==='麗娜'){
-    var gift=o.lina.directGift||0, total=o.lina.sponsor+gift;
-    html+=T('會長贊助總覽',['項目','金額 NT$'],
-      '<tr><td>注入 Lina 贊助池(現金/留用)</td>'+num(o.lina.sponsor)+'</tr>'+
-      '<tr><td>池外直付廠商(隊服等)</td>'+num(gift)+'</tr>'+
-      '<tr class="tt"><td>贊助貢獻合計</td>'+num(total)+'</tr>');
-    html+=T('資金流向',['流向','金額 NT$'],
-      '<tr><td>直付創12(禮品/獎品等)</td>'+num(o.lina.direct12)+'</tr>'+
-      '<tr><td>代付創主班</td>'+num(o.lina.directMain)+'</tr>'+
-      '<tr><td>轉入球隊帳</td>'+num(o.lina.toTeam)+'</tr>'+
-      '<tr><td>撥補零用金(創12營運)</td>'+num(o.lina.toPetty)+'</tr>'+
-      '<tr><td>私人用途(非隊伍)</td>'+num(o.lina.privUse||0)+'</tr>'+
-      '<tr><td>池外直付</td>'+num(gift)+'</tr>'+
-      '<tr class="tt"><td>Lina 池現時結餘</td>'+num(o.lina.balance)+'</tr>');
-    var gr='';
-    rows.forEach(function(r){ if(r.pool==='[外]會長直付') gr+='<tr><td>'+d8fmt(r.date)+'</td><td>'+esc(r.desc)+'</td><td>'+esc(r.team)+'</td>'+num(r.expense)+'</tr>'; });
-    if(gr) html+=T('池外直付明細',['日期','明細','隊伍','金額 NT$'],gr);
-  } else {
-    html+=T('三池總覽',['資金池','累計收入','累計支出','結餘 NT$'],
-      ['[主]會費池','[私]Lina贊助池','[私]花零用金池'].map(function(p){
-        var i=0,e2=0; rows.forEach(function(r){ if(r.pool===p){ i+=r.income; e2+=r.expense; } });
-        return '<tr><td>'+p+'</td>'+num(i)+num(e2)+num(bal[p])+'</tr>';
-      }).join(''));
-    var g={};
-    rows.forEach(function(r){
-      var k=r.act||(r.expense>0?'(未標活動)':null); if(!k) return;
-      g[k]=g[k]||{i:0,o:0}; g[k].i+=r.income; g[k].o+=r.expense;
-    });
-    var ar='';
-    Object.keys(g).sort(function(a,b){return g[b].o-g[a].o}).forEach(function(k){
-      ar+='<tr><td>'+esc(k)+'</td>'+num(g[k].i)+num(g[k].o)+num(g[k].o-g[k].i)+'</tr>';
-    });
-    html+=T('活動彙總(不含餘額概念)',['活動','收入','支出','淨支出 NT$'],ar);
-    html+=T('隊伍支出歸屬',['隊伍','球隊帳([主]池)','私帳側代付','合計 NT$'],
-      ['創12','創主班','共用'].map(function(tm){
-        var mn=0,pv=0; rows.forEach(function(r){
-          if(r.team!==tm||!(r.expense>0)||r.cat==='內部調撥'||r.cat==='贊助轉出') return;
-          if(r.pool==='[主]會費池') mn+=r.expense; else pv+=r.expense;
-        });
-        return '<tr><td>'+tm+'</td>'+num(mn)+num(pv)+num(mn+pv)+'</tr>';
-      }).join(''));
-    var gift2=o.lina.directGift||0;
-    if(gift2) html+=T('會長池外直付(未經任何池)',['日期','明細','隊伍','金額 NT$'],
-      rows.filter(function(r){return r.pool==='[外]會長直付'}).map(function(r){
-        return '<tr><td>'+d8fmt(r.date)+'</td><td>'+esc(r.desc)+'</td><td>'+esc(r.team)+'</td>'+num(r.expense)+'</tr>';
-      }).join(''));
-  }
+function pdfStageOut(subT, html, fname){
   var stage=document.getElementById('pdfStage');
   if(!stage){
     stage=document.createElement('div'); stage.id='pdfStage';
     stage.style.cssText='position:fixed;left:-9999px;top:0;width:560px;background:#fff;padding:20px;z-index:-1';
     document.body.appendChild(stage);
   }
-  stage.innerHTML='<h2 style="font-size:17px;margin:0 0 2px">⛳ 政大EMBA創業主班 高爾夫球聯誼會|第12屆 財務報表</h2>'+
-    '<p style="color:#555;font-size:11px;margin-bottom:12px">製表:'+esc(user)+'・'+tpDate()+'</p>'+
+  stage.innerHTML='<h2 style="font-size:17px;margin:0 0 2px">⛳ 政大EMBA創業主班 高爾夫球聯誼會|第12屆</h2>'+
+    '<p style="color:#555;font-size:11px;margin-bottom:12px">'+esc(subT)+'・製表:'+esc(user)+'・'+tpDate()+'</p>'+
     html.replace(/<h3>/g,'<h3 style="font-size:14px;margin:16px 0 6px;border-left:4px solid #1F3864;padding-left:8px">')
-        .replace(/<table>/g,'<table style="border-collapse:collapse;width:100%;font-size:12.5px">')
-        .replace(/<th>/g,'<th style="border:1px solid #999;padding:5px 8px;background:#EFF3F8;text-align:left">')
-        .replace(/<td /g,'<td style="border:1px solid #999;padding:5px 8px" ')
-        .replace(/<td>/g,'<td style="border:1px solid #999;padding:5px 8px">');
-  elementToPdf(stage, '財務報表_'+tpDate()+'.pdf');
+        .replace(/<table>/g,'<table style="border-collapse:collapse;width:100%;font-size:12px">')
+        .replace(/<th>/g,'<th style="border:1px solid #999;padding:5px 7px;background:#EFF3F8;text-align:left">')
+        .replace(/<td /g,'<td style="border:1px solid #999;padding:5px 7px" ')
+        .replace(/<td>/g,'<td style="border:1px solid #999;padding:5px 7px">');
+  elementToPdf(stage, fname);
+}
+function _num(n){ return '<td style="text-align:right">'+money(n)+'</td>'; }
+function _T(title, heads, body){
+  return '<h3>'+title+'</h3><table><thead><tr>'+heads.map(function(x){return '<th>'+x+'</th>'}).join('')+'</tr></thead><tbody>'+body+'</tbody></table>';
+}
+function _asc(rs){ return rs.slice().sort(function(a,b){ return (a.date-b.date)||(a.id<b.id?-1:1); }); }
+function _detTable(title, rs, withPool){
+  /* 明細一律日期升冪(最新在最下) */
+  var tr=_asc(rs).map(function(r){
+    return '<tr><td>'+d8fmt(r.date)+'</td>'+(withPool?'<td>'+esc(String(r.pool).replace(/^\[.\]/,''))+'</td>':'')+
+      '<td>'+esc(r.team)+'</td><td>'+esc(r.cat)+'</td><td>'+esc(r.desc)+(r.act?'|🎯'+esc(r.act):'')+'</td>'+
+      _num(r.income)+_num(r.expense)+'</tr>';
+  }).join('');
+  var heads=withPool?['日期','池','隊伍','類別','明細','收入','支出']:['日期','隊伍','類別','明細','收入','支出'];
+  return _T(title+'(依日期升冪,共 '+rs.length+' 筆)', heads, tr||'<tr><td colspan="'+heads.length+'">無資料</td></tr>');
+}
+function _linaHtml(rows, o){
+  var gift=o.lina.directGift||0, total=o.lina.sponsor+gift, html='';
+  html+=_T('會長贊助總覽',['項目','金額 NT$'],
+    '<tr><td>注入 Lina 贊助池(現金/留用)</td>'+_num(o.lina.sponsor)+'</tr>'+
+    '<tr><td>池外直付廠商(隊服等)</td>'+_num(gift)+'</tr>'+
+    '<tr class="tt"><td>贊助貢獻合計</td>'+_num(total)+'</tr>');
+  html+=_T('資金流向',['流向','金額 NT$'],
+    '<tr><td>直付創12(禮品/獎品等)</td>'+_num(o.lina.direct12)+'</tr>'+
+    '<tr><td>代付創主班</td>'+_num(o.lina.directMain)+'</tr>'+
+    '<tr><td>轉入球隊帳</td>'+_num(o.lina.toTeam)+'</tr>'+
+    '<tr><td>撥補零用金(創12營運)</td>'+_num(o.lina.toPetty)+'</tr>'+
+    '<tr><td>私人用途(非隊伍)</td>'+_num(o.lina.privUse||0)+'</tr>'+
+    '<tr><td>池外直付</td>'+_num(gift)+'</tr>'+
+    '<tr class="tt"><td>Lina 池現時結餘</td>'+_num(o.lina.balance)+'</tr>');
+  var gr=rows.filter(function(r){ return r.pool==='[外]會長直付'; });
+  if(gr.length) html+=_detTable('池外直付明細', gr, false);
+  return html;
+}
+function printReport(){
+  /* 依「目前所在的報表視角」匯出對應內容,而非固定版 */
+  try{
+  if(!lastData){ toast('資料載入中'); return; }
+  var o=lastData.overview, bal=lastData.balances;
+  var rows=(lastData.recent||[]).filter(function(r){ return !r.voided; });
+  var subT='', html='';
+  if(user==='麗娜'){
+    subT='會長贊助對帳'; html=_linaHtml(rows,o);
+  } else if(ovMain==='act' && ovActSel){
+    subT='活動報表|'+ovActSel;
+    var rs=rows.filter(function(r){
+      return ovActSel==='(未標活動)' ? (!r.act && r.expense>0) : (r.act||'')===ovActSel;
+    });
+    var ti=0,to2=0,byCat={},byPool={};
+    rs.forEach(function(r){ ti+=r.income; to2+=r.expense;
+      if(r.expense>0){ byCat[r.cat]=(byCat[r.cat]||0)+r.expense; byPool[r.pool]=(byPool[r.pool]||0)+r.expense; } });
+    html+=_T('活動摘要',['項目','金額 NT$'],
+      '<tr><td>收入合計</td>'+_num(ti)+'</tr><tr><td>支出合計</td>'+_num(to2)+'</tr>'+
+      '<tr class="tt"><td>淨支出</td>'+_num(to2-ti)+'</tr>');
+    html+=_T('支出組成(依類別)',['類別','金額 NT$'],
+      Object.keys(byCat).sort(function(a,b){return byCat[b]-byCat[a]}).map(function(c){
+        return '<tr><td>'+esc(c)+'</td>'+_num(byCat[c])+'</tr>'; }).join('')||'<tr><td colspan="2">無支出</td></tr>');
+    html+=_T('出資池',['資金池','金額 NT$'],
+      Object.keys(byPool).map(function(p){ return '<tr><td>'+esc(p)+'</td>'+_num(byPool[p])+'</tr>'; }).join('')||'<tr><td colspan="2">—</td></tr>');
+    html+=_detTable('活動明細', rs, true);
+  } else if(ovMain==='act'){
+    subT='活動彙總';
+    var g={};
+    rows.forEach(function(r){
+      var k=r.act||(r.expense>0?'(未標活動)':null); if(!k) return;
+      g[k]=g[k]||{i:0,o:0}; g[k].i+=r.income; g[k].o+=r.expense;
+    });
+    html+=_T('活動彙總(不含餘額概念)',['活動','收入','支出','淨支出 NT$'],
+      Object.keys(g).sort(function(a,b){return g[b].o-g[a].o}).map(function(k){
+        return '<tr><td>'+esc(k)+'</td>'+_num(g[k].i)+_num(g[k].o)+_num(g[k].o-g[k].i)+'</tr>'; }).join(''));
+  } else if(ovView==='lina'){
+    subT='會長視角'; html=_linaHtml(rows,o);
+  } else if(ovView==='team'){
+    subT='隊伍支出歸屬';
+    html+=_T('隊伍支出歸屬',['隊伍','球隊帳([主]池)','私帳側代付','合計 NT$'],
+      ['創12','創主班','共用'].map(function(tm){
+        var mn=0,pv=0; rows.forEach(function(r){
+          if(r.team!==tm||!(r.expense>0)||r.cat==='內部調撥'||r.cat==='贊助轉出') return;
+          if(r.pool==='[主]會費池') mn+=r.expense; else if(r.pool!=='[外]會長直付') pv+=r.expense;
+        });
+        return '<tr><td>'+tm+'</td>'+_num(mn)+_num(pv)+_num(mn+pv)+'</tr>';
+      }).join(''));
+  } else if(ovView==='adv'){
+    subT='私帳代付創主班';
+    var ad=rows.filter(function(r){
+      return r.team==='創主班'&&r.expense>0&&r.pool!=='[主]會費池'&&r.pool!=='[外]會長直付'&&r.cat!=='內部調撥'&&r.cat!=='贊助轉出';
+    });
+    var adSum=0; ad.forEach(function(r){ adSum+=r.expense; });
+    html+=_T('代墊摘要',['項目','金額 NT$'],'<tr class="tt"><td>私帳代付創主班累計</td>'+_num(adSum)+'</tr>');
+    html+=_detTable('代付明細', ad, true);
+  } else {
+    subT='三池總表';
+    html+=_T('三池總覽',['資金池','累計收入','累計支出','結餘 NT$'],
+      ['[主]會費池','[私]Lina贊助池','[私]花零用金池'].map(function(p){
+        var i=0,e2=0; rows.forEach(function(r){ if(r.pool===p){ i+=r.income; e2+=r.expense; } });
+        return '<tr><td>'+p+'</td>'+_num(i)+_num(e2)+_num(bal[p])+'</tr>';
+      }).join(''));
+    var g2={};
+    rows.forEach(function(r){
+      var k=r.act||(r.expense>0?'(未標活動)':null); if(!k) return;
+      g2[k]=g2[k]||{i:0,o:0}; g2[k].i+=r.income; g2[k].o+=r.expense;
+    });
+    html+=_T('活動彙總',['活動','收入','支出','淨支出 NT$'],
+      Object.keys(g2).sort(function(a,b){return g2[b].o-g2[a].o}).map(function(k){
+        return '<tr><td>'+esc(k)+'</td>'+_num(g2[k].i)+_num(g2[k].o)+_num(g2[k].o-g2[k].i)+'</tr>'; }).join(''));
+    html+=_T('隊伍支出歸屬',['隊伍','球隊帳([主]池)','私帳側代付','合計 NT$'],
+      ['創12','創主班','共用'].map(function(tm){
+        var mn=0,pv=0; rows.forEach(function(r){
+          if(r.team!==tm||!(r.expense>0)||r.cat==='內部調撥'||r.cat==='贊助轉出') return;
+          if(r.pool==='[主]會費池') mn+=r.expense; else if(r.pool!=='[外]會長直付') pv+=r.expense;
+        });
+        return '<tr><td>'+tm+'</td>'+_num(mn)+_num(pv)+_num(mn+pv)+'</tr>';
+      }).join(''));
+    var gift2=o.lina.directGift||0;
+    if(gift2) html+=_detTable('會長池外直付(未經任何池)', rows.filter(function(r){return r.pool==='[外]會長直付'}), false);
+  }
+  pdfStageOut('財務報表|'+subT, html, '財務報表_'+subT.replace(/[|\/]/g,'_')+'_'+tpDate()+'.pdf');
   }catch(e){ toast('⚠️ 報表組表失敗:'+e.message, 6000); }
-  return;
-  var w={document:{write:function(){},close:function(){}},print:function(){}};
-  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>高球隊財務報表</title><style>'+
-    'body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;padding:24px;color:#111}'+
-    'h2{font-size:18px;margin:0 0 2px} .mt{color:#555;font-size:12px;margin-bottom:14px}'+
-    'h3{font-size:14px;margin:18px 0 6px;border-left:4px solid #1F3864;padding-left:8px}'+
-    'table{border-collapse:collapse;width:100%;font-size:13px}'+
-    'th,td{border:1px solid #999;padding:6px 9px;text-align:left}'+
-    'th{background:#EFF3F8} td:last-child{font-variant-numeric:tabular-nums}'+
-    '.tt td{font-weight:700;background:#F7F8FA}'+
-    '@media print{body{padding:0}}'+
-    '</style></head><body>'+
-    '<h2>⛳ 政大EMBA創業主班 高爾夫球聯誼會|第12屆 財務報表</h2>'+
-    '<p class="mt">製表:'+esc(user)+'・'+tpDate()+'・視角:'+(user==='麗娜'?'會長贊助':'總覽')+'</p>'+
-    html+'</body></html>');
-  w.document.close();
-  setTimeout(function(){ w.print(); }, 400);
+}
+
+/* 明細頁匯出:上摘要、下明細(日期升冪) */
+function printDetail(){
+  try{
+  if(!lastData){ toast('資料載入中'); return; }
+  var f=detFilterState(), rs=detFilteredRows(f);
+  if(!rs.length){ toast('目前篩選無資料可匯出'); return; }
+  var a=_asc(rs), tin=0, tout=0;
+  rs.forEach(function(r){ tin+=r.income; tout+=r.expense; });
+  var cond=[];
+  cond.push(['帳本範圍', f.pools.map(function(p){return String(p).replace(/^\[.\]/,'')}).join('、')]);
+  if(detAct) cond.push(['活動', detAct]);
+  if(f.team) cond.push(['隊伍', f.team]);
+  if(f.cat) cond.push(['類別', f.cat]);
+  if(f.dir) cond.push(['方向', f.dir==='in'?'收入':'支出']);
+  if(f.fySel) cond.push(['帳屬年度', f.fySel]);
+  if(f.kw) cond.push(['關鍵字', f.kw]);
+  var html='';
+  html+=_T('摘要',['項目','內容'],
+    cond.map(function(c){ return '<tr><td>'+esc(c[0])+'</td><td>'+esc(c[1])+'</td></tr>'; }).join('')+
+    '<tr><td>期間</td><td>'+d8fmt(a[0].date)+' 〜 '+d8fmt(a[a.length-1].date)+'</td></tr>'+
+    '<tr><td>筆數</td><td>'+rs.length+' 筆(作廢不列入)</td></tr>'+
+    '<tr><td>收入合計</td><td style="text-align:right">'+money(tin)+'</td></tr>'+
+    '<tr><td>支出合計</td><td style="text-align:right">'+money(tout)+'</td></tr>'+
+    '<tr class="tt"><td>淨額</td><td style="text-align:right">'+money(tin-tout)+'</td></tr>');
+  html+=_detTable('明細', rs, f.pools.length>1);
+  pdfStageOut('帳本明細', html, '明細_'+tpDate()+'.pdf');
+  }catch(e){ toast('⚠️ 明細組表失敗:'+e.message, 6000); }
+}
+
+/* 預算頁匯出:雙總覽摘要+依活動執行進度(=給麗娜的贊助對帳輸出) */
+function printBudget(){
+  try{
+  if(!lastData){ toast('資料載入中'); return; }
+  var rows=(lastData.budget||[]);
+  if(!rows.length){ toast('尚無預算資料可匯出'); return; }
+  var tot={'球隊帳':{b:0,a:0},'Lina贊助':{b:0,a:0}}, acts={}, order=[];
+  rows.forEach(function(b){
+    b._a=budActual(b);
+    if(tot[b.src]){ tot[b.src].b+=b.amt; tot[b.src].a+=b._a; }
+    if(!acts[b.act]){ acts[b.act]=[]; order.push(b.act); }
+    acts[b.act].push(b);
+  });
+  var html='';
+  html+=_T('總覽|預算 vs 執行',['資金來源','預算','已執行','達成率'],
+    [['球隊帳'],['Lina贊助']].map(function(s){
+      var x=tot[s[0]], pct=budPct(x.a,x.b);
+      return '<tr'+(s[0]==='Lina贊助'?' class="tt"':'')+'><td>'+s[0]+(s[0]==='Lina贊助'?'(給麗娜會長對帳)':'')+'</td>'+_num(x.b)+_num(x.a)+'<td style="text-align:right">'+pct+'%</td></tr>';
+    }).join(''));
+  order.forEach(function(a2){
+    var list=acts[a2], merged={}, shown=[];
+    list.forEach(function(b){
+      if(BUD_MERGE.cats.indexOf(b.cat)>-1){
+        var mk=b.src; merged[mk]=merged[mk]||{src:b.src,amt:0,_a:0,notes:[]};
+        merged[mk].amt+=b.amt; merged[mk]._a+=b._a;
+        if(b.note) merged[mk].notes.push(b.cat+':'+b.note);
+      } else shown.push(b);
+    });
+    Object.keys(merged).forEach(function(mk){
+      shown.push({cat:BUD_MERGE.label,src:mk,amt:merged[mk].amt,_a:merged[mk]._a,note:merged[mk].notes.join('・')});
+    });
+    html+=_T('🎯 '+a2,['類別','來源','明細','預算','實際','達成率'],
+      shown.map(function(b){
+        var pct=budPct(b._a,b.amt);
+        return '<tr><td>'+esc(b.cat)+'</td><td>'+b.src+'</td><td>'+esc(b.note||'—')+'</td>'+_num(b.amt)+_num(b._a)+
+          '<td style="text-align:right'+(pct>100?';color:#C0392B;font-weight:700':'')+'">'+pct+'%</td></tr>';
+      }).join(''));
+  });
+  pdfStageOut('年度預算|執行進度', html, '年度預算執行_'+tpDate()+'.pdf');
+  }catch(e){ toast('⚠️ 預算組表失敗:'+e.message, 6000); }
 }
 
 var drillFrom=null;
@@ -998,8 +1137,9 @@ function renderBudget(){
     '<button onclick="setBudView(\'table\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;font-size:13px;'+(budView==='table'?'background:#1F3864;color:#fff':'background:#fff')+'">🧮 表格'+(user==='凌華'?'輸入':'')+'</button>'+
     '<button onclick="setBudView(\'cards\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;border-left:1px solid var(--line);font-size:13px;'+(budView==='cards'?'background:#1F3864;color:#fff':'background:#fff')+'">📊 執行進度</button>'+
     '</div>';
-  if(budView==='table'){ el.innerHTML = pills + budTableHtml(); budTableWire(); return; }
-  el.innerHTML = pills + budCardsHtml();
+  var expBtn='<button class="ghost" style="margin:0 0 10px;padding:9px;font-size:13px" onclick="printBudget()">🖨 匯出預算執行 PDF(含 Lina 對帳)</button>';
+  if(budView==='table'){ el.innerHTML = pills + expBtn + budTableHtml(); budTableWire(); return; }
+  el.innerHTML = pills + expBtn + budCardsHtml();
 }
 function setBudView(v){
   if(budView==='table' && v!=='table' && budDirty()){
@@ -1014,6 +1154,9 @@ var BUD_DEF_ACTS=['8月例賽','9月例賽','10月例賽','11月外地賽','12�
 var BUD_DEF_CATS=['獎金','點心/水果/水','餐費','球秘執行費'];
 var BUD_CAT_ALIAS={'餐費':['餐費','餐飲'],'球秘執行費':['球秘執行費','球秘請款']};
 var BUD_DRILL_CAT={'餐費':'餐飲','球秘執行費':'球秘請款'};
+var BUD_NOTE_CATS=['出席補助','禮品'];
+/* 球秘請款單包含點心/水果/水 → 執行進度兩欄併看 */
+var BUD_MERGE={cats:['球秘執行費','點心/水果/水'],label:'球秘請款(含點心/水果/水)',drill:'球秘請款'};
 function budMatrix(){
   var hA=budHidden('gf_budHideActs'), hC=budHidden('gf_budHideCats');
   var rows=(lastData.budget||[]),
@@ -1059,43 +1202,57 @@ function budTableHtml(){
     '<thead><tr><th style="'+TH2+STK+'z-index:3">活動</th>'+
     M.cats.map(function(c){ return '<th style="'+TH2+(c==='贊助轉出'?'color:#3C3489;':'')+'">'+(c==='贊助轉出'?'⇄':'')+esc(c)+
       (edit?' <span data-bdelcat="'+esc(c)+'" style="color:#B03A3A;cursor:pointer;padding:2px 4px;font-size:11px">✕</span>':'')+'</th>'; }).join('')+
-    '<th style="'+TH2+'background:#E8EDF5">小計</th>'+
+    '<th style="'+TH2+'background:#E8EDF5">球隊帳<br>小計</th>'+
+    '<th style="'+TH2+'background:#E5DEFA;color:#3C3489">Lina贊助<br>小計</th>'+
     (edit?'<th style="'+TH2+'padding:4px"><button class="ghost" style="width:auto;padding:6px 10px;margin:0;font-size:12px;white-space:nowrap" onclick="budFocusCat()">＋欄</button></th>':'')+
     '</tr></thead><tbody>';
-  var colSum={}, grand=0;
+  var colT={}, colL={}, grandT=0, grandL=0;
   M.acts.forEach(function(a){
-    var rowSum=0;
+    var rowT=0, rowL=0;
     h+='<tr><th style="'+TH2+STK+'font-size:12.5px">'+
       (edit?'<span style="display:flex;align-items:center;gap:2px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis">'+esc(a)+'</span>'+
         '<span data-bdelact="'+esc(a)+'" style="color:#B03A3A;cursor:pointer;padding:2px 4px;font-size:11px">✕</span></span>':esc(a))+'</th>';
     M.cats.forEach(function(c){
       var b=M.map[a+'␟'+c], val=b?b.amt:'', key=a+'␟'+c;
       budOrig[key]=b?{row:b.row,amt:b.amt,src:b.src,note:b.note}:null;
-      if(b){ colSum[c]=(colSum[c]||0)+b.amt; rowSum+=b.amt; grand+=b.amt; }
-      var lina = b ? b.src==='Lina贊助' : budCatSrcOf(c)==='Lina贊助';
+      var cSrc = b ? b.src : (budCatSrcOf(c)||'球隊帳');
+      if(b){ if(cSrc==='Lina贊助'){ colL[c]=(colL[c]||0)+b.amt; rowL+=b.amt; grandL+=b.amt; }
+             else { colT[c]=(colT[c]||0)+b.amt; rowT+=b.amt; grandT+=b.amt; } }
+      var lina = cSrc==='Lina贊助';
+      var withNote = lina || BUD_NOTE_CATS.indexOf(c)>-1;
+      var tdBg = lina ? 'background:#EDE7FD;' : '';
       if(edit){
-        var wpx = lina?'110px':'78px';
-        h+='<td style="'+TD2+'padding:3px;vertical-align:top">'+
-          '<input type="number" inputmode="numeric" min="0" data-bcell="'+esc(key)+'" value="'+(val===''?'':val)+'" placeholder="—"'+
-          ' style="width:'+wpx+';margin:0;padding:7px 6px;font-size:13px;text-align:right'+(lina?';border-color:#3C3489;background:#F4F3FE':'')+'">'+
-          (lina?'<input type="text" data-bnote="'+esc(key)+'" value="'+esc(b?(b.note||''):'')+'" placeholder="明細"'+
-            ' style="width:'+wpx+';margin:3px 0 0;padding:5px 6px;font-size:11.5px;border-color:#CFC9F2;background:#FBFAFF">':'')+
+        var wpx = withNote?'110px':'78px';
+        h+='<td style="'+TD2+tdBg+'padding:3px;vertical-align:top">'+
+          '<input type="number" inputmode="numeric" min="0" data-bcell="'+esc(key)+'" data-bsrc="'+cSrc+'" value="'+(val===''?'':val)+'" placeholder="—"'+
+          ' style="width:'+wpx+';margin:0;padding:7px 6px;font-size:13px;text-align:right'+(lina?';border:1.5px solid #7C6FD9;background:#F8F6FF':'')+'">'+
+          (withNote?'<input type="text" data-bnote="'+esc(key)+'" value="'+esc(b?(b.note||''):'')+'" placeholder="明細"'+
+            ' style="width:'+wpx+';margin:3px 0 0;padding:5px 6px;font-size:11.5px;'+(lina?'border-color:#B7A9EE;background:#FDFCFF':'border-color:#D8DCE3;background:#FAFBFC')+'">':'')+
           '</td>';
       } else {
-        h+='<td style="'+TD2+(lina?'color:#3C3489;':'')+'">'+(b?money(b.amt)+(lina?'<span style="font-size:9.5px">Ⓛ</span>':''):'—')+
-          (lina&&b&&b.note?'<br><span class="sub" style="font-size:10px;color:#6b5fae;white-space:nowrap">'+esc(b.note)+'</span>':'')+'</td>';
+        h+='<td style="'+TD2+tdBg+(lina?'color:#3C3489;':'')+'">'+(b?money(b.amt)+(lina?'<span style="font-size:9.5px">Ⓛ</span>':''):'—')+
+          (b&&b.note?'<br><span class="sub" style="font-size:10px;color:'+(lina?'#6b5fae':'#8a93a3')+';white-space:nowrap">'+esc(b.note)+'</span>':'')+'</td>';
       }
     });
-    h+='<td style="'+TD2+'background:#F7F8FA;font-weight:700" data-brsum="'+esc(a)+'">'+money(rowSum)+'</td>'+(edit?'<td style="'+TD2+'"></td>':'')+'</tr>';
+    h+='<td style="'+TD2+'background:#F7F8FA;font-weight:700" data-brsum-t="'+esc(a)+'">'+money(rowT)+'</td>'+
+      '<td style="'+TD2+'background:#EDE7FD;font-weight:700;color:#3C3489" data-brsum-l="'+esc(a)+'">'+money(rowL)+'</td>'+
+      (edit?'<td style="'+TD2+'"></td>':'')+'</tr>';
   });
   if(edit){
     h+='<tr><td colspan="'+(M.cats.length+3)+'" style="padding:0">'+
       '<button class="ghost" style="width:100%;margin:0;border:none;border-radius:0;padding:11px;font-size:13px;color:#1F3864" onclick="budFocusAct()">＋ 新增活動列</button></td></tr>';
   }
-  h+='</tbody><tfoot><tr><th style="'+TH2+STK+'background:#E8EDF5;z-index:3">合計</th>'+
-    M.cats.map(function(c){ return '<td style="'+TD2+'background:#E8EDF5;font-weight:700" data-bcsum="'+esc(c)+'">'+money(colSum[c]||0)+'</td>'; }).join('')+
-    '<td style="'+TD2+'background:#DCE4F0;font-weight:700" data-bgsum>'+money(grand)+'</td>'+(edit?'<td style="'+TD2+'background:#E8EDF5"></td>':'')+'</tr></tfoot></table></div></div>';
-  h+='<p class="sub" style="font-size:10.5px;margin:-6px 0 10px">↔ 表格可左右滑動・紫格=Lina贊助(金額下可填明細)・餐費欄自動吸「餐飲」帳、球秘執行費欄吸「球秘請款」帳・⇄贊助轉出=Lina池轉入球隊帳'+(edit?'・清空格=刪・小計即打即算':'')+'</p>';
+  h+='</tbody><tfoot>'+
+    '<tr><th style="'+TH2+STK+'background:#E8EDF5;z-index:3">合計・球隊帳</th>'+
+    M.cats.map(function(c){ return '<td style="'+TD2+'background:#E8EDF5;font-weight:700" data-bcsum-t="'+esc(c)+'">'+money(colT[c]||0)+'</td>'; }).join('')+
+    '<td style="'+TD2+'background:#DCE4F0;font-weight:700" data-bgsum-t>'+money(grandT)+'</td>'+
+    '<td style="'+TD2+'background:#E8EDF5"></td>'+(edit?'<td style="'+TD2+'background:#E8EDF5"></td>':'')+'</tr>'+
+    '<tr><th style="'+TH2+STK+'background:#E5DEFA;color:#3C3489;z-index:3">合計・Lina贊助</th>'+
+    M.cats.map(function(c){ return '<td style="'+TD2+'background:#E5DEFA;font-weight:700;color:#3C3489" data-bcsum-l="'+esc(c)+'">'+money(colL[c]||0)+'</td>'; }).join('')+
+    '<td style="'+TD2+'background:#E5DEFA"></td>'+
+    '<td style="'+TD2+'background:#D6CBF6;font-weight:700;color:#3C3489" data-bgsum-l>'+money(grandL)+'</td>'+
+    (edit?'<td style="'+TD2+'background:#E5DEFA"></td>':'')+'</tr></tfoot></table></div></div>';
+  h+='<p class="sub" style="font-size:10.5px;margin:-6px 0 10px">↔ 表格可左右滑動・紫底格=Lina贊助(金額下可填明細)・小計/合計依 球隊帳/Lina 分列・餐費欄吸「餐飲」帳・球秘請款單含點心/水果/水:執行進度自動將兩欄併為一條(對球秘請款帳)・出席補助/禮品/Lina格皆可填明細・⇄贊助轉出=Lina池轉入球隊帳'+(edit?'・清空格=刪・小計即打即算':'')+'</p>';
   if(edit){
     h+='<button class="btn" onclick="budTableSave()">💾 儲存表格變更</button>'+
       '<p class="sub" style="font-size:10.5px;margin:-6px 0 10px">新格預設來源=球隊帳;加欄可先選來源。既有格的來源/備註切「執行進度」用 ✎ 調整</p>';
@@ -1179,20 +1336,21 @@ function budTableWire(){
     inp.oninput=function(){ budRecalc(); };
   });
 }
-function budRecalc(){ /* 定點更新小計,不重建任何輸入元素 */
-  var M={}, colS={}, g=0;
+function budRecalc(){ /* 定點更新雙來源小計,不重建任何輸入元素 */
+  var rT={}, rL={}, cT={}, cL={}, gT=0, gL=0;
   budCells().forEach(function(inp){
     var k=inp.getAttribute('data-bcell').split('␟'), a=k[0], c=k[1];
     var v=Number(inp.value)||0;
-    M[a]=(M[a]||0)+v; colS[c]=(colS[c]||0)+v; g+=v;
+    if(inp.getAttribute('data-bsrc')==='Lina贊助'){ rL[a]=(rL[a]||0)+v; cL[c]=(cL[c]||0)+v; gL+=v; }
+    else { rT[a]=(rT[a]||0)+v; cT[c]=(cT[c]||0)+v; gT+=v; }
   });
-  Array.prototype.forEach.call(document.querySelectorAll('#budBody [data-brsum]'),function(el){
-    el.textContent=money(M[el.getAttribute('data-brsum')]||0);
+  [['data-brsum-t',rT],['data-brsum-l',rL],['data-bcsum-t',cT],['data-bcsum-l',cL]].forEach(function(p){
+    Array.prototype.forEach.call(document.querySelectorAll('#budBody ['+p[0]+']'),function(el){
+      el.textContent=money(p[1][el.getAttribute(p[0])]||0);
+    });
   });
-  Array.prototype.forEach.call(document.querySelectorAll('#budBody [data-bcsum]'),function(el){
-    el.textContent=money(colS[el.getAttribute('data-bcsum')]||0);
-  });
-  var ge=document.querySelector('#budBody [data-bgsum]'); if(ge) ge.textContent=money(g);
+  var gt=document.querySelector('#budBody [data-bgsum-t]'); if(gt) gt.textContent=money(gT);
+  var gl=document.querySelector('#budBody [data-bgsum-l]'); if(gl) gl.textContent=money(gL);
 }
 function budDelRun(hits, hideKey, hideVal, label){
   var finish=function(){
@@ -1277,9 +1435,23 @@ function budCardsHtml(){
       '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">'+
       '<b style="font-size:13.5px">'+esc(a)+'</b>'+
       '<span class="sub" style="font-size:11.5px;font-variant-numeric:tabular-nums">小計 '+money(sa)+' / '+money(sb)+'</span></div>';
+    /* 併組:同來源的 球秘執行費+點心/水果/水 → 一條進度(實際吸球秘請款,不重複計) */
+    var merged={}, shown=[];
     list.forEach(function(b){
+      if(BUD_MERGE.cats.indexOf(b.cat)>-1){
+        var mk=b.src; merged[mk]=merged[mk]||{src:b.src,act:b.act,amt:0,_a:0,notes:[],rows:[]};
+        merged[mk].amt+=b.amt; merged[mk]._a+=b._a;
+        if(b.note) merged[mk].notes.push(b.cat+':'+b.note);
+        merged[mk].rows.push(b);
+      } else shown.push(b);
+    });
+    Object.keys(merged).forEach(function(mk){
+      var m=merged[mk];
+      shown.push({act:m.act,cat:BUD_MERGE.label,src:m.src,amt:m.amt,_a:m._a,note:m.notes.join('・'),_merge:m.rows});
+    });
+    shown.forEach(function(b){
       var pct=budPct(b._a,b.amt);
-      var drillF={pool:BUD_POOL[b.src],act:b.act,cat:(BUD_DRILL_CAT[b.cat]||b.cat),dir:'out'};
+      var drillF={pool:BUD_POOL[b.src],act:b.act,cat:(b._merge?BUD_MERGE.drill:(BUD_DRILL_CAT[b.cat]||b.cat)),dir:'out'};
       var c=BUD_COL[b.src];
       h+='<div data-drill="'+esc(JSON.stringify(drillF))+'" style="padding:7px 0;border-top:1px solid #EEF0F3;cursor:pointer">'+
         '<div style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:4px">'+
@@ -1287,7 +1459,9 @@ function budCardsHtml(){
         '<span style="background:'+c[0]+';color:'+c[1]+';border-radius:6px;padding:1px 6px;font-size:10.5px">'+b.src+'</span>'+
         (b.note?'<span class="sub" style="font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px">'+esc(b.note)+'</span>':'')+
         '<span style="flex:1"></span>'+
-        (user==='凌華'?'<button class="ghost" data-budedit="'+b.row+'" style="width:auto;padding:2px 9px;margin:0;font-size:11px">✎</button>':'')+
+        (user==='凌華'?(b._merge
+          ? b._merge.map(function(x){ return '<button class="ghost" data-budedit="'+x.row+'" style="width:auto;padding:2px 7px;margin:0 0 0 3px;font-size:10.5px">✎'+(x.cat==='點心/水果/水'?'點心':'球秘')+'</button>'; }).join('')
+          : '<button class="ghost" data-budedit="'+b.row+'" style="width:auto;padding:2px 9px;margin:0;font-size:11px">✎</button>'):'')+
         '</div>'+
         '<div style="display:flex;align-items:center;gap:8px">'+
         '<div style="flex:1">'+budBar(pct,8)+'</div>'+
@@ -1732,28 +1906,36 @@ var POOL_ROW={'[主]會費池':['#EFF6FD','#0C447C'],
               '[私]花零用金池':['#FDEFF4','#B03A73'],
               '[外]會長直付':['#FBF4E4','#8a6100']};
 
-function renderDetail(){
-  if(!lastData) return;
-  styleDetTabs();
-  var pools=detPools(), team=document.getElementById('dTeam').value,
-      cat=document.getElementById('dCat').value, dir=document.getElementById('dDir').value,
-      kw=document.getElementById('dKw').value.trim();
-  var fySel=document.getElementById('dYear').value;
-  var rows=(lastData.recent||[]).filter(function(r){
+function detFilterState(){
+  return { pools:detPools(), team:document.getElementById('dTeam').value,
+    cat:document.getElementById('dCat').value, dir:document.getElementById('dDir').value,
+    kw:document.getElementById('dKw').value.trim(), fySel:document.getElementById('dYear').value };
+}
+function detFilteredRows(f){
+  f=f||detFilterState();
+  return (lastData.recent||[]).filter(function(r){
     if(r.voided) return false;
-    if(pools.indexOf(r.pool)<0) return false;
-    if(fySel&&String(attrFy(r))!==fySel) return false;
+    if(f.pools.indexOf(r.pool)<0) return false;
+    if(f.fySel&&String(attrFy(r))!==f.fySel) return false;
     if(detAct){
       if(detAct==='(未標活動)'){ if(r.act) return false; }
       else if(r.act!==detAct) return false;
     }
-    if(team&&r.team!==team) return false;
-    if(cat&&r.cat!==cat) return false;
-    if(dir==='in'&&!r.income) return false;
-    if(dir==='out'&&!r.expense) return false;
-    if(kw&&(String(r.desc)+String(r.ref)+String(r.note||'')+String(r.act||'')).indexOf(kw)<0) return false;
+    if(f.team&&r.team!==f.team) return false;
+    if(f.cat&&r.cat!==f.cat) return false;
+    if(f.dir==='in'&&!r.income) return false;
+    if(f.dir==='out'&&!r.expense) return false;
+    if(f.kw&&(String(r.desc)+String(r.ref)+String(r.note||'')+String(r.act||'')).indexOf(f.kw)<0) return false;
     return true;
   });
+}
+function renderDetail(){
+  if(!lastData) return;
+  styleDetTabs();
+  var _f=detFilterState();
+  var pools=_f.pools, team=_f.team, cat=_f.cat, dir=_f.dir, kw=_f.kw;
+  var fySel=_f.fySel;
+  var rows=detFilteredRows(_f);
   var tin=0,tout=0;
   rows.forEach(function(r){ tin+=r.income; tout+=r.expense; });
   var legend = pools.length<2 ? '' :
