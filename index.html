@@ -138,7 +138,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10s</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10t</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -2195,6 +2195,43 @@ function gatherItems(){
   });
   return items;
 }
+var reqEditRef=null;
+function reqOpenEdit(ref){
+  var r=((lastData&&lastData.reqs)||[]).find(function(x){return x.ref===ref});
+  if(!r) return;
+  reqEditRef=ref;
+  var fm=document.getElementById('reqForm');
+  fm.classList.remove('hide');
+  fm.querySelector('b').textContent='✎ 編輯請款單 '+ref+'(允甄匯款前)';
+  setReqType((r.items&&r.items.length)?'sec':'gen');
+  document.getElementById('rPool').value=r.pool;
+  document.getElementById('rDesc').value=r.desc;
+  document.getElementById('rAct').value=r.act||'';
+  document.getElementById('rAmt').value=r.amount;
+  document.getElementById('rTeam').value=r.team;
+  document.getElementById('rCat').value=r.cat;
+  document.getElementById('rPayee').value=r.payee||'';
+  document.getElementById('rBank').value=r.bankCode||'';
+  document.getElementById('rBranch').value=r.branch||'';
+  document.getElementById('rAcct').value=r.bankAcct||'';
+  document.getElementById('rNote').value=r.note||'';
+  if(r.items&&r.items.length){
+    document.getElementById('rItemRows').innerHTML='';
+    r.items.forEach(function(it){ addItemRow(it.n, it.amt); });
+    itemTotal();
+  }
+  fm.querySelector('.btn').textContent='儲存修改(通知允甄)';
+  if(fm.scrollIntoView) fm.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function reqCancelGo(ref){
+  var r=((lastData&&lastData.reqs)||[]).find(function(x){return x.ref===ref});
+  if(!r) return;
+  if(!confirm('撤銷 '+ref+'「'+r.desc+'」NT$ '+money(r.amount)+'?\n單據留檔改為已撤銷(不會刪除),並通知允甄不要匯款。')) return;
+  api({action:'reqCancel', ref:ref}).then(function(){
+    toast('✓ '+ref+' 已撤銷,已通知允甄');
+    refresh();
+  }).catch(function(e){ toast('撤銷失敗:'+e.message); });
+}
 function reqCreate(){
   var q={ desc:document.getElementById('rDesc').value.trim(),
     amount:parseInt(document.getElementById('rAmt').value||'0',10),
@@ -2222,6 +2259,21 @@ function reqCreate(){
     }
   }
   if(!q.desc||!q.amount||!q.payee){ toast('項目、金額、收款戶名必填'); return; }
+  if(reqEditRef){
+    var er=reqEditRef;
+    api({action:'reqEdit', ref:er, req:q}).then(function(){
+      toast('✓ '+er+' 已更新,已通知允甄');
+      reqEditRef=null;
+      var fm=document.getElementById('reqForm');
+      fm.classList.add('hide');
+      fm.querySelector('b').textContent='新付款請求';
+      fm.querySelector('.btn').textContent='送出給允甄匯款';
+      ['rDesc','rAmt','rPayee','rBank','rBranch','rAcct','rNote','rAct'].forEach(function(id){document.getElementById(id).value='';});
+      document.getElementById('rItemRows').innerHTML=''; document.getElementById('rItemTotal').textContent='0';
+      refresh();
+    }).catch(function(e){ toast('更新失敗:'+e.message); });
+    return;
+  }
   api({action:'reqCreate',req:q}).then(function(j){
     toast('已建立 '+j.ref+',允甄開啟付款頁即可匯款');
     document.getElementById('reqForm').classList.add('hide');
@@ -2351,6 +2403,13 @@ function renderReqs(){
     h+='<button class="ghost" style="margin-top:6px;padding:7px;font-size:12.5px" onclick="reqUpStart(\''+r.ref+'\')">📎 補傳憑證</button>';
     if(r.note && !closed) h+='<p class="sub">'+esc(r.note)+'</p>';
     d.id='req-'+r.ref;
+    var myName=({'凌華':'張凌華','允甄':'張允甄'})[user];
+    if(r.status==='待匯款' && (user==='凌華' || r.applicant===myName)){
+      h+='<div style="display:flex;gap:8px;margin-top:6px">'+
+        '<button class="ghost" style="flex:1;margin:0;padding:8px;font-size:12.5px" onclick="reqOpenEdit(\''+r.ref+'\')">✎ 編輯</button>'+
+        '<button class="ghost" style="flex:1;margin:0;padding:8px;font-size:12.5px;color:#791F1F" onclick="reqCancelGo(\''+r.ref+'\')">🗑 撤銷</button>'+
+        '</div>';
+    }
     if(r.status==='待匯款' && user==='允甄')
       h+='<button class="btn" style="margin-top:8px" onclick="confirmPay(\''+r.ref+'\')">已匯款(今日)— 自動入帳</button>';
     if(r.status==='已匯款' && user==='凌華')
@@ -2371,6 +2430,15 @@ function renderReqs(){
     rows.forEach(buildCard);
   });
 
+  var canceled = lastData.reqs.filter(function(r){ return r.status==='已撤銷'; });
+  if(canceled.length){
+    head('🗑 已撤銷('+canceled.length+')', 0, '#8a93a3');
+    canceled.forEach(function(r){
+      el.insertAdjacentHTML('beforeend','<div class="card" style="opacity:.55;padding:8px 12px;margin-bottom:5px">'+
+        '<div style="display:flex;justify-content:space-between;font-size:13px"><b style="text-decoration:line-through">'+esc(r.desc)+'</b><b>'+money(r.amount)+'</b></div>'+
+        '<p class="sub" style="font-size:11px;margin-top:2px">'+r.ref+'・已撤銷,未匯款</p></div>');
+    });
+  }
   var closedRows = lastData.reqs.filter(function(r){ return r.status==='已結案'; });
   if(closedRows.length){
     var main = closedRows.filter(function(r){ return String(r.pool).indexOf('[主]')===0; });
