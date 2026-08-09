@@ -138,7 +138,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10r</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10s</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -305,7 +305,8 @@ var TPL = {
   ],
   '凌華':[
     {k:'priv',t:'零用金支出',pool:'[私]花零用金池',team:'創12',cat:'餐飲',dir:-1,teamSel:1,catSel:1},
-    {k:'priv',t:'零用金收入(代收)',pool:'[私]花零用金池',team:'創12',cat:'代收款',dir:1,payer:1},
+    {k:'priv',t:'零用金收入(代收)',pool:'[私]花零用金池',team:'創12',cat:'代收款',dir:1,payer:1,note:'過手錢:不入隊伍支出/活動彙總'},
+    {k:'priv',t:'代收轉付(付教練等)',pool:'[私]花零用金池',team:'創12',cat:'代收轉付',dir:-1,note:'與代收款成對・掛同活動・備註收款人'},
     {k:'priv',t:'零用金撥入確認',pool:'[私]花零用金池',team:'創12',cat:'內部調撥',dir:1,refManual:1},
     {k:'priv',t:'🎁 會長直付代記(麗娜直接付廠商)',dgift:1},
     {k:'priv',t:'Lina池記帳',pool:'[私]Lina贊助池',team:'創12',cat:'其他',dir:-1,teamSel:1,catSel:1},
@@ -317,7 +318,7 @@ var TPL = {
 var FREE_TPL = { main:{t:'⚡ 自由登帳(會費帳)',pool:'[主]會費池',free:1},
                  priv:{t:'⚡ 自由登帳(私帳)',pool:'',free:1} };
 var TEAMS = ['創12','創主班','共用','Lina私用'];
-var CATS = ['餐飲','點心/水果/水','雜支','手續費','獎品','獎金','球隊用品','禮品','會員禮','球場費','球場訂金','球秘請款','出席補助','慶弔','贊助轉出','其他'];
+var CATS = ['餐飲','點心/水果/水','代收轉付','雜支','手續費','獎品','獎金','球隊用品','禮品','會員禮','球場費','球場訂金','球秘請款','出席補助','慶弔','贊助轉出','其他'];
 function tpDate(){
   return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei'}).format(new Date());
 }
@@ -575,7 +576,7 @@ function aggTables(){
   });
   var teams=['創12','創主班','共用'].map(function(tm){
     var mn=0,pv=0; rows.forEach(function(r){
-      if(r.team!==tm||!(r.expense>0)||r.cat==='內部調撥'||r.cat==='贊助轉出') return;
+      if(r.team!==tm||!(r.expense>0)||r.cat==='內部調撥'||r.cat==='贊助轉出'||r.cat==='代收轉付') return;
       if(r.pool==='[主]會費池') mn+=r.expense; else pv+=r.expense;
     });
     return {t:tm, mn:mn, pv:pv};
@@ -966,6 +967,7 @@ function printReport(){
     subT='活動彙總';
     var g={};
     rows.forEach(function(r){
+      if(r.cat==='代收款'||r.cat==='代收轉付') return; /* 過手錢不入活動彙總 */
       var k=r.act||(r.expense>0?'(未標活動)':null); if(!k) return;
       g[k]=g[k]||{i:0,o:0}; g[k].i+=r.income; g[k].o+=r.expense;
     });
@@ -979,7 +981,7 @@ function printReport(){
     html+=_T('隊伍支出歸屬',['隊伍','球隊帳([主]池)','私帳側代付','合計 NT$'],
       ['創12','創主班','共用'].map(function(tm){
         var mn=0,pv=0; rows.forEach(function(r){
-          if(r.team!==tm||!(r.expense>0)||r.cat==='內部調撥'||r.cat==='贊助轉出') return;
+          if(r.team!==tm||!(r.expense>0)||r.cat==='內部調撥'||r.cat==='贊助轉出'||r.cat==='代收轉付') return;
           if(r.pool==='[主]會費池') mn+=r.expense; else if(r.pool!=='[外]會長直付') pv+=r.expense;
         });
         return '<tr><td>'+tm+'</td>'+_num(mn)+_num(pv)+_num(mn+pv)+'</tr>';
@@ -1001,6 +1003,7 @@ function printReport(){
       }).join(''));
     var g2={};
     rows.forEach(function(r){
+      if(r.cat==='代收款'||r.cat==='代收轉付') return; /* 過手錢不入活動彙總 */
       var k=r.act||(r.expense>0?'(未標活動)':null); if(!k) return;
       g2[k]=g2[k]||{i:0,o:0}; g2[k].i+=r.income; g2[k].o+=r.expense;
     });
@@ -1010,7 +1013,7 @@ function printReport(){
     html+=_T('隊伍支出歸屬',['隊伍','球隊帳([主]池)','私帳側代付','合計 NT$'],
       ['創12','創主班','共用'].map(function(tm){
         var mn=0,pv=0; rows.forEach(function(r){
-          if(r.team!==tm||!(r.expense>0)||r.cat==='內部調撥'||r.cat==='贊助轉出') return;
+          if(r.team!==tm||!(r.expense>0)||r.cat==='內部調撥'||r.cat==='贊助轉出'||r.cat==='代收轉付') return;
           if(r.pool==='[主]會費池') mn+=r.expense; else if(r.pool!=='[外]會長直付') pv+=r.expense;
         });
         return '<tr><td>'+tm+'</td>'+_num(mn)+_num(pv)+_num(mn+pv)+'</tr>';
@@ -2569,7 +2572,7 @@ function renderOverview(){
   if(ovMain==='pool' && ovView==='team'){
     var tp={};
     (lastData.recent||[]).forEach(function(r){
-      if(r.voided || !r.expense || r.cat==='內部調撥' || r.cat==='贊助轉出') return;
+      if(r.voided || !r.expense || r.cat==='內部調撥' || r.cat==='贊助轉出' || r.cat==='代收轉付') return;
       tp[r.team]=tp[r.team]||{m:0,p:0};
       if(r.pool==='[主]會費池') tp[r.team].m+=r.expense; else tp[r.team].p+=r.expense;
     });
@@ -2605,6 +2608,7 @@ function renderOverview(){
     var netPos = o.petty.balance - o.petty.custody;
     h += statCard('凌華 累計墊付支出', money(o.petty.spent), '創12 '+money(o.petty.spent12)+'|創主班 '+money(o.petty.spentMain), true, {pool:'[私]花零用金池',dir:'out'});
     h += statCard('允甄 已撥補給凌華', money(o.petty.funded), 'F 單號調撥合計', false, {pool:'[私]花零用金池',cat:'內部調撥',dir:'in'});
+    h += statCard('代收在管淨額', money((o.petty.custody||0)-(o.petty.custodyOut||0)), '代收 '+money(o.petty.custody||0)+' − 代收轉付 '+money(o.petty.custodyOut||0)+'(過手錢,不入隊伍支出)', false, {pool:'[私]花零用金池',cat:'代收款',dir:''});
     h += statCard('代收款在手(衣服)', money(o.petty.custody), '待轉付廠商,非凌華資金', false, {pool:'[私]花零用金池',cat:'代收款'});
     h += statCard(netPos<0 ? '⚠️ 凌華目前墊付中' : '凌華手上隊款',
       money(Math.abs(netPos)),
