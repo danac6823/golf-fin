@@ -260,6 +260,21 @@ function render(){
   </div>
 </div>
 <script>
+var _imgCache={};
+function loadPubImg(imEl, u){
+  var id = driveId(u);
+  if(!id){ imEl.style.display='none'; return; }
+  if(_imgCache[id]){ imEl.src=_imgCache[id]; return; }
+  fetch(GAS_URL+'?pub=img&id='+id).then(function(r){ return r.json(); }).then(function(j){
+    if(j.b64){
+      _imgCache[id]='data:'+(j.mime||'image/jpeg')+';base64,'+j.b64;
+      imEl.src=_imgCache[id];
+    } else imEl.style.display='none';
+  }).catch(function(){
+    imEl.src='https://drive.google.com/thumbnail?id='+id+'&sz=w500';
+  });
+}
+
 function cnUpper(n){
   var d='零壹貳參肆伍陸柒捌玖', u=['','拾','佰','仟'], g=['','萬','億'];
   n=Math.round(Number(n)); if(!n) return '零元整';
@@ -306,14 +321,16 @@ function showExp(i){
   if(x.rcps && x.rcps.length){
     h+='<p style="font-size:12.5px;font-weight:600;margin:12px 0 6px">📎 憑證('+x.rcps.length+' 張)</p>'+
       '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-      x.rcps.map(function(u){
-        var id=driveId(u);
-        return id?'<img src="https://drive.google.com/thumbnail?id='+id+'&sz=w500" onclick="viewRcp('+esc(JSON.stringify(x.rcps)).replace(/"/g,'&quot;')+')" style="width:48%;border:1px solid #999;border-radius:6px;cursor:pointer">':'';
+      x.rcps.map(function(u,ri){
+        return '<img data-pubimg="'+esc(u)+'" onclick="viewRcp('+esc(JSON.stringify(x.rcps)).replace(/"/g,'&quot;')+')" style="width:48%;min-height:60px;background:#F1F3F6;border:1px solid #999;border-radius:6px;cursor:pointer" alt="憑證載入中">';
       }).join('')+'</div>';
   }
   h+='<p style="text-align:center;color:#888;font-size:11px;margin-top:12px">本快照僅供會員檢視・銀行帳戶資訊不對外公開</p>';
   document.getElementById('expDoc').innerHTML=h;
   document.getElementById('expBox').style.display='block';
+  document.querySelectorAll('#expDoc img[data-pubimg]').forEach(function(im){
+    loadPubImg(im, im.getAttribute('data-pubimg'));
+  });
 }
 
 var lbList=[], lbIdx=0;
@@ -328,8 +345,9 @@ function viewRcp(list){
   document.getElementById('lightbox').style.display='flex';
 }
 function lbShow(){
-  var id = driveId(lbList[lbIdx]);
-  document.getElementById('lbImg').src = id ? 'https://drive.google.com/thumbnail?id='+id+'&sz=w1600' : '';
+  var im = document.getElementById('lbImg');
+  im.src='';
+  loadPubImg(im, lbList[lbIdx]);
   var nav=document.getElementById('lbNav');
   nav.innerHTML = lbList.length>1
     ? lbList.map(function(_,i){
