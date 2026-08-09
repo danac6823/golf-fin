@@ -58,6 +58,12 @@ label{font-size:12px;color:var(--sub)}
 .sheet{position:fixed;bottom:0;left:0;right:0;margin:0 auto;width:100%;max-width:480px;background:#fff;border-radius:16px 16px 0 0;padding:14px 14px max(16px,env(safe-area-inset-bottom));z-index:61}
 .sheet button{width:100%;text-align:left;padding:13px 12px;margin:0 0 6px;font-size:14px;border:1px solid var(--line);border-radius:10px;background:#fff}
 body.appOn{padding-bottom:92px}
+@media print{
+  body.vchPrint > *{display:none !important}
+  body.vchPrint #vchOverlay{display:block !important;position:static !important;overflow:visible !important;padding:0 !important}
+  body.vchPrint #vchOverlay .vchBtns{display:none !important}
+  body.vchPrint .nav{display:none !important}
+}
 </style>
 </head>
 <body>
@@ -68,7 +74,7 @@ body.appOn{padding-bottom:92px}
   <a id="lbLink" href="#" target="_blank" onclick="event.stopPropagation()" style="color:#9ec5ff;font-size:12.5px;margin-top:4px">在 Drive 開啟原檔 ›</a>
 </div>
 <div id="vchOverlay" style="display:none;position:fixed;inset:0;background:#fff;z-index:80;overflow-y:auto;padding:calc(14px + env(safe-area-inset-top)) 14px 90px">
-  <div style="display:flex;gap:8px;max-width:560px;margin:0 auto 12px">
+  <div class="vchBtns" style="display:flex;gap:8px;max-width:560px;margin:0 auto 12px">
     <button class="ghost" style="flex:1;margin:0" onclick="closeVchOverlay()">✕ 關閉</button>
     <button class="btn" style="flex:2;margin:0" onclick="printVchDoc()">🖨 列印 / 存 PDF</button>
   </div>
@@ -123,7 +129,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10a</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10c</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -708,18 +714,14 @@ document.addEventListener('click', function(ev){
 });
 
 function printVchDoc(){
-  var html='<!doctype html><html><head><meta charset="utf-8"><title>傳票</title>'+
-    '<style>body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;padding:16px;color:#111}</style>'+
-    '</head><body>'+document.getElementById('vchDoc').innerHTML+'</body></html>';
-  var ifr=document.createElement('iframe');
-  ifr.style.cssText='position:fixed;width:0;height:0;border:0';
-  document.body.appendChild(ifr);
-  ifr.contentDocument.write(html);
-  ifr.contentDocument.close();
+  document.body.classList.add('vchPrint');
+  var done=false;
+  function cleanup(){ if(done) return; done=true; document.body.classList.remove('vchPrint'); }
+  window.onafterprint=cleanup;
   setTimeout(function(){
-    try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch(e){ toast('此環境不支援列印,請在正式版使用'); }
-    setTimeout(function(){ ifr.remove(); }, 2000);
-  }, 300);
+    try { window.print(); } catch(e){ toast('此裝置不支援直接列印,請截圖或用 Safari 開啟'); }
+    setTimeout(cleanup, 1500);
+  }, 60);
 }
 
 function printReport(){
@@ -1583,7 +1585,22 @@ function renderReqs(){
   function buildCard(r){
     var d=document.createElement('div'); d.className='card';
     var closed = r.status==='已結案';
-    if(closed) d.style.opacity='.75';
+    if(closed){
+      d.style.cssText='opacity:.8;padding:8px 12px;margin-bottom:5px';
+      var rc0=(r.receipts||[]).length;
+      var right = (rc0
+          ? '📎'+rc0+' '+r.receipts.map(function(u,i){ return '<a href="javascript:void(0)" onclick="viewReceipt(\''+esc(u)+'\')" style="color:#1F3864;text-decoration:underline">查看'+(rc0>1?(i+1):'')+'</a>'; }).join('・')
+          : '<span style="color:#8a4a00">無憑證</span>')+
+        '<br><a href="javascript:void(0)" onclick="reqUpStart(\''+r.ref+'\')" style="color:#1F3864">📎 補傳</a>';
+      d.innerHTML =
+        '<div style="display:flex;justify-content:space-between;font-size:13px"><b style="min-width:0">'+esc(r.desc)+'</b><b style="white-space:nowrap;margin-left:8px">'+money(r.amount)+'</b></div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:11px;color:#6b7280;margin-top:3px;line-height:1.6">'+
+        '<span>'+r.ref+'・'+r.team+'・✓已結案'+(r.act?'・🎯'+esc(r.act):'')+'<br>匯款日 '+(r.payDate||'—')+'</span>'+
+        '<span style="text-align:right;white-space:nowrap">'+right+'</span>'+
+        '</div>';
+      el.appendChild(d);
+      return;
+    }
     var h='<div class="top" style="display:flex;justify-content:space-between;font-size:14px"><b>'+esc(r.desc)+'</b><b>'+money(r.amount)+'</b></div>';
     h+='<div class="chips"><span class="chip c-ref">'+r.ref+'</span><span class="chip c-team">'+r.team+'</span>'+statusChip(r.status)+'</div>';
     if(r.status==='待匯款'){
