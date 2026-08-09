@@ -136,7 +136,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10j</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10l</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -885,7 +885,7 @@ function printReport(){
       '<tr><td>池外直付</td>'+num(gift)+'</tr>'+
       '<tr class="tt"><td>Lina 池現時結餘</td>'+num(o.lina.balance)+'</tr>');
     var gr='';
-    rows.forEach(function(r){ if(r.pool==='[外]會長直付') gr+='<tr><td>'+dfmt(r.date)+'</td><td>'+esc(r.desc)+'</td><td>'+esc(r.team)+'</td>'+num(r.expense)+'</tr>'; });
+    rows.forEach(function(r){ if(r.pool==='[外]會長直付') gr+='<tr><td>'+d8fmt(r.date)+'</td><td>'+esc(r.desc)+'</td><td>'+esc(r.team)+'</td>'+num(r.expense)+'</tr>'; });
     if(gr) html+=T('池外直付明細',['日期','明細','隊伍','金額 NT$'],gr);
   } else {
     html+=T('三池總覽',['資金池','累計收入','累計支出','結餘 NT$'],
@@ -914,7 +914,7 @@ function printReport(){
     var gift2=o.lina.directGift||0;
     if(gift2) html+=T('會長池外直付(未經任何池)',['日期','明細','隊伍','金額 NT$'],
       rows.filter(function(r){return r.pool==='[外]會長直付'}).map(function(r){
-        return '<tr><td>'+dfmt(r.date)+'</td><td>'+esc(r.desc)+'</td><td>'+esc(r.team)+'</td>'+num(r.expense)+'</tr>';
+        return '<tr><td>'+d8fmt(r.date)+'</td><td>'+esc(r.desc)+'</td><td>'+esc(r.team)+'</td>'+num(r.expense)+'</tr>';
       }).join(''));
   }
   var stage=document.getElementById('pdfStage');
@@ -1015,7 +1015,7 @@ function budMatrix(){
     map[b.act+'␟'+b.cat]=b;
   });
   budExtraActs.forEach(function(a){ if(acts.indexOf(a)<0) acts.push(a); });
-  budExtraCats.forEach(function(c){ if(cats.indexOf(c)<0) cats.push(c); });
+  budExtraCats.forEach(function(e){ if(cats.indexOf(e.c)<0) cats.push(e.c); });
   var ref=CATS.concat(['會費收入','來賓餐費收入','贊助收入']);
   cats.sort(function(a,b){ var ia=ref.indexOf(a), ib=ref.indexOf(b); ia=ia<0?99:ia; ib=ib<0?99:ib; return ia-ib||String(a).localeCompare(b); });
   return { acts:acts, cats:cats, map:map };
@@ -1056,14 +1056,18 @@ function budTableHtml(){
       var b=M.map[a+'␟'+c], val=b?b.amt:'', key=a+'␟'+c;
       budOrig[key]=b?{row:b.row,amt:b.amt,src:b.src,note:b.note}:null;
       if(b){ colSum[c]=(colSum[c]||0)+b.amt; rowSum+=b.amt; grand+=b.amt; }
-      var lina=b&&b.src==='Lina贊助';
+      var lina = b ? b.src==='Lina贊助' : budCatSrcOf(c)==='Lina贊助';
       if(edit){
-        h+='<td style="'+TD2+'padding:3px">'+
+        var wpx = lina?'110px':'78px';
+        h+='<td style="'+TD2+'padding:3px;vertical-align:top">'+
           '<input type="number" inputmode="numeric" min="0" data-bcell="'+esc(key)+'" value="'+(val===''?'':val)+'" placeholder="—"'+
-          ' style="width:78px;margin:0;padding:7px 6px;font-size:13px;text-align:right'+(lina?';border-color:#3C3489;background:#F4F3FE':'')+'">'+
+          ' style="width:'+wpx+';margin:0;padding:7px 6px;font-size:13px;text-align:right'+(lina?';border-color:#3C3489;background:#F4F3FE':'')+'">'+
+          (lina?'<input type="text" data-bnote="'+esc(key)+'" value="'+esc(b?(b.note||''):'')+'" placeholder="明細"'+
+            ' style="width:'+wpx+';margin:3px 0 0;padding:5px 6px;font-size:11.5px;border-color:#CFC9F2;background:#FBFAFF">':'')+
           '</td>';
       } else {
-        h+='<td style="'+TD2+(lina?'color:#3C3489;':'')+'">'+(b?money(b.amt)+(lina?'<span style="font-size:9.5px">Ⓛ</span>':''):'—')+'</td>';
+        h+='<td style="'+TD2+(lina?'color:#3C3489;':'')+'">'+(b?money(b.amt)+(lina?'<span style="font-size:9.5px">Ⓛ</span>':''):'—')+
+          (lina&&b&&b.note?'<br><span class="sub" style="font-size:10px;color:#6b5fae;white-space:nowrap">'+esc(b.note)+'</span>':'')+'</td>';
       }
     });
     h+='<td style="'+TD2+'background:#F7F8FA;font-weight:700" data-brsum="'+esc(a)+'">'+money(rowSum)+'</td>'+(edit?'<td style="'+TD2+'"></td>':'')+'</tr>';
@@ -1075,14 +1079,17 @@ function budTableHtml(){
   h+='</tbody><tfoot><tr><th style="'+TH2+STK+'background:#E8EDF5;z-index:3">合計</th>'+
     M.cats.map(function(c){ return '<td style="'+TD2+'background:#E8EDF5;font-weight:700" data-bcsum="'+esc(c)+'">'+money(colSum[c]||0)+'</td>'; }).join('')+
     '<td style="'+TD2+'background:#DCE4F0;font-weight:700" data-bgsum>'+money(grand)+'</td>'+(edit?'<td style="'+TD2+'background:#E8EDF5"></td>':'')+'</tr></tfoot></table></div></div>';
-  h+='<p class="sub" style="font-size:10.5px;margin:-6px 0 10px">↔ 表格可左右滑動・紫格=Lina贊助・⇄贊助轉出=Lina池轉入球隊帳'+(edit?'・清空格=刪・小計即打即算':'')+'</p>';
+  h+='<p class="sub" style="font-size:10.5px;margin:-6px 0 10px">↔ 表格可左右滑動・紫格=Lina贊助(金額下可填明細)・⇄贊助轉出=Lina池轉入球隊帳'+(edit?'・清空格=刪・小計即打即算':'')+'</p>';
   if(edit){
     h+='<button class="btn" onclick="budTableSave()">💾 儲存表格變更</button>'+
       '<p class="sub" style="font-size:10.5px;margin:-6px 0 10px">新格預設來源=球隊帳;加欄可先選來源。既有格的來源/備註切「執行進度」用 ✎ 調整</p>';
   }
   return h;
 }
-var budNewCellSrc='球隊帳';
+function budCatSrcOf(c){
+  for(var i=0;i<budExtraCats.length;i++) if(budExtraCats[i].c===c) return budExtraCats[i].src;
+  return null;
+}
 function budFocusAct(){
   var i=document.getElementById('budNewAct');
   if(i){ if(i.scrollIntoView) i.scrollIntoView({behavior:'smooth',block:'center'}); i.focus(); }
@@ -1099,16 +1106,21 @@ function budAddAct(){
 }
 function budAddCat(){
   var c=document.getElementById('budNewCat').value;
-  budNewCellSrc=document.getElementById('budNewCatSrc').value;
+  var s=document.getElementById('budNewCatSrc').value;
   if(budDirty() && !confirm('加欄會重畫表格,未儲存的變更將捨棄。先儲存再加欄較安全。仍要繼續?')) return;
-  budExtraCats.push(c); renderBudget();
+  budExtraCats.push({c:c,src:s}); renderBudget();
 }
 function budCells(){ return Array.prototype.slice.call(document.querySelectorAll('#budBody [data-bcell]')); }
 function budDirty(){
-  return budCells().some(function(inp){
+  var d = budCells().some(function(inp){
     var o=budOrig[inp.getAttribute('data-bcell')], v=inp.value.trim();
     var amt=v===''?0:Number(v);
     return o ? amt!==o.amt : amt>0;
+  });
+  if(d) return true;
+  return Array.prototype.slice.call(document.querySelectorAll('#budBody [data-bnote]')).some(function(inp){
+    var o=budOrig[inp.getAttribute('data-bnote')];
+    return (o?String(o.note||''):'') !== inp.value.trim();
   });
 }
 function budTableWire(){
@@ -1133,16 +1145,21 @@ function budRecalc(){ /* 定點更新小計,不重建任何輸入元素 */
 }
 function budTableSave(){
   var ops=[];
+  var noteMap={};
+  Array.prototype.forEach.call(document.querySelectorAll('#budBody [data-bnote]'),function(inp){
+    noteMap[inp.getAttribute('data-bnote')]=inp.value.trim();
+  });
   budCells().forEach(function(inp){
     var key=inp.getAttribute('data-bcell'), o=budOrig[key];
     var v=inp.value.trim(), amt=v===''?0:Number(v);
     if(!(amt>=0)){ return; }
     var k=key.split('␟'), a=k[0], c=k[1];
+    var nt=(key in noteMap)?noteMap[key]:(o?o.note:'');
     if(o){
       if(amt<=0) ops.push({op:'del', row:o.row});
-      else if(amt!==o.amt) ops.push({op:'set', row:o.row, act:a, cat:c, amt:amt, src:o.src, note:o.note});
+      else if(amt!==o.amt || nt!==String(o.note||'')) ops.push({op:'set', row:o.row, act:a, cat:c, amt:amt, src:o.src, note:nt});
     } else if(amt>0){
-      ops.push({op:'set', act:a, cat:c, amt:amt, src:(budExtraCats.indexOf(c)>-1?budNewCellSrc:'球隊帳'), note:''});
+      ops.push({op:'set', act:a, cat:c, amt:amt, src:(budCatSrcOf(c)||'球隊帳'), note:nt||''});
     }
   });
   if(!ops.length){ toast('沒有變更'); return; }
