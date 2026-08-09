@@ -83,7 +83,7 @@ body.appOn{padding-bottom:92px}
 <div id="vchOverlay" style="display:none;position:fixed;inset:0;background:#fff;z-index:80;overflow-y:auto;padding:calc(14px + env(safe-area-inset-top)) 14px 90px">
   <div class="vchBtns" style="display:flex;gap:8px;max-width:560px;margin:0 auto 12px">
     <button class="ghost" style="flex:1;margin:0" onclick="closeVchOverlay()">✕ 關閉</button>
-    <button class="btn" style="flex:2;margin:0" onclick="printVchDoc()">🖨 列印 / 存 PDF</button>
+    <button class="btn" style="flex:2;margin:0" onclick="toast('⏳ 準備票面…');printVchDoc()">🖨 列印 / 存 PDF</button>
   </div>
   <div id="vchDoc"></div>
 </div>
@@ -136,7 +136,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10i</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10j</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -254,7 +254,7 @@ body.appOn{padding-bottom:92px}
       <div id="ovPills" style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff"></div>
       <div id="ovSub" style="display:none;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:8px;background:#fff"></div>
     </div>
-    <button class="ghost" style="margin:8px 0;padding:9px;font-size:13px" onclick="printReport()">🖨 匯出 PDF(表格版,可預覽/儲存/傳送)</button>
+    <button class="ghost" style="margin:8px 0;padding:9px;font-size:13px" onclick="toast('⏳ 準備報表…');printReport()">🖨 匯出 PDF(表格版,可預覽/儲存/傳送)</button>
     <div id="ovBody"></div>
   </div>
 
@@ -329,6 +329,8 @@ function api(payload){
     .then(function(r){return r.json()})
     .then(function(j){ if(!j.ok) throw new Error(j.error); return j; });
 }
+window.onerror=function(msg,src,line){ try{ toast('⚠️ 程式錯誤:'+msg+' @'+line, 6000); }catch(e){} return false; };
+window.addEventListener('unhandledrejection',function(ev){ try{ toast('⚠️ 未處理錯誤:'+(ev.reason&&ev.reason.message||ev.reason), 6000); }catch(e){} });
 function toast(msg,ms){ var t=document.getElementById('toast'); t.textContent=msg; t.style.display='block';
   clearTimeout(t._h); t._h=setTimeout(function(){t.style.display='none'},ms||2200); }
 function money(n){ return n.toLocaleString('zh-Hant'); }
@@ -841,9 +843,11 @@ function pdfReady(url, name){
 function pdfBarClose(){ document.getElementById('pdfBar').style.display='none'; }
 
 function printVchDoc(){
-  var r = curVchId ? (lastData.recent||[]).filter(function(x){ return x.id===curVchId; })[0] : null;
-  var html = r ? vchDocHtml(r, true) : document.getElementById('vchDoc').innerHTML;
-  elementToPdf(html, '傳票_'+(curVchId||tpDate())+'.pdf');
+  try{
+    var r = curVchId ? (lastData.recent||[]).filter(function(x){ return x.id===curVchId; })[0] : null;
+    var html = r ? vchDocHtml(r, true) : document.getElementById('vchDoc').innerHTML;
+    elementToPdf(html, '傳票_'+(curVchId||tpDate())+'.pdf');
+  }catch(e){ toast('⚠️ 票面組版失敗:'+e.message, 6000); }
 }
 function _oldPrintVchDoc(){
   document.body.classList.add('vchPrint');
@@ -857,6 +861,7 @@ function _oldPrintVchDoc(){
 }
 
 function printReport(){
+  try{
   if(!lastData){ toast('資料載入中'); return; }
   var o=lastData.overview, bal=lastData.balances;
   var rows=(lastData.recent||[]).filter(function(r){ return !r.voided; });
@@ -926,6 +931,7 @@ function printReport(){
         .replace(/<td /g,'<td style="border:1px solid #999;padding:5px 8px" ')
         .replace(/<td>/g,'<td style="border:1px solid #999;padding:5px 8px">');
   elementToPdf(stage, '財務報表_'+tpDate()+'.pdf');
+  }catch(e){ toast('⚠️ 報表組表失敗:'+e.message, 6000); }
   return;
   var w={document:{write:function(){},close:function(){}},print:function(){}};
   w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>高球隊財務報表</title><style>'+
