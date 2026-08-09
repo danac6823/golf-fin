@@ -155,7 +155,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-11n</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-12p</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -190,6 +190,7 @@ body.appOn{padding-bottom:92px}
       <input type="date" id="amDate">
       <select id="amStatus"><option>規劃中</option><option>進行中</option><option>已結案</option></select>
       <select id="amTeam"><option value="">隊伍(選填,僅分組顯示)</option><option>創主班</option><option>創12</option><option>共用</option></select>
+      <input type="number" id="amHeads" inputmode="numeric" placeholder="人數(預算預估擊球人數,選填)">
       <input type="text" id="amNote" placeholder="備註(選填,例:球場/桌數)">
       <button class="btn" onclick="actmSave()">儲存活動</button>
       <div style="display:flex;gap:8px" id="actmEditBtns" class="hide">
@@ -358,10 +359,11 @@ var CATS = ['餐飲','點心/水果/水','代收轉付','雜支','手續費','�
 function tpDate(){
   return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei'}).format(new Date());
 }
-var user=null, cur=null, photoData=null, lastData=null, ovMain='pool', ovView='pools', landed=true, ovActSel=null;
+var user=null, cur=null, photoData=null, lastData=null, ovMain='pool', ovView='pools', landed=true, ovActSel=null, linaTab='sum';
 function setOvMain(t){ ovMain=t; ovActSel=null; renderOverview(); }
+function setLinaTab(t){ linaTab=t; renderOverview(); }
 function ovActBack(){ ovActSel=null; ovMain='pool'; showTab('actm'); } /* 返回活動管理(列表層已拆) */
-var OV_VIEWS=[['pools','📊 總表'],['team','隊伍'],['lina','會長'],['adv','代墊']];
+var OV_VIEWS=[['pools','📊 總表'],['team','隊伍'],['mainv','創主班'],['lina','會長'],['yz','允甄'],['adv','花']];
 
 var MUT_ACTIONS={add:1,'void':1,editEntry:1,reqCreate:1,reqEdit:1,reqCancel:1,reqPay:1,reqClose:1,reqReceipt:1,
   sponsorTransfer:1,directGift:1,reconCommit:1,publishMonth:1,memberConfirm:1,memberSync:1,
@@ -419,7 +421,7 @@ function enter(){
   document.getElementById('urole').textContent = roleName+'(已登入)';
   ovMain = 'pool'; /* 活動切換已拆:報表=帳池視角,活動入口=活動管理頁 */
   ovView = ({'麗娜':'lina','凌華':'adv','允甄':'pools'})[user]; ovActSel=null;
-  detTab = (user==='凌華') ? 'priv' : 'main'; privSub='';
+  detTab = (user==='凌華') ? 'priv' : 'main'; privSub=''; payTab='req';
   budView = (user==='凌華') ? 'table' : 'cards'; budExtraActs=[]; budExtraCats=[];
   entryTab = (user==='凌華') ? 'priv' : 'main';
   renderNav();
@@ -625,6 +627,43 @@ function fyOf(d){ d=Number(d); var y=Math.floor(d/10000), m=Math.floor(d/100)%10
 function attrFy(r){ return r.fy || fyOf(r.date); }
 function fyLabel(fy){ return fy+'/8–'+(fy+1)+'/7 年度'; }
 
+/* 代收未結歸組:按 活動+池 配對代收款/代收轉付,結清(淨0)自動不列 */
+function custodyOpen(){
+  var g={};
+  ((lastData&&lastData.recent)||[]).forEach(function(r){
+    if(r.voided) return;
+    if(r.cat!=='代收款'&&r.cat!=='代收轉付') return;
+    var k=(r.act||'(未標)')+'␟'+r.pool;
+    g[k]=g[k]||{act:r.act||'(未標)',pool:r.pool,c:0,o:0};
+    if(r.cat==='代收款') g[k].c+=(r.income||0); else g[k].o+=(r.expense||0);
+  });
+  return Object.keys(g).map(function(k){ return g[k]; }).filter(function(x){ return x.c-x.o!==0; });
+}
+
+/* 主池會費帳歸集:創主班視角/會費帳對帳共用(app 與 PDF 單一來源) */
+function mainAgg(){
+  var m={fee:0,guest:0,spon:0,sponF:0,intr:0,open:0,cin:0,cout:0,spend:0,inOther:0};
+  ((lastData&&lastData.recent)||[]).forEach(function(r){
+    if(r.voided||r.pool!=='[主]會費池') return;
+    if(r.income>0){
+      if(r.cat==='會費收入') m.fee+=r.income;
+      else if(r.cat==='來賓餐費收入') m.guest+=r.income;
+      else if(r.cat==='贊助收入'){ if(String(r.ref||'').charAt(0)==='F') m.sponF+=r.income; else m.spon+=r.income; }
+      else if(r.cat==='利息') m.intr+=r.income;
+      else if(r.cat==='移交款') m.open+=r.income;
+      else if(r.cat==='代收款') m.cin+=r.income;
+      else m.inOther+=r.income;
+    }
+    if(r.expense>0){
+      if(r.cat==='代收轉付') m.cout+=r.expense;
+      else m.spend+=r.expense;
+    }
+  });
+  m.inSum=m.fee+m.guest+m.spon+m.sponF+m.intr+m.open+m.cin+m.inOther;
+  m.outSum=m.spend+m.cout;
+  return m;
+}
+
 /* R2 性質軸:全站唯一金流種類判定,所有加總表共用,不再各寫各的排除條件
    income/expense=真收支|transfer=池間移轉(調撥、贊助轉出↔F12轉入)|passthru=過手錢|opening=期初移交|gift=池外直付 */
 function flowKind(r){
@@ -644,14 +683,18 @@ function aggTables(){
   });
   /* R3 隊伍歸屬:值域補齊(待分類/Lina私用有額才列),只計真支出;直付按隊列示不入池合計 */
   var teams=['創12','創主班','共用','待分類','Lina私用'].map(function(tm){
-    var mn=0,pv=0,gf=0; rows.forEach(function(r){
+    var mn=0,pvL=0,pvP=0,gf=0; rows.forEach(function(r){
       if(r.team!==tm) return;
       var k=flowKind(r);
-      if(k==='expense'&&r.expense>0){ if(r.pool==='[主]會費池') mn+=r.expense; else pv+=r.expense; }
+      if(k==='expense'&&r.expense>0){
+        if(r.pool==='[主]會費池') mn+=r.expense;
+        else if(r.pool==='[私]Lina贊助池') pvL+=r.expense;
+        else pvP+=r.expense;
+      }
       if(k==='gift'&&r.expense>0) gf+=r.expense;
     });
-    return {t:tm, mn:mn, pv:pv, gf:gf};
-  }).filter(function(x){ return x.mn||x.pv||x.gf||['創12','創主班','共用'].indexOf(x.t)>=0; });
+    return {t:tm, mn:mn, pvL:pvL, pvP:pvP, pv:pvL+pvP, gf:gf};
+  }).filter(function(x){ return x.mn||x.pv||x.gf||['創12','創主班'].indexOf(x.t)>=0; }); /* 共用/待分類/Lina私用:有額才現身 */
   /* R4 活動軸:只認真收支;移轉/過手/期初不入活動表 */
   var g={};
   rows.forEach(function(r){
@@ -987,13 +1030,20 @@ function stageDocHtml(subT, html){
     html.replace(/<h3>/g,'<h3 style="font-size:14px;margin:16px 0 6px;border-left:4px solid #1F3864;padding-left:8px">')
         .replace(/<table>/g,'<table style="border-collapse:collapse;width:100%;font-size:12px">')
         .replace(/<th>/g,'<th style="border:1px solid #999;padding:5px 7px;background:#EFF3F8;text-align:left">')
+        .replace(/<tr class="tt">/g,'<tr style="background:#EFF3F8;font-weight:bold">')   /* 合計/總計列 */
+        .replace(/<tr class="kk">/g,'<tr style="background:#FFF3D6;font-weight:bold">')   /* 最終關鍵數 */
         .replace(/<td /g,'<td style="border:1px solid #999;padding:5px 7px" ')
-        .replace(/<td>/g,'<td style="border:1px solid #999;padding:5px 7px">');
+        .replace(/<td>/g,'<td style="border:1px solid #999;padding:5px 7px">')
+        .replace(/<td style="border:1px solid #999;padding:5px 7px" class="lc">/g,
+                 '<td style="border:1px solid #999;padding:5px 7px;background:#EDE7FD;text-align:right">') /* Lina贊助格紫底 */
+        .replace(/<td style="border:1px solid #999;padding:5px 7px" class="sb">/g,
+                 '<td style="border:1px solid #999;padding:5px 7px;background:#E8EDF5;text-align:right">'); /* 球隊帳小計欄 */
 }
 /* 預覽優先(與傳票同模式):報表組好即開站內浮層,零等待;PDF 於浮層內按匯出才產生 */
 var docPending=null;
-function pdfStageOut(subT, html, fname){
+function pdfStageOut(subT, html, fname, opts){
   var staged=stageDocHtml(subT, html);
+  if(opts&&opts.landscape) staged='<style>@page{size:A4 landscape;margin:10mm} th,td{white-space:nowrap} td span{white-space:normal}</style>'+staged;
   var stage=document.getElementById('pdfStage');
   if(!stage){
     stage=document.createElement('div'); stage.id='pdfStage';
@@ -1003,6 +1053,7 @@ function pdfStageOut(subT, html, fname){
   stage.innerHTML=staged; /* 離屏暫存:內容=匯出內容,測試與 PDF 同源 */
   docPending={html:staged, name:fname};
   document.getElementById('docOvTitle').textContent='📄 '+subT;
+  document.getElementById('docOvBody').style.maxWidth=(opts&&opts.landscape)?'1050px':'600px'; /* 橫式預覽同寬 */
   document.getElementById('docOvBody').innerHTML=staged;
   document.getElementById('docOverlay').style.display='block';
 }
@@ -1013,48 +1064,89 @@ function _T(title, heads, body){
   return '<h3>'+title+'</h3><table><thead><tr>'+heads.map(function(x){return '<th>'+x+'</th>'}).join('')+'</tr></thead><tbody>'+body+'</tbody></table>';
 }
 function _asc(rs){ return rs.slice().sort(function(a,b){ return (a.date-b.date)||(a.id<b.id?-1:1); }); }
-function _detTable(title, rs, withPool){
-  /* 明細一律日期升冪(最新在最下) */
+function _detTable(title, rs, withPool, balMap){
+  /* 明細一律日期升冪(最新在最下);狀態/收款方式附註同 app 明細列;balMap 給定時帶流水餘額欄 */
   var tr=_asc(rs).map(function(r){
+    var mk='';
+    if(r.status==='待對帳') mk='・⏳待對帳'; else if(r.status==='待存入') mk='・💰待存入';
+    else if(r.status==='待撥入確認') mk='・💸待撥入'; else if(r.status==='已對帳') mk='・✓已對帳';
+    else if(r.status==='已撥入') mk='・✓已撥入';
+    if(r.method&&r.method!=='匯款'&&r.income>0) mk+='・💵'+esc(r.method);
     return '<tr><td>'+d8fmt(r.date)+'</td>'+(withPool?'<td>'+esc(String(r.pool).replace(/^\[.\]/,''))+'</td>':'')+
-      '<td>'+esc(r.team)+'</td><td>'+esc(r.cat)+'</td><td>'+esc(r.desc)+(r.act?'|🎯'+esc(r.act):'')+'</td>'+
-      _num(r.income)+_num(r.expense)+'</tr>';
+      '<td>'+esc(r.team)+'</td><td>'+esc(r.cat)+'</td><td>'+esc(r.desc)+(r.act?'|🎯'+esc(r.act):'')+mk+'</td>'+
+      _num(r.income)+_num(r.expense)+(balMap?_num(balMap[r.id]||0):'')+'</tr>';
   }).join('');
   var heads=withPool?['日期','池','隊伍','類別','明細','收入','支出']:['日期','隊伍','類別','明細','收入','支出'];
+  if(balMap) heads=heads.concat(['餘額 NT$']);
   return _T(title+'(依日期升冪,共 '+rs.length+' 筆)', heads, tr||'<tr><td colspan="'+heads.length+'">無資料</td></tr>');
 }
 /* R8 同構:活動彙總/隊伍歸屬 PDF 組表器,與 app 同吃 aggTables(),結構一體 */
+/* 6/9 裁定:依隊伍分組(同活動管理頁)・帶狀態欄・未標活動置底・表尾合計 */
 function _actT(acts){
-  return _T('活動彙總(只計真收支,無餘額概念)',['活動','收入','支出','淨支出 NT$'],
-    acts.map(function(x){ return '<tr><td>'+esc(x.a)+'</td>'+_num(x.i)+_num(x.o)+_num(x.o-x.i)+'</tr>'; }).join('')||'<tr><td colspan="4">無資料</td></tr>');
+  var master={}; ((lastData&&lastData.actMaster)||[]).forEach(function(a){ master[a.name]=a; });
+  var GRP=[['創主班','🔵 創主班'],['創12','🟠 創12'],['共用','🟢 共用'],['','未標隊伍(建議建檔)']];
+  var unl=null, byTeam={};
+  acts.forEach(function(x){
+    if(x.a==='(未標活動)'){ unl=x; return; }
+    var tm=(master[x.a]&&master[x.a].team)||'';
+    (byTeam[tm]=byTeam[tm]||[]).push(x);
+  });
+  var ti=0,to=0, body='';
+  function actRow(x){
+    ti+=x.i; to+=x.o;
+    var st=(master[x.a]&&master[x.a].status)||'—';
+    return '<tr><td>'+esc(x.a)+'</td><td>'+esc(st)+'</td>'+_num(x.i)+_num(x.o)+_num(x.o-x.i)+'</tr>';
+  }
+  GRP.forEach(function(g){
+    var list=byTeam[g[0]]||[]; if(!list.length) return;
+    body+='<tr class="tt"><td colspan="2">'+g[1]+'</td><td></td><td></td><td></td></tr>';
+    list.forEach(function(x){ body+=actRow(x); });
+  });
+  if(unl){
+    body+='<tr class="tt"><td colspan="2">(未標活動)・置底列示</td><td></td><td></td><td></td></tr>'+actRow(unl);
+  }
+  body+='<tr class="kk"><td>合計</td><td></td>'+_num(ti)+_num(to)+_num(to-ti)+'</tr>';
+  return _T('活動彙總(依隊伍分組・只計真收支)',['活動','狀態','收入','支出','淨支出 NT$'],
+    body||'<tr><td colspan="5">無資料</td></tr>');
 }
 function _teamT(teams){
   var tm=0,tp=0,tg=0;
-  var bodyH=teams.map(function(x){ tm+=x.mn; tp+=x.pv;
-    return '<tr><td>'+esc(x.t)+'</td>'+_num(x.mn)+_num(x.pv)+_num(x.mn+x.pv)+'</tr>'; }).join('');
-  var giftH=teams.filter(function(x){return x.gf}).map(function(x){ tg+=x.gf;
-    return '<tr><td>🎁 會長直付・'+esc(x.t)+'(池外)</td><td>—</td>'+_num(x.gf)+_num(x.gf)+'</tr>'; }).join('');
+  var bodyH=teams.map(function(x){ tm+=x.mn; tp+=x.pv; tg+=x.gf;
+    /* 直付=所屬隊伍的縮排次項目(池外,不入池內合計) */
+    return '<tr><td>'+esc(x.t)+'</td>'+_num(x.mn)+_num(x.pv)+_num(x.mn+x.pv)+'</tr>'+
+      (x.gf?'<tr><td>&nbsp;&nbsp;└ 🎁 會長直付(池外)</td><td>—</td>'+_num(x.gf)+_num(x.gf)+'</tr>':'');
+  }).join('');
   return _T('隊伍支出歸屬(球隊帳與私帳側分列)',['隊伍','球隊帳([主]池)','私帳側代付','合計 NT$'],
     bodyH+
     '<tr class="tt"><td>合計(池內真支出)</td>'+_num(tm)+_num(tp)+_num(tm+tp)+'</tr>'+
-    giftH+
     (tg?'<tr class="tt"><td>含直付總計</td>'+_num(tm)+_num(tp+tg)+_num(tm+tp+tg)+'</tr>':''));
 }
 function _linaHtml(rows, o){
   var gift=o.lina.directGift||0, dp=o.lina.directPetty||0, total=o.lina.sponsor+gift+dp, html='';
-  html+=_T('會長贊助總覽',['項目','金額 NT$'],
-    '<tr><td>注入 Lina 贊助池(現金/留用)</td>'+_num(o.lina.sponsor)+'</tr>'+
-    (dp?'<tr><td>直入花零用金池(代收留用等,未經Lina池)</td>'+_num(dp)+'</tr>':'')+
-    '<tr><td>池外直付廠商(隊服等)</td>'+_num(gift)+'</tr>'+
-    '<tr class="tt"><td>贊助貢獻合計</td>'+_num(total)+'</tr>');
-  html+=_T('資金流向',['流向','金額 NT$'],
+  html+=_T('會長贊助總覽(入池/池外分欄)',['項目','入池','池外 NT$'],
+    '<tr><td>注入 Lina 贊助池(現金/留用)</td>'+_num(o.lina.sponsor)+'<td></td></tr>'+
+    '<tr><td>利息收入(池內滋生,非出資)</td>'+_num(o.lina.interest||0)+'<td></td></tr>'+
+    (dp?'<tr><td>直入花零用金池(代收留用等,未經Lina池)</td>'+_num(dp)+'<td></td></tr>':'')+
+    '<tr><td>池外直付廠商(隊服等)</td><td></td>'+_num(gift)+'</tr>'+
+    '<tr class="tt"><td>合計</td>'+_num(o.lina.sponsor+(o.lina.interest||0)+dp)+_num(gift)+'</tr>'+
+    '<tr class="kk"><td>贊助貢獻合計(不含利息)</td><td></td>'+_num(total)+'</tr>');
+  html+=_T('資金流向(注入+利息=以下合計)',['流向','金額 NT$'],
     '<tr><td>直付創12(禮品/獎品等)</td>'+_num(o.lina.direct12)+'</tr>'+
     '<tr><td>代付創主班</td>'+_num(o.lina.directMain)+'</tr>'+
     '<tr><td>轉入球隊帳</td>'+_num(o.lina.toTeam)+'</tr>'+
     '<tr><td>撥補零用金(創12營運)</td>'+_num(o.lina.toPetty)+'</tr>'+
+    ((o.lina.unclassified||0)>0?'<tr><td>待分類(凌華裁定後歸隊)</td>'+_num(o.lina.unclassified)+'</tr>':'')+
     '<tr><td>私人用途(非隊伍)</td>'+_num(o.lina.privUse||0)+'</tr>'+
-    '<tr><td>池外直付</td>'+_num(gift)+'</tr>'+
-    '<tr class="tt"><td>Lina 池現時結餘</td>'+_num(o.lina.balance)+'</tr>');
+    '<tr class="kk"><td>Lina 池現時結餘</td>'+_num(o.lina.balance)+'</tr>');
+  /* 零用金池現況:會長資金的主要去處,撥補+直入→凌華營運(收支分欄,餘額=收−支閉環) */
+  var pcn=(o.petty.custody||0)-(o.petty.custodyOut||0);
+  html+=_T('零用金池現況(收支分欄)',['項目','收入','支出 NT$'],
+    '<tr><td>撥補累計(自Lina池)</td>'+_num(o.petty.funded||0)+'<td></td></tr>'+
+    (dp?'<tr><td>直入累計(代收留用等)</td>'+_num(dp)+'<td></td></tr>':'')+
+    '<tr><td>代收淨流入(代人保管,非池資金)</td>'+_num(pcn)+'<td></td></tr>'+
+    '<tr><td>累計支出(創12營運)</td><td></td>'+_num(o.petty.spent||0)+'</tr>'+
+    '<tr class="tt"><td>合計</td>'+_num((o.petty.funded||0)+dp+pcn)+_num(o.petty.spent||0)+'</tr>'+
+    '<tr class="kk"><td>零用金池現時餘額(=收合計−支合計)</td><td></td>'+_num(o.petty.balance||0)+'</tr>');
   var gr=rows.filter(function(r){ return r.pool==='[外]會長直付'; });
   if(gr.length) html+=_detTable('池外直付明細', gr, false);
   return html;
@@ -1081,34 +1173,111 @@ function printReport(){
       if(k==='gift'){ gfO2+=r.expense; return; } /* 池外直付列示 */
       ti+=r.income; to2+=r.expense;
       if(r.expense>0){ byCat[r.cat]=(byCat[r.cat]||0)+r.expense; byPool[r.pool]=(byPool[r.pool]||0)+r.expense; } });
+    /* 7/9 裁定:②抬頭帶主檔日期/狀態 ①淨支出琥珀 ⑤預算執行段 ③明細拆真收支/列示 ④出資池留 */
+    var amst=((lastData&&lastData.actMaster)||[]).filter(function(a){ return a.name===ovActSel; })[0];
+    if(amst&&(amst.date||amst.status||amst.team))
+      html+='<p style="font-size:12.5px;color:#444;margin:0 0 6px">🎯 '+esc(ovActSel)+(amst.date?'・'+d8fmt(amst.date):'')+(amst.status?'・'+esc(amst.status):'')+(amst.team?'・'+esc(amst.team):'')+'</p>';
     html+=_T('活動摘要',['項目','金額 NT$'],
       '<tr><td>收入合計</td>'+_num(ti)+'</tr><tr><td>支出合計</td>'+_num(to2)+'</tr>'+
-      '<tr class="tt"><td>淨支出</td>'+_num(to2-ti)+'</tr>'+
-      ((ptI2||ptO2)?'<tr><td>🔁 過手錢(不計入,明細列示)</td><td style="text-align:right">代收 '+money(ptI2)+'・轉付 '+money(ptO2)+'</td></tr>':'')+
+      '<tr class="kk"><td>淨支出</td>'+_num(to2-ti)+'</tr>'+
+      ((ptI2||ptO2)?'<tr><td>🔁 過手錢(不計入,列示於後)</td><td style="text-align:right">代收 '+money(ptI2)+'・轉付 '+money(ptO2)+'</td></tr>':'')+
       ((trI2||trO2)?'<tr><td>↔️ 池間移轉(不計入)</td><td style="text-align:right">入 '+money(trI2)+'・出 '+money(trO2)+'</td></tr>':'')+
       (gfO2?'<tr><td>🎁 會長直付(池外,不計入)</td>'+_num(gfO2)+'</tr>':''));
     html+=_T('支出組成(依類別)',['類別','金額 NT$'],
       Object.keys(byCat).sort(function(a,b){return byCat[b]-byCat[a]}).map(function(c){
         return '<tr><td>'+esc(c)+'</td>'+_num(byCat[c])+'</tr>'; }).join('')||'<tr><td colspan="2">無支出</td></tr>');
-    html+=_T('出資池',['資金池','金額 NT$'],
-      Object.keys(byPool).map(function(p){ return '<tr><td>'+esc(p)+'</td>'+_num(byPool[p])+'</tr>'; }).join('')||'<tr><td colspan="2">—</td></tr>');
-    html+=_detTable('活動明細', rs, true);
+    var budA=(lastData.budget||[]).filter(function(b){ return b.act===ovActSel; });
+    if(budA.length){
+      var bSum=0,aSum=0;
+      html+=_T('預算執行',['項目','來源','編列','實際','達成率'],
+        budA.map(function(b){ var av=budActual(b); bSum+=b.amt; aSum+=av;
+          return '<tr><td>'+esc(b.cat)+'</td><td>'+esc(b.src||'')+'</td>'+_num(b.amt)+_num(av)+'<td>'+budPct(av,b.amt)+'%</td></tr>'; }).join('')+
+        '<tr class="tt"><td>合計</td><td></td>'+_num(bSum)+_num(aSum)+'<td>'+budPct(aSum,bSum)+'%</td></tr>');
+    }
+    var rsReal=rs.filter(function(r){ var k=flowKind(r); return k==='income'||k==='expense'; });
+    var rsOther=rs.filter(function(r){ var k=flowKind(r); return k!=='income'&&k!=='expense'; });
+    html+=_detTable('活動明細(真收支)', rsReal, true);
+    if(rsOther.length) html+=_detTable('過手/移轉/直付列示(不計入)', rsOther, true);
   } else if(ovMain==='act'){
     subT='活動彙總';
     html+=_actT(aggTables().acts);
   } else if(ovView==='lina'){
-    subT='會長視角'; html=_linaHtml(rows,o);
+    subT='會長贊助對帳'; html=_linaHtml(rows,o); /* 命名統一:與麗娜登入匯出同名 */
   } else if(ovView==='team'){
     subT='隊伍支出歸屬';
-    html+=_teamT(aggTables().teams);
-  } else if(ovView==='adv'){
-    subT='私帳代付創主班';
-    var ad=rows.filter(function(r){
-      return flowKind(r)==='expense'&&r.team==='創主班'&&r.expense>0&&r.pool!=='[主]會費池';
+    /* 每隊一表(與 app 隊伍視角同構);三池總表內另保留合併總覽表 */
+    var At2=aggTables(), gT1=0,gT2=0,gT3=0;
+    At2.teams.forEach(function(x){
+      gT1+=x.mn; gT2+=x.pv; gT3+=x.gf;
+      var trs='';
+      if(x.mn) trs+='<tr><td>球隊帳([主]會費池)</td>'+_num(x.mn)+'</tr>';
+      if(x.pvL) trs+='<tr><td>Lina池直付</td>'+_num(x.pvL)+'</tr>';
+      if(x.pvP) trs+='<tr><td>零用金(花池)</td>'+_num(x.pvP)+'</tr>';
+      trs+='<tr class="tt"><td>合計(池內)</td>'+_num(x.mn+x.pv)+'</tr>';
+      if(x.gf){
+        trs+='<tr><td>&nbsp;&nbsp;└ 🎁 會長直付(池外)</td>'+_num(x.gf)+'</tr>'+
+          '<tr class="tt"><td>含直付合計</td>'+_num(x.mn+x.pv+x.gf)+'</tr>';
+      }
+      html+=_T(x.t, ['來源','金額 NT$'], trs);
     });
-    var adSum=0; ad.forEach(function(r){ adSum+=r.expense; });
-    html+=_T('代墊摘要',['項目','金額 NT$'],'<tr class="tt"><td>私帳代付創主班累計</td>'+_num(adSum)+'</tr>');
-    html+=_detTable('代付明細', ad, true);
+    html+=_T('跨隊總計',['項目','金額 NT$'],
+      '<tr class="tt"><td>池內真支出</td>'+_num(gT1+gT2)+'</tr>'+
+      (gT3?'<tr class="tt"><td>含直付總計</td>'+_num(gT1+gT2+gT3)+'</tr>':''));
+    /* 5/9 裁定A:私帳代付創主班逐筆併入隊伍報表當附表 */
+    var adRows=rows.filter(function(r){ return flowKind(r)==='expense'&&r.team==='創主班'&&r.expense>0&&r.pool!=='[主]會費池'; });
+    if(adRows.length) html+=_detTable('附表:私帳代付創主班明細', adRows, true);
+  } else if(ovView==='mainv'){
+    subT='會費帳對帳'; /* 創主班子頁同構:主池會費帳現況 */
+    var M2=mainAgg();
+    html+=_T('會費帳(主池)現況(收支分欄)',['項目','收入','支出 NT$'],
+      '<tr><td>會費收入</td>'+_num(M2.fee)+'<td></td></tr>'+
+      '<tr><td>來賓餐費收入</td>'+_num(M2.guest)+'<td></td></tr>'+
+      '<tr><td>贊助收入(直入主池)</td>'+_num(M2.spon)+'<td></td></tr>'+
+      (M2.sponF?'<tr><td>Lina池轉入(F單成對,池間移轉)</td>'+_num(M2.sponF)+'<td></td></tr>':'')+
+      '<tr><td>利息收入</td>'+_num(M2.intr)+'<td></td></tr>'+
+      '<tr><td>期初移交款(上屆結轉)</td>'+_num(M2.open)+'<td></td></tr>'+
+      (M2.inOther?'<tr><td>其他收入</td>'+_num(M2.inOther)+'<td></td></tr>':'')+
+      ((M2.cin||M2.cout)?'<tr><td>代收款/代收轉付(代人保管)</td>'+_num(M2.cin)+_num(M2.cout)+'</tr>':'')+
+      '<tr><td>支出累計(匯款廠商/球秘等)</td><td></td>'+_num(M2.spend)+'</tr>'+
+      '<tr class="tt"><td>合計</td>'+_num(M2.inSum)+_num(M2.outSum)+'</tr>'+
+      '<tr class="kk"><td>會費池現時餘額(=收合計−支合計)</td><td></td>'+_num(bal['[主]會費池'])+'</tr>');
+    var mPend2=rows.filter(function(r){ return r.pool==='[主]會費池' && (r.status==='待對帳'||r.status==='待存入'); });
+    if(mPend2.length) html+=_detTable('入帳待辦(待對帳/待存入)', mPend2, false);
+  } else if(ovView==='yz'){
+    subT='Lina池對帳'; /* 允甄子頁同構:Lina 贊助池營運現況 */
+    var pendC=rows.filter(function(r){ return r.status==='待撥入確認'; });
+    var yzIn=(o.lina.sponsor||0)+(o.lina.interest||0);
+    var yzOut=(o.lina.toTeam||0)+(o.lina.toPetty||0)+(o.lina.direct12||0)+(o.lina.directMain||0)+(o.lina.unclassified||0)+(o.lina.privUse||0);
+    html+=_T('Lina 贊助池現況(收支分欄)',['項目','收入','支出 NT$'],
+      '<tr><td>累計注入(贊助收入)</td>'+_num(o.lina.sponsor)+'<td></td></tr>'+
+      '<tr><td>利息收入</td>'+_num(o.lina.interest||0)+'<td></td></tr>'+
+      '<tr><td>轉入球隊帳(贊助轉出)</td><td></td>'+_num(o.lina.toTeam||0)+'</tr>'+
+      '<tr><td>撥補零用金</td><td></td>'+_num(o.lina.toPetty||0)+'</tr>'+
+      '<tr><td>Lina池直付(創12 '+money(o.lina.direct12||0)+'|創主班 '+money(o.lina.directMain||0)+')</td><td></td>'+_num((o.lina.direct12||0)+(o.lina.directMain||0))+'</tr>'+
+      ((o.lina.unclassified||0)>0?'<tr><td>待分類(凌華裁定後歸隊)</td><td></td>'+_num(o.lina.unclassified)+'</tr>':'')+
+      ((o.lina.privUse||0)>0?'<tr><td>私人用途(非隊伍)</td><td></td>'+_num(o.lina.privUse)+'</tr>':'')+
+      '<tr class="tt"><td>合計</td>'+_num(yzIn)+_num(yzOut)+'</tr>'+
+      '<tr class="kk"><td>現時餘額(=收合計−支合計)</td><td></td>'+_num(o.lina.balance)+'</tr>');
+    if(pendC.length) html+=_detTable('未結撥補(凌華待確認撥入)', pendC, true);
+  } else if(ovView==='adv'){
+    subT='零用金代墊對帳'; /* 5/9 裁定A:同構 app 花(代墊)視角(原「私帳代付創主班」明細改附於隊伍 PDF) */
+    var cuF=o.petty.custody||0, coF=o.petty.custodyOut||0, cnF=cuF-coF;
+    var np=(o.petty.balance||0)-cnF;
+    html+=_T('零用金代墊現況(收支分欄)',['項目','收入','支出 NT$'],
+      '<tr><td>允甄 已撥補(F 單調撥合計)</td>'+_num(o.petty.funded||0)+'<td></td></tr>'+
+      ((o.lina.directPetty||0)?'<tr><td>麗娜直入贊助(代收留用等)</td>'+_num(o.lina.directPetty)+'<td></td></tr>':'')+
+      '<tr><td>代收款在手(花池,代人保管)</td>'+_num(cnF)+'<td></td></tr>'+
+      '<tr><td>凌華 累計墊付支出(創12 '+money(o.petty.spent12||0)+'|創主班 '+money(o.petty.spentMain||0)+')</td><td></td>'+_num(o.petty.spent||0)+'</tr>'+
+      '<tr class="tt"><td>合計</td>'+_num((o.petty.funded||0)+(o.lina.directPetty||0)+cnF)+_num(o.petty.spent||0)+'</tr>'+
+      '<tr class="tt"><td>現時餘額(=收合計−支合計)</td><td></td>'+_num(o.petty.balance||0)+'</tr>'+
+      '<tr><td>其中:代收在管(非隊款)</td><td></td>'+_num(cnF)+'</tr>'+
+      '<tr class="kk"><td>'+(np<0?'凌華目前墊付中(允甄下次撥補時補足)':'凌華手上隊款(無代墊)')+'</td><td></td>'+_num(Math.abs(np))+'</tr>');
+    /* 代收只列未結:結清(含留用沖銷)自動不列,不讓已結案佔版面 */
+    var opn=custodyOpen();
+    if(opn.length) html+=_T('代收未結明細(結清自動不列)',['活動/標籤','池','代收累計','已轉付','在管 NT$'],
+      opn.map(function(x){ return '<tr><td>'+esc(x.act)+'</td><td>'+esc(String(x.pool).replace(/^\[.\]/,''))+'</td>'+_num(x.c)+_num(x.o)+_num(x.c-x.o)+'</tr>'; }).join(''));
+    var pendF=rows.filter(function(r){ return r.status==='待撥入確認'; });
+    if(pendF.length) html+=_detTable('未結撥補(允甄已撥・凌華待確認撥入)', pendF, true);
   } else {
     subT='三池總表';
     /* 層級化:花零用金池=Lina池子撥款;私帳側合計對消池間撥款;代收在管列示(非球隊資金) */
@@ -1150,8 +1319,9 @@ function printDetail(){
   if(!lastData){ toast('資料載入中'); return; }
   var f=detFilterState(), rs=detFilteredRows(f);
   if(!rs.length){ toast('目前篩選無資料可匯出'); return; }
-  var a=_asc(rs), tin=0, tout=0;
-  rs.forEach(function(r){ tin+=r.income; tout+=r.expense; });
+  var a=_asc(rs), tin=0, tout=0, nTr=0, nPt=0, nGf=0;
+  rs.forEach(function(r){ tin+=r.income; tout+=r.expense;
+    var k=flowKind(r); if(k==='transfer')nTr++; else if(k==='passthru')nPt++; else if(k==='gift')nGf++; });
   var cond=[];
   cond.push(['帳本範圍', f.pools.map(function(p){return String(p).replace(/^\[.\]/,'')}).join('、')]);
   if(detAct) cond.push(['活動', detAct]);
@@ -1167,8 +1337,16 @@ function printDetail(){
     '<tr><td>筆數</td><td>'+rs.length+' 筆(作廢不列入)</td></tr>'+
     '<tr><td>收入合計</td><td style="text-align:right">'+money(tin)+'</td></tr>'+
     '<tr><td>支出合計</td><td style="text-align:right">'+money(tout)+'</td></tr>'+
-    '<tr class="tt"><td>淨額</td><td style="text-align:right">'+money(tin-tout)+'</td></tr>');
-  html+=_detTable('明細', rs, f.pools.length>1);
+    '<tr class="kk"><td>淨額</td><td style="text-align:right">'+money(tin-tout)+'</td></tr>'+
+    ((nTr||nPt||nGf)?'<tr><td>內含性質</td><td>'+(nTr?'↔️移轉 '+nTr+' 筆・':'')+(nPt?'🔁過手 '+nPt+' 筆・':'')+(nGf?'🎁直付 '+nGf+' 筆・':'')+'淨額≠真收支</td></tr>':''));
+  /* 單池且無其他篩選:帶流水餘額欄(同 app 明細頁條件) */
+  var balMap=null;
+  if(f.pools.length===1 && !detAct && !detAll && !f.team && !f.cat && !f.dir && !f.kw){
+    balMap={}; var run=0;
+    (lastData.recent||[]).slice().sort(function(x,y){ return (x.date-y.date)||(x.id<y.id?-1:1); }).forEach(function(r){
+      if(!r.voided && r.pool===f.pools[0]){ run+=r.income-r.expense; balMap[r.id]=run; } });
+  }
+  html+=_detTable('明細', rs, f.pools.length>1, balMap);
   var scope = (f.pools.length>1?'跨帳':String(f.pools[0]).replace(/^\[.\]/,'').replace('池',''))+
     (detAct?('_'+detAct):'')+(f.cat?('_'+f.cat):'')+(f.team?('_'+f.team):'')+(f.fySel?('_'+f.fySel):'');
   pdfStageOut('帳本明細', html, pdfName('明細', scope));
@@ -1176,6 +1354,62 @@ function printDetail(){
 }
 
 /* 預算頁匯出:雙總覽摘要+依活動執行進度(=給麗娜的贊助對帳輸出) */
+/* 年度預算編列表(裁定:與執行進度拆成兩份 PDF):活動×類別矩陣+雙來源小計 */
+function printBudgetPlan(){
+  try{
+  if(!lastData){ toast('資料載入中'); return; }
+  var rows=(lastData.budget||[]);
+  if(!rows.length){ toast('尚無預算資料可匯出'); return; }
+  var acts={}, order=[];
+  rows.forEach(function(b){ if(!acts[b.act]){ acts[b.act]=1; order.push(b.act); } });
+  var mstB={}; ((lastData.actMaster)||[]).forEach(function(a){ mstB[a.name]=a; });
+  order.sort(function(x,y){
+    var dx=(mstB[x]&&mstB[x].date)||'99999999', dy=(mstB[y]&&mstB[y].date)||'99999999';
+    return dx<dy?-1:(dx>dy?1:0);
+  });
+  var html='';
+  /* 矩陣:欄依來源分組(球隊帳欄群→球隊帳小計→Lina欄群→Lina小計→總計);人數=主檔;格內帶明細;A4橫式 */
+  var catT=[], catL=[];
+  rows.forEach(function(b){
+    if(b.src==='Lina贊助'){ if(catL.indexOf(b.cat)<0) catL.push(b.cat); }
+    else { if(catT.indexOf(b.cat)<0) catT.push(b.cat); }
+  });
+  function ordCats(arr){ var out=BUD_DEF_CATS.filter(function(x){return arr.indexOf(x)>-1;}); arr.forEach(function(x){ if(out.indexOf(x)<0) out.push(x); }); return out; }
+  catT=ordCats(catT); catL=ordCats(catL);
+  var mc={};
+  rows.forEach(function(b){ var g=(b.src==='Lina贊助')?'L':'T', k=g+'␟'+b.act+'␟'+b.cat;
+    mc[k]=mc[k]||{amt:0,notes:[]}; mc[k].amt+=b.amt; if(b.note) mc[k].notes.push(b.note); });
+  function mTd(g,a2,cx){
+    var x=mc[g+'␟'+a2+'␟'+cx];
+    if(!x) return (g==='L'?'<td class="lc"></td>':'<td></td>');
+    var nt=x.notes.length?'<br><span style="font-size:9px;color:#555">'+esc(x.notes.join('・'))+'</span>':'';
+    return (g==='L'?'<td class="lc">':'<td>')+money(x.amt)+nt+'</td>';
+  }
+  var colTot={};
+  function addT(k,v){ colTot[k]=(colTot[k]||0)+v; }
+  var mBody=order.map(function(a2){
+    var rT=0,rL=0,tds='';
+    catT.forEach(function(cx){ var x=mc['T␟'+a2+'␟'+cx]; if(x){ rT+=x.amt; addT('T'+cx,x.amt); } tds+=mTd('T',a2,cx); });
+    tds+='<td class="sb">'+(rT?money(rT):'')+'</td>';
+    catL.forEach(function(cx){ var x=mc['L␟'+a2+'␟'+cx]; if(x){ rL+=x.amt; addT('L'+cx,x.amt); } tds+=mTd('L',a2,cx); });
+    addT('_T',rT); addT('_L',rL);
+    var hd=(mstB[a2]&&mstB[a2].heads)||'';
+    return '<tr><td>'+esc(a2)+'</td><td>'+(hd?esc(hd):'—')+'</td>'+tds+'</tr>';
+  }).join('');
+  /* 裁定:不出總合計列,底部=雙小計列(球隊帳/Lina 各一列) */
+  mBody+='<tr class="tt"><td>小計・球隊帳</td><td></td>'+
+    catT.map(function(cx){ return '<td>'+(colTot['T'+cx]?money(colTot['T'+cx]):'')+'</td>'; }).join('')+
+    '<td class="sb">'+money(colTot['_T']||0)+'</td>'+
+    catL.map(function(){ return '<td></td>'; }).join('')+'</tr>';
+  mBody+='<tr style="background:#EDE7FD;font-weight:bold"><td>小計・Lina贊助</td><td></td>'+
+    catT.map(function(){ return '<td></td>'; }).join('')+'<td class="sb"></td>'+
+    catL.map(function(cx){ return '<td>'+(colTot['L'+cx]?money(colTot['L'+cx]):'')+'</td>'; }).join('')+'</tr>';
+  var mHead=['活動','人數'].concat(catT).concat(['球隊帳小計']).concat(catL.map(function(cx){ return cx+'(L)'; }));
+  html+=_T('預算矩陣(列=活動・人數=預估擊球人數・紫底=Lina贊助・金額下小字=明細)', mHead, mBody);
+  pdfStageOut('年度預算|編列表', html, pdfName('預算編列',''), {landscape:true});
+  }catch(e){ toast('⚠️ 編列表組表失敗:'+e.message, 6000); }
+}
+
 function printBudget(){
   try{
   if(!lastData){ toast('資料載入中'); return; }
@@ -1187,6 +1421,12 @@ function printBudget(){
     if(tot[b.src]){ tot[b.src].b+=b.amt; tot[b.src].a+=b._a; }
     if(!acts[b.act]){ acts[b.act]=[]; order.push(b.act); }
     acts[b.act].push(b);
+  });
+  /* 9/9 裁定⑤:活動按主檔日期排序(無日期者殿後,維持原相對順序) */
+  var mstB={}; ((lastData.actMaster)||[]).forEach(function(a){ mstB[a.name]=a; });
+  order.sort(function(x,y){
+    var dx=(mstB[x]&&mstB[x].date)||'99999999', dy=(mstB[y]&&mstB[y].date)||'99999999';
+    return dx<dy?-1:(dx>dy?1:0);
   });
   var html='';
   html+=_T('總覽|預算 vs 執行',['資金來源','預算','已執行','達成率'],
@@ -1206,13 +1446,23 @@ function printBudget(){
     Object.keys(merged).forEach(function(mk){
       shown.push({cat:BUD_MERGE.label,src:mk,amt:merged[mk].amt,_a:merged[mk]._a,note:merged[mk].notes.join('・')});
     });
-    html+=_T('🎯 '+a2,['類別','來源','明細','預算','實際','達成率'],
+    /* ②表頭帶主檔日期/狀態+表尾小計 ③超支整列淡紅底 */
+    var mB=mstB[a2], sB=0, sA=0;
+    var titleB='🎯 '+a2+(mB&&mB.date?'・'+d8fmt(mB.date):'')+(mB&&mB.status?'・'+mB.status:'');
+    html+=_T(titleB,['類別','來源','明細','預算','實際','達成率'],
       shown.map(function(b){
-        var pct=budPct(b._a,b.amt);
-        return '<tr><td>'+esc(b.cat)+'</td><td>'+b.src+'</td><td>'+esc(b.note||'—')+'</td>'+_num(b.amt)+_num(b._a)+
+        var pct=budPct(b._a,b.amt); sB+=b.amt; sA+=b._a;
+        return '<tr'+(pct>100?' style="background:#FCEBEB"':'')+'><td>'+esc(b.cat)+'</td><td>'+b.src+'</td><td>'+esc(b.note||'—')+'</td>'+_num(b.amt)+_num(b._a)+
           '<td style="text-align:right'+(pct>100?';color:#C0392B;font-weight:700':'')+'">'+pct+'%</td></tr>';
-      }).join(''));
+      }).join('')+
+      '<tr class="tt"><td>小計</td><td></td><td></td>'+_num(sB)+_num(sA)+'<td>'+budPct(sA,sB)+'%</td></tr>');
   });
+  /* ④漏編列預警:有真實支出、預算表完全沒編的活動(未標活動除外) */
+  var unbud=aggTables().acts.filter(function(x){ return x.a!=='(未標活動)' && x.o>0 && !acts[x.a]; });
+  if(unbud.length){
+    html+=_T('⚠ 未編列活動(有支出、無預算)',['活動','實際支出 NT$'],
+      unbud.map(function(x){ return '<tr style="background:#FCEBEB"><td>'+esc(x.a)+'</td>'+_num(x.o)+'</tr>'; }).join(''));
+  }
   pdfStageOut('年度預算|執行進度', html, pdfName('預算執行',''));
   }catch(e){ toast('⚠️ 預算組表失敗:'+e.message, 6000); }
 }
@@ -1290,7 +1540,7 @@ function renderActm(){
       (a.team&&TM_COL[a.team]?'<span style="background:'+TM_COL[a.team][0]+';color:'+TM_COL[a.team][1]+';border-radius:6px;padding:1px 7px;font-size:10.5px">'+esc(a.team)+'</span>':'')+
       (edit?'<button class="ghost" data-actedit="'+a.row+'" style="width:auto;padding:2px 9px;margin:0;font-size:11px">✎</button>':'')+
       '</div>'+
-      '<p class="sub" style="font-size:11px;margin-top:2px">'+(a.date?d8fmt(a.date)+'・':'')+
+      '<p class="sub" style="font-size:11px;margin-top:2px">'+(a.date?d8fmt(a.date)+'・':'')+(a.heads?'👥'+esc(a.heads)+'人・':'')+
         '收 '+money(s.i)+'・支 '+money(s.o)+'・淨 '+money(s.i-s.o)+(s.reqs?'・請款 '+s.reqs+' 張':'')+
         (a.note?'・'+esc(a.note):'')+'</p>'+
       (s.bud>0?'<div style="display:flex;align-items:center;gap:8px;margin-top:5px">'+
@@ -1345,6 +1595,7 @@ function actmOpenEdit(row){
   document.getElementById('amStatus').value=a.status;
   document.getElementById('amTeam').value=a.team||'';
   document.getElementById('amNote').value=a.note||'';
+  document.getElementById('amHeads').value=a.heads||'';
   document.getElementById('actmEditBtns').classList.remove('hide');
   var f=document.getElementById('actmForm');
   if(f.scrollIntoView) f.scrollIntoView({behavior:'smooth',block:'center'});
@@ -1353,7 +1604,7 @@ function actmReset(){
   actmEditRow=null;
   document.getElementById('actmFormTitle').textContent='➕ 新增活動';
   document.getElementById('actmFormHint').textContent='建檔後全站活動欄可下拉選,避免同活動打成兩個名字';
-  ['amName','amDate','amNote'].forEach(function(i){document.getElementById(i).value='';});
+  ['amName','amDate','amNote','amHeads'].forEach(function(i){document.getElementById(i).value='';});
   document.getElementById('amStatus').value='規劃中';
   document.getElementById('amTeam').value='';
   document.getElementById('actmEditBtns').classList.add('hide');
@@ -1365,6 +1616,7 @@ function actmSave(){
     date:document.getElementById('amDate').value.replace(/-/g,''),
     status:document.getElementById('amStatus').value,
     team:document.getElementById('amTeam').value,
+    heads:document.getElementById('amHeads').value.trim(),
     note:document.getElementById('amNote').value.trim()}}).then(function(j){
     var rt=j.retag||{};
     var moved=(rt.led||0)+(rt.req||0)+(rt.bud||0);
@@ -1388,6 +1640,13 @@ function actmDel(){
 
 /* ============ 年度預算 ============ */
 var budEditRow=null;
+var budEditMode=true; /* 編列格網:編輯/檢視切換 */
+function budToggleEdit(){
+  if(budEditMode && typeof budDirty==='function' && budDirty()){
+    if(!confirm('表格有未儲存的變更,切換檢視將捨棄。確定?')) return;
+  }
+  budEditMode=!budEditMode; renderBudget();
+}
 var BUD_POOL={'球隊帳':'[主]會費池','Lina贊助':'[私]Lina贊助池'};
 var BUD_COL={'球隊帳':['#EFF6FD','#0C447C'],'Lina贊助':['#F4F3FE','#3C3489']};
 function budActual(b){
@@ -1410,10 +1669,14 @@ function renderBudget(){
   if(!bc.options.length) bc.innerHTML=CATS.map(function(c){return '<option>'+c+'</option>'}).join('');
   document.getElementById('budForm').classList.toggle('hide', !(user==='凌華' && budView==='cards'));
   var pills='<div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:10px">'+
-    '<button onclick="setBudView(\'table\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;font-size:13px;'+(budView==='table'?'background:#1F3864;color:#fff':'background:#fff')+'">🧮 表格'+(user==='凌華'?'輸入':'')+'</button>'+
+    '<button onclick="setBudView(\'table\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;font-size:13px;'+(budView==='table'?'background:#1F3864;color:#fff':'background:#fff')+'">🧮 預算編列</button>'+
     '<button onclick="setBudView(\'cards\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;border-left:1px solid var(--line);font-size:13px;'+(budView==='cards'?'background:#1F3864;color:#fff':'background:#fff')+'">📊 執行進度</button>'+
     '</div>';
-  var expBtn='<button class="ghost" style="margin:0 0 10px;padding:9px;font-size:13px" onclick="printBudget()">📄 預覽/匯出預算執行(含 Lina 對帳)</button>';
+  var expBtn='<div style="display:flex;gap:8px;margin:0 0 10px">'+
+    '<button class="ghost" style="flex:1;margin:0;padding:9px;font-size:12.5px" onclick="printBudgetPlan()">📄 預覽/匯出編列表(矩陣)</button>'+
+    '<button class="ghost" style="flex:1;margin:0;padding:9px;font-size:12.5px" onclick="printBudget()">📄 預覽/匯出執行進度(Lina 對帳)</button>'+
+    ((user==='凌華'&&budView==='table')?'<button class="ghost" style="width:auto;margin:0;padding:9px 10px;font-size:12.5px" onclick="budToggleEdit()">'+(budEditMode?'👁 檢視':'✎ 編輯')+'</button>':'')+
+    '</div>';
   if(budView==='table'){ el.innerHTML = pills + expBtn + budTableHtml(); budTableWire(); return; }
   el.innerHTML = pills + expBtn + budCardsHtml();
 }
@@ -1451,8 +1714,9 @@ function budMatrix(){
   tail.sort(function(a,b){ var ia=ref.indexOf(a), ib=ref.indexOf(b); ia=ia<0?99:ia; ib=ib<0?99:ib; return ia-ib||String(a).localeCompare(b); });
   return { acts:acts, cats:defShown.concat(cats.filter(function(c){ return defShown.indexOf(c)<0; })), map:map };
 }
+function budHeadOf(a){ var m=((lastData&&lastData.actMaster)||[]).filter(function(x){return x.name===a;})[0]; return m?(m.heads||''):''; }
 function budTableHtml(){
-  var M=budMatrix(), edit=(user==='凌華');
+  var M=budMatrix(), edit=(user==='凌華'&&budEditMode);
   budOrig={};
   var TH2='padding:8px 6px;border-bottom:1px solid var(--line);border-right:1px solid #EEF0F3;background:#EFF3F8;font-weight:600;font-size:12px;white-space:nowrap;text-align:right;';
   var TD2='padding:5px 6px;border-bottom:1px solid #EEF0F3;border-right:1px solid #F3F4F6;text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px;white-space:nowrap;';
@@ -1475,7 +1739,7 @@ function budTableHtml(){
   h+='<div class="card" style="padding:0;overflow:hidden">'+
     '<div class="budScroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch">'+
     '<table style="border-collapse:separate;border-spacing:0;min-width:100%">'+
-    '<thead><tr><th style="'+TH2+STK+'z-index:3">活動</th>'+
+    '<thead><tr><th style="'+TH2+STK+'z-index:3">活動</th><th style="'+TH2+'">人數</th>'+
     M.cats.map(function(c){ return '<th style="'+TH2+(c==='贊助轉出'?'color:#3C3489;':'')+'">'+(c==='贊助轉出'?'⇄':'')+esc(c)+
       (edit?' <span data-bdelcat="'+esc(c)+'" style="color:#B03A3A;cursor:pointer;padding:2px 4px;font-size:11px">✕</span>':'')+'</th>'; }).join('')+
     '<th style="'+TH2+'background:#E8EDF5">球隊帳<br>小計</th>'+
@@ -1487,7 +1751,8 @@ function budTableHtml(){
     var rowT=0, rowL=0;
     h+='<tr><th style="'+TH2+STK+'font-size:12.5px">'+
       (edit?'<span style="display:flex;align-items:center;gap:2px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis">'+esc(a)+'</span>'+
-        '<span data-bdelact="'+esc(a)+'" style="color:#B03A3A;cursor:pointer;padding:2px 4px;font-size:11px">✕</span></span>':esc(a))+'</th>';
+        '<span data-bdelact="'+esc(a)+'" style="color:#B03A3A;cursor:pointer;padding:2px 4px;font-size:11px">✕</span></span>':esc(a))+'</th>'+
+      '<td style="'+TD2+'color:#556;text-align:center">'+((budHeadOf(a))?esc(budHeadOf(a)):'—')+'</td>';
     M.cats.forEach(function(c){
       var b=M.map[a+'␟'+c], val=b?b.amt:'', key=a+'␟'+c;
       budOrig[key]=b?{row:b.row,amt:b.amt,src:b.src,note:b.note}:null;
@@ -1515,20 +1780,20 @@ function budTableHtml(){
       (edit?'<td style="'+TD2+'"></td>':'')+'</tr>';
   });
   if(edit){
-    h+='<tr><td colspan="'+(M.cats.length+3)+'" style="padding:0">'+
+    h+='<tr><td colspan="'+(M.cats.length+4)+'" style="padding:0">'+
       '<button class="ghost" style="width:100%;margin:0;border:none;border-radius:0;padding:11px;font-size:13px;color:#1F3864" onclick="budFocusAct()">＋ 新增活動列</button></td></tr>';
   }
   h+='</tbody><tfoot>'+
-    '<tr><th style="'+TH2+STK+'background:#E8EDF5;z-index:3">合計・球隊帳</th>'+
+    '<tr><th style="'+TH2+STK+'background:#E8EDF5;z-index:3">合計・球隊帳</th><td style="'+TD2+'background:#E8EDF5"></td>'+
     M.cats.map(function(c){ return '<td style="'+TD2+'background:#E8EDF5;font-weight:700" data-bcsum-t="'+esc(c)+'">'+money(colT[c]||0)+'</td>'; }).join('')+
     '<td style="'+TD2+'background:#DCE4F0;font-weight:700" data-bgsum-t>'+money(grandT)+'</td>'+
     '<td style="'+TD2+'background:#E8EDF5"></td>'+(edit?'<td style="'+TD2+'background:#E8EDF5"></td>':'')+'</tr>'+
-    '<tr><th style="'+TH2+STK+'background:#E5DEFA;color:#3C3489;z-index:3">合計・Lina贊助</th>'+
+    '<tr><th style="'+TH2+STK+'background:#E5DEFA;color:#3C3489;z-index:3">合計・Lina贊助</th><td style="'+TD2+'background:#E5DEFA"></td>'+
     M.cats.map(function(c){ return '<td style="'+TD2+'background:#E5DEFA;font-weight:700;color:#3C3489" data-bcsum-l="'+esc(c)+'">'+money(colL[c]||0)+'</td>'; }).join('')+
     '<td style="'+TD2+'background:#E5DEFA"></td>'+
     '<td style="'+TD2+'background:#D6CBF6;font-weight:700;color:#3C3489" data-bgsum-l>'+money(grandL)+'</td>'+
     (edit?'<td style="'+TD2+'background:#E5DEFA"></td>':'')+'</tr></tfoot></table></div></div>';
-  h+='<p class="sub" style="font-size:10.5px;margin:-6px 0 10px">↔ 表格可左右滑動・紫底格=Lina贊助(金額下可填明細)・小計/合計依 球隊帳/Lina 分列・餐費欄吸「餐飲」帳・球秘請款單含點心/水果/水:執行進度自動將兩欄併為一條(對球秘請款帳)・出席補助/禮品/Lina格皆可填明細・⇄贊助轉出=Lina池轉入球隊帳'+(edit?'・清空格=刪・小計即打即算':'')+'</p>';
+  h+='<p class="sub" style="font-size:10.5px;margin:-6px 0 10px">↔ 表格可左右滑動・人數=主檔欄位(活動管理表單編輯)・紫底格=Lina贊助(金額下可填明細)・小計/合計依 球隊帳/Lina 分列・餐費欄吸「餐飲」帳・球秘請款單含點心/水果/水:執行進度自動將兩欄併為一條(對球秘請款帳)・出席補助/禮品/Lina格皆可填明細・⇄贊助轉出=Lina池轉入球隊帳'+(edit?'・清空格=刪・小計即打即算':'')+'</p>';
   if(edit){
     h+='<button class="btn" onclick="budTableSave()">💾 儲存表格變更</button>'+
       '<p class="sub" style="font-size:10.5px;margin:-6px 0 10px">新格預設來源=球隊帳;加欄可先選來源。既有格的來源/備註切「執行進度」用 ✎ 調整</p>';
@@ -1685,7 +1950,7 @@ function budTableSave(){
 function budCardsHtml(){
   var rows=(lastData.budget||[]);
   if(!rows.length){
-    return '<div class="card"><p class="sub">尚無預算資料'+(user==='凌華'?',請切「表格輸入」或由下方表單追加':'(由凌華編列)')+'</p></div>';
+    return '<div class="card"><p class="sub">尚無預算資料'+(user==='凌華'?',請切「預算編列」或由下方表單追加':'(由凌華編列)')+'</p></div>';
   }
   var tot={'球隊帳':{b:0,a:0},'Lina贊助':{b:0,a:0}}, acts={}, order=[];
   rows.forEach(function(b){
@@ -2161,6 +2426,11 @@ function styleDetTabs(){
   p.style.background = detTab==='priv' ? '#1F3864' : '#fff';
   p.style.color = detTab==='priv' ? '#fff' : 'var(--txt)';
   document.getElementById('privSubRow').style.display = detTab==='priv' ? 'flex' : 'none';
+  /* 會費帳(主池)隊伍篩選無意義:實務全創主班,隱藏;私帳/跨帳/活動視圖保留 */
+  var tSel=document.getElementById('dTeam');
+  var hideTeam=(detTab==='main' && !detAll && !detAct);
+  if(hideTeam && tSel.value) tSel.value='';
+  tSel.style.display = hideTeam ? 'none' : '';
   var subs=document.getElementById('privSubRow').children;
   var vals=['','[私]Lina贊助池','[私]花零用金池','[外]會長直付'];
   for(var i=0;i<subs.length;i++){
@@ -2674,6 +2944,8 @@ function openReqDetail(ref){
 }
 function closeReqOverlay(){ document.getElementById('reqOverlay').style.display='none'; }
 
+var payTab='req'; /* 付款頁雙頁籤:req=請款單流程、inbox=入帳/撥補待辦 */
+function setPayTab(tb){ payTab=tb; renderReqs(); }
 function incomeConfirmGo(id){
   if(!confirm('確認這筆錢已進銀行戶頭(匯款入帳/現金・LINE Pay 已存入)?確認後狀態改為「已對帳」並通知凌華')) return;
   api({action:'incomeConfirm', txnId:id})
@@ -2715,8 +2987,22 @@ function renderReqs(){
     el.appendChild(d);
   }
 
+  /* 雙頁籤:請款單流程 vs 入帳/撥補待辦(擠版優化裁定) */
+  var inboxN=0;
+  if(user==='允甄') inboxN=(lastData.recent||[]).filter(function(r){ return !r.voided && (r.status==='待存入'||r.status==='待對帳'); }).length;
+  if(user==='凌華') inboxN=(lastData.recent||[]).filter(function(r){ return !r.voided && r.status==='待撥入確認'; }).length;
+  if(user!=='麗娜'){
+    el.insertAdjacentHTML('beforeend',
+      '<div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:10px;background:#fff">'+
+      '<button onclick="setPayTab(\'req\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;font-size:13px;'+(payTab==='req'?'background:#1F3864;color:#fff':'background:#fff')+'">💸 請款單</button>'+
+      '<button onclick="setPayTab(\'inbox\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;border-left:1px solid var(--line);font-size:13px;'+(payTab==='inbox'?'background:#1F3864;color:#fff':'background:#fff')+'">🏦 入帳待辦'+(inboxN?'('+inboxN+')':'')+'</button>'+
+      '</div>');
+  }
+  if(payTab==='inbox' && user!=='麗娜'){
+    btn.classList.add('hide');
+  }
   /* 允甄待辦:①現金/LINE Pay 收款待存入 ②匯款入帳待對帳(確認皆→已對帳並通知凌華) */
-  if(user==='允甄'){
+  if(payTab==='inbox' && user==='允甄'){
     function incCard(r, btnTxt){
       var d=document.createElement('div'); d.className='card';
       d.style.background='#FFFBF0'; d.style.borderColor='#E8D9B0';
@@ -2739,7 +3025,7 @@ function renderReqs(){
     }
   }
   /* 凌華待辦:允甄撥補零用金→一鍵確認撥入(自動成對:花池收入+原列結案) */
-  if(user==='凌華'){
+  if(payTab==='inbox' && user==='凌華'){
     var fundP=(lastData.recent||[]).filter(function(r){ return !r.voided && r.status==='待撥入確認'; });
     if(fundP.length){
       head('💸 允甄已撥補・待你確認撥入('+fundP.length+')', 1, '#8a5a00');
@@ -2754,6 +3040,10 @@ function renderReqs(){
         el.appendChild(d);
       });
     }
+  }
+  if(payTab==='inbox' && user!=='麗娜'){
+    if(!inboxN) el.insertAdjacentHTML('beforeend','<div class="card"><p class="sub">✅ 目前沒有入帳/撥補待辦</p></div>');
+    return; /* 入帳頁籤不渲染請款單群組 */
   }
   var ORDER = user==='允甄'
     ? [['待匯款','⏳ 待你匯款',1],['已匯款','📣 已匯款・待凌華通知廠商',0]]
@@ -2835,11 +3125,12 @@ function buildFlowSvg(o,bal){
   var mainSpend = S(function(r){return r.pool==='[主]會費池'},'expense');
   var netPos = o.petty.balance - ((o.petty.custody||0)-(o.petty.custodyOut||0)); /* 在管淨額=代收−已轉付(花池口徑) */
   var unc=o.teamSpend['待分類'], priv=o.lina.privUse||0, gift=o.lina.directGift||0;
+  var dp=o.lina.directPetty||0; /* 麗娜直入花池贊助(代收留用等,未經Lina池) */
   var extra = (unc>0||priv>0||gift>0);
   var H = extra ? 418 : 362;
   var svg='<svg viewBox="0 0 360 '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">';
   svg+='<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a8f98"/></marker></defs>';
-  svg+=node(8,6,164,50,'#EAF3DE','#27500A','麗娜會長 出資','NT$ '+money(o.lina.sponsor),'',{pool:'[私]Lina贊助池',dir:'in'});
+  svg+=node(8,6,164,50,'#EAF3DE','#27500A','麗娜會長 出資','NT$ '+money(o.lina.sponsor+dp),(dp>0?'注入池 '+money(o.lina.sponsor)+'・直入零用金 '+money(dp):''),{pool:'[私]Lina贊助池',dir:'in'});
   svg+=node(188,6,164,50,'#EAF3DE','#27500A','會員會費+贊助+其他','NT$ '+money(mainFee+mainOther+mainSpon),'會費 '+money(mainFee)+(mainSpon>0?'・贊助 '+money(mainSpon):''),{pool:'[主]會費池',dir:'in'});
   svg+=arrow(90,56,90,92,'',0,0);
   svg+=arrow(270,56,270,92,'',0,0);
@@ -2853,6 +3144,10 @@ function buildFlowSvg(o,bal){
   svg+=arrow(130,148,130,290,'直付 '+money(o.lina.direct12+o.lina.directMain),172,236,false);
   svg+=arrow(270,148,270,290,'匯款廠商/球秘 '+money(mainSpend),270,214);
   svg+=node(8,188,110,56,'#FDEFF4','#B03A73','[私]花零用金(凌華)','NT$ '+money(o.petty.balance),(netPos<0?'代墊中 '+money(-netPos):'含代收在管 '+money((o.petty.custody||0)-(o.petty.custodyOut||0))),{pool:'[私]花零用金池'});
+  if(dp>0){ /* 麗娜→花池直入(走欄間走廊,不經Lina池) */
+    svg+='<path d="M150,56 C182,92 182,150 116,190" fill="none" stroke="#8a8f98" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ah)"/>';
+    svg+='<text x="178" y="168" font-size="10" fill="#5a5f66" text-anchor="end">直入 '+money(dp)+'</text>';
+  }
   svg+=arrow(60,244,60,290,'支出 '+money(o.petty.spent),60,272);
   svg+=node(8,290,164,56,'#FAEEDA','#633806','創12 累計支出','NT$ '+money(o.teamSpend['創12']),'零用金+Lina直付'+(gift>0?'+會長直付':''),{team:'創12',dir:'out'});
   svg+=node(188,290,164,56,'#FAEEDA','#633806','創主班 支出(球隊帳)','NT$ '+money(o.mainTeamSpend||0),
@@ -2923,18 +3218,21 @@ function renderOverview(){
       (A.opening?tRow(['📦 其中:期初移交款 <span style="font-size:10.5px;color:#8a5a00">(上屆結轉,非當期收入)</span>', money(A.opening), '—', '—'], {cat:'移交款',all:1}):''));
     var tm=0,tp=0,tg=0;
     h += appTable('隊伍支出歸屬(球隊帳與私帳側分列)',['隊伍','球隊帳','私帳側','合計'],
-      A.teams.map(function(x){ tm+=x.mn; tp+=x.pv;
-        return tRow([x.t, money(x.mn), money(x.pv), money(x.mn+x.pv)], {team:x.t,dir:'out'});
+      A.teams.map(function(x){ tm+=x.mn; tp+=x.pv; tg+=x.gf;
+        /* 直付=所屬隊伍的縮排次項目(池外,不入池內合計) */
+        return tRow([x.t, money(x.mn), money(x.pv), money(x.mn+x.pv)], {team:x.t,dir:'out'}) +
+          (x.gf?tRow(['&nbsp;&nbsp;└ 🎁 會長直付 <span style="font-size:10.5px;color:#8a5a00">(池外)</span>', '—', money(x.gf), money(x.gf)], {pool:'[外]會長直付',team:x.t,dir:'out'}):'');
       }).join('') +
       tRow(['合計(池內真支出)', money(tm), money(tp), money(tm+tp)], null, true) +
-      A.teams.filter(function(x){return x.gf}).map(function(x){ tg+=x.gf;
-        return tRow(['🎁 會長直付・'+x.t+' <span style="font-size:10.5px;color:#8a5a00">(池外)</span>', '—', money(x.gf), money(x.gf)], {pool:'[外]會長直付',team:x.t,dir:'out'});
-      }).join('') +
       (tg?tRow(['含直付總計', money(tm), money(tp+tg), money(tm+tp+tg)], null, true):''));
+    var actsReal=A.acts.filter(function(x){return x.a!=='(未標活動)';}).slice(0,8);
+    var actsUnl=A.acts.filter(function(x){return x.a==='(未標活動)';});
+    var aTi=0,aTo=0; A.acts.forEach(function(x){ aTi+=x.i; aTo+=x.o; });
     h += appTable('活動彙總(前8・支出排序,無餘額概念)',['活動','收入','支出','淨支出'],
-      A.acts.slice(0,8).map(function(x){
+      actsReal.concat(actsUnl).map(function(x){ /* 未標活動置底 */
         return tRow([esc(x.a), x.i?money(x.i):'—', money(x.o), money(x.o-x.i)], {actsel:x.a}); /* 點列→選定活動視角 */
-      }).join(''));
+      }).join('') +
+      tRow(['合計(全部活動)', money(aTi), money(aTo), money(aTo-aTi)], null, true));
     h += '<p class="sub" style="font-size:11px;margin-top:6px">點列可入逐筆明細・完整活動清單見 🎯 活動分頁・🖨 匯出同格式 PDF</p>';
   }
   if(ovMain==='act'){
@@ -2951,9 +3249,14 @@ function renderOverview(){
         var c=r.cat; cats[c]=cats[c]||{i:0,o:0}; cats[c].i+=r.income; cats[c].o+=r.expense;
       });
       h += '<button class="ghost" style="width:auto;padding:7px 12px;font-size:12px;margin-bottom:8px" onclick="ovActBack()">‹ 活動管理</button>';
-      h += '<b style="display:block;font-size:15px;margin-bottom:6px">🎯 '+esc(ovActSel)+'</b>';
+      var amv=((lastData&&lastData.actMaster)||[]).filter(function(a){ return a.name===ovActSel; })[0];
+      h += '<b style="display:block;font-size:15px;margin-bottom:2px">🎯 '+esc(ovActSel)+'</b>';
+      if(amv&&(amv.date||amv.status||amv.team)) h += '<p class="sub" style="font-size:11.5px;margin:0 0 6px">'+(amv.date?d8fmt(amv.date)+'・':'')+esc(amv.status||'')+(amv.team?'・'+esc(amv.team):'')+'</p>';
       h += statCard('支出合計', money(to), '', true);
       if(ti>0){ h += statCard('收入合計', '+'+money(ti)); h += statCard('淨支出', money(to-ti)); }
+      (function(){ var bA2=(lastData.budget||[]).filter(function(b){ return b.act===ovActSel; });
+        if(bA2.length){ var bS=0,aS=0; bA2.forEach(function(b){ bS+=b.amt; aS+=budActual(b); });
+          h += statCard('📐 預算執行', money(aS)+' / '+money(bS)+'('+budPct(aS,bS)+'%)', '逐項見 年度預算頁', false); } })();
       h += '<p class="sub" style="margin:8px 0 4px;font-size:11px">依類別(點入逐筆)</p>';
       Object.keys(cats).sort(function(a,b){ return cats[b].o-cats[a].o; }).forEach(function(c){
         var cd=cats[c];
@@ -2986,26 +3289,41 @@ function renderOverview(){
     }
   }
   if(ovMain==='pool' && ovView==='team'){
-    var tp={};
-    (lastData.recent||[]).forEach(function(r){
-      if(r.voided || !r.expense || flowKind(r)!=='expense') return; /* R2:只計真支出(直付另示) */
-      tp[r.team]=tp[r.team]||{m:0,p:0};
-      if(r.pool==='[主]會費池') tp[r.team].m+=r.expense; else tp[r.team].p+=r.expense;
+    /* 隊伍視角=每隊一表:來源逐列(球隊帳/Lina池/零用金),直付=隊下縮排次項目,雙合計 */
+    var At=aggTables(), TM_ICO={'創12':'🟠','創主班':'🔵','共用':'🟢','待分類':'⚠️','Lina私用':'🟣'};
+    var gTm=0,gTp=0,gTg=0;
+    At.teams.forEach(function(x){
+      gTm+=x.mn; gTp+=x.pv; gTg+=x.gf;
+      var rows='';
+      if(x.mn) rows+=tRow(['球隊帳([主]會費池)', money(x.mn)], {pool:'[主]會費池',team:x.t,dir:'out'});
+      if(x.pvL) rows+=tRow(['Lina池直付', money(x.pvL)], {pool:'[私]Lina贊助池',team:x.t,dir:'out'});
+      if(x.pvP) rows+=tRow(['零用金(花池)', money(x.pvP)], {pool:'[私]花零用金池',team:x.t,dir:'out'});
+      rows+=tRow(['合計(池內)', money(x.mn+x.pv)], {team:x.t,dir:'out'}, true);
+      if(x.gf){
+        rows+=tRow(['&nbsp;&nbsp;└ 🎁 會長直付 <span style="font-size:10.5px;color:#8a5a00">(池外)</span>', money(x.gf)], {pool:'[外]會長直付',team:x.t,dir:'out'});
+        rows+=tRow(['含直付合計', money(x.mn+x.pv+x.gf)], null, true);
+      }
+      h += appTable((TM_ICO[x.t]||'')+' '+x.t, ['來源','金額 NT$'], rows);
     });
-    function tHint(k){
-      var t=tp[k]||{m:0,p:0}, ps=[];
-      if(t.m) ps.push('會費池 '+money(t.m));
-      if(t.p) ps.push('私帳 '+money(t.p));
-      return ps.join('・');
-    }
-    h += statCard('創主班 支出(球隊帳)', money(o.mainTeamSpend||0),
-      (o.privToMain?'另私帳代付 '+money(o.privToMain)+'(Lina池/零用金/會長直付)・點入看跨帳全貌':tHint('創主班')),
-      false, {team:'創主班',dir:'out'});
-    h += statCard('創12 累計支出', money(o.teamSpend['創12']), tHint('創12')+'(調撥已排除)', false, {team:'創12',dir:'out'});
-    if(o.teamSpend['共用']>0) h += statCard('共用 支出', money(o.teamSpend['共用']), tHint('共用'), false, {team:'共用',dir:'out'});
-    if(o.teamSpend['待分類']>0) h += statCard('⚠️ 待分類支出', money(o.teamSpend['待分類']), tHint('待分類')+'・請裁定歸屬', false, {team:'待分類',dir:'out'});
+    h += appTable('跨隊總計',['項目','金額 NT$'],
+      tRow(['池內真支出', money(gTm+gTp)], null, true) +
+      (gTg?tRow(['含直付總計', money(gTm+gTp+gTg)], null, true):''));
   }
   if(ovMain==='pool' && ovView==='lina'){
+    /* 會長視角雙頁籤:贊助對帳(總額+去向)/各池現況(兩池餘額+明細入口) */
+    h += '<div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:8px;background:#fff">'+
+      '<button onclick="setLinaTab(\'sum\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;font-size:13px;'+(linaTab==='sum'?'background:#1F3864;color:#fff':'background:#fff')+'">💜 贊助對帳</button>'+
+      '<button onclick="setLinaTab(\'pools\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;border-left:1px solid var(--line);font-size:13px;'+(linaTab==='pools'?'background:#1F3864;color:#fff':'background:#fff')+'">🏦 各池現況</button>'+
+      '</div>';
+    if(linaTab==='pools'){
+      h += statCard('🟣 Lina 贊助池 現況', money(o.lina.balance), '累計注入 '+money(o.lina.sponsor)+'+利息 '+money(o.lina.interest)+'・點入看收支明細', true, {pool:'[私]Lina贊助池'});
+      h += statCard('🌸 花零用金池 現況(撥補+直入的去處)', money(o.petty.balance||0),
+        '撥補 '+money(o.petty.funded||0)+(o.lina.directPetty?'+直入 '+money(o.lina.directPetty):'')+'・已支出 '+money(o.petty.spent||0)+'・在管 '+money((o.petty.custody||0)-(o.petty.custodyOut||0))+'・點入看收支明細',
+        true, {pool:'[私]花零用金池'});
+      body.innerHTML=h;
+      body.onclick=function(ev){ var c=ev.target.closest('[data-drill]'); if(c) drill(JSON.parse(c.getAttribute('data-drill'))); };
+      return;
+    }
     h += statCard('麗娜會長 贊助總額(注入池)', money(o.lina.sponsor), '利息另 +'+money(o.lina.interest), true, {pool:'[私]Lina贊助池',dir:'in'});
     var sub='';
     sub += statCard('→ 直付創12', money(o.lina.direct12), '', false, {pool:'[私]Lina贊助池',team:'創12',dir:'out'});
@@ -3016,18 +3334,55 @@ function renderOverview(){
       false, {pool:'[私]花零用金池',dir:'out'});
     if(o.lina.privUse>0) sub += statCard('→ Lina 私人用途', money(o.lina.privUse), '非隊伍支出(如:球120盒)', false, {pool:'[私]Lina贊助池',team:'Lina私用',dir:'out'});
     if(o.lina.unclassified>0) sub += statCard('→ 待分類', money(o.lina.unclassified), '凌華裁定後歸隊', false, {pool:'[私]Lina贊助池',team:'待分類',dir:'out'});
-    sub += statCard('→ 尚在池中(餘額)', money(o.lina.balance), '', false, {pool:'[私]Lina贊助池'});
+    sub += statCard('→ 尚在 Lina 池(餘額)', money(o.lina.balance), '零用金池另有餘額 '+money(o.petty.balance||0)+'(含代收在管),見「各池現況」', false, {pool:'[私]Lina贊助池'});
     h += '<div style="padding-left:22px;border-left:3px solid #D9D5F5;margin:2px 0 12px 8px">'+
       '<p class="sub" style="font-size:11px;margin:2px 0 6px">↳ 這 40 萬的去向(點卡看逐筆)</p>'+sub+'</div>';
     if(o.lina.directPetty) h += statCard('💠 直入花零用金贊助(代收留用等)', money(o.lina.directPetty), '未經Lina池・已在零用金戶頭・記名致謝', false, {pool:'[私]花零用金池',cat:'贊助收入'});
     if(o.lina.directGift) h += statCard('🎁 會長直接贊助(隊服/紅酒等・未經任何池)', money(o.lina.directGift), '池外獨立帳・另一筆實際撥出', true, {pool:'[外]會長直付',dir:'out'});
+  }
+  if(ovMain==='pool' && ovView==='mainv'){
+    /* 創主班視角:總收入→次項目、總支出→次項目、餘額(她裁定的閱讀順序) */
+    var M=mainAgg();
+    var mPend=(lastData.recent||[]).filter(function(r){ return !r.voided && r.pool==='[主]會費池' && (r.status==='待對帳'||r.status==='待存入'); });
+    h += statCard('🔵 總收入(會費池)', money(M.inSum), '', true, {pool:'[主]會費池',dir:'in'});
+    var subIn='';
+    subIn += statCard('會費收入', money(M.fee), '逐張傳票見 ☰更多→🧾', false, {pool:'[主]會費池',cat:'會費收入'});
+    if(M.guest) subIn += statCard('來賓餐費收入', money(M.guest), '', false, {pool:'[主]會費池',cat:'來賓餐費收入'});
+    if(M.spon) subIn += statCard('贊助收入(直入主池)', money(M.spon), '', false, {pool:'[主]會費池',cat:'贊助收入'});
+    if(M.sponF) subIn += statCard('↔️ Lina池轉入(F單成對)', money(M.sponF), '池間移轉,非外部收入', false, {pool:'[主]會費池',cat:'贊助收入'});
+    if(M.intr) subIn += statCard('利息收入', money(M.intr), '', false, {pool:'[主]會費池',cat:'利息'});
+    if(M.open) subIn += statCard('📦 期初移交款(上屆結轉)', money(M.open), '', false, {pool:'[主]會費池',cat:'移交款'});
+    if(M.inOther) subIn += statCard('其他收入', money(M.inOther), '', false, {pool:'[主]會費池',dir:'in'});
+    if(M.cin) subIn += statCard('🔁 代收款(代人保管)', money(M.cin), (M.cin-M.cout?'未結 '+money(M.cin-M.cout):'已全數轉付'), false, {pool:'[主]會費池',cat:'代收款'});
+    h += '<div style="padding-left:22px;border-left:3px solid #CFE3F7;margin:2px 0 12px 8px">'+subIn+'</div>';
+    h += statCard('🔻 總支出(會費池)', money(M.outSum), '', true, {pool:'[主]會費池',dir:'out'});
+    var subOut='';
+    subOut += statCard('匯款廠商/球秘等', money(M.spend), '', false, {pool:'[主]會費池',dir:'out'});
+    if(M.cout) subOut += statCard('🔁 代收轉付(歸還代管款)', money(M.cout), '', false, {pool:'[主]會費池',cat:'代收轉付'});
+    h += '<div style="padding-left:22px;border-left:3px solid #F3D7D7;margin:2px 0 12px 8px">'+subOut+'</div>';
+    h += statCard('💰 會費池 餘額(=總收入−總支出)', money(bal['[主]會費池']), '點入看收支明細', true, {pool:'[主]會費池'});
+    if(mPend.length) h += statCard('⏳ 入帳待對帳/待存入('+mPend.length+')', money(mPend.reduce(function(s,r){return s+(r.income||0)},0)), '允甄付款頁有待辦卡,確認後消失', false, {pool:'[主]會費池',dir:'in'});
+  }
+  if(ovMain==='pool' && ovView==='yz'){
+    /* 允甄視角:Lina 贊助池營運現況(她管的匯款戶頭) */
+    var pendConf=(lastData.recent||[]).filter(function(r){ return !r.voided && r.status==='待撥入確認'; });
+    var pendRecon=(lastData.recent||[]).filter(function(r){ return !r.voided && r.pool==='[私]Lina贊助池' && (r.status==='待對帳'||r.status==='待存入'); });
+    h += statCard('🟣 Lina 贊助池 餘額', money(o.lina.balance), '累計注入 '+money(o.lina.sponsor)+'+利息 '+money(o.lina.interest)+'・點入看收支明細', true, {pool:'[私]Lina贊助池'});
+    h += statCard('→ 轉入球隊帳(贊助轉出)', money(o.lina.toTeam||0), 'F 單成對・主池同號贊助收入', false, {pool:'[私]Lina贊助池',cat:'贊助轉出'});
+    h += statCard('→ 撥補零用金', money(o.lina.toPetty||0), (pendConf.length?('⏳ 未結 '+pendConf.length+' 筆,凌華待確認撥入'):'全數已確認撥入'), false, {pool:'[私]Lina贊助池',cat:'內部調撥'});
+    h += statCard('→ Lina池直付', money((o.lina.direct12||0)+(o.lina.directMain||0)), '創12 '+money(o.lina.direct12||0)+'|創主班 '+money(o.lina.directMain||0), false, {pool:'[私]Lina贊助池',dir:'out'});
+    if(o.lina.unclassified>0) h += statCard('⚠️ 待分類', money(o.lina.unclassified), '凌華裁定後歸隊', false, {pool:'[私]Lina贊助池',team:'待分類',dir:'out'});
+    if(pendRecon.length) h += statCard('⏳ 入帳待對帳/待存入('+pendRecon.length+')', money(pendRecon.reduce(function(s,r){return s+(r.income||0)},0)), '付款頁有待辦卡,確認後消失', false, {pool:'[私]Lina贊助池',dir:'in'});
   }
   if(ovMain==='pool' && ovView==='adv'){
     var netPos = o.petty.balance - ((o.petty.custody||0)-(o.petty.custodyOut||0)); /* 在管淨額=代收−已轉付(花池口徑) */
     h += statCard('凌華 累計墊付支出', money(o.petty.spent), '創12 '+money(o.petty.spent12)+'|創主班 '+money(o.petty.spentMain), true, {pool:'[私]花零用金池',dir:'out'});
     h += statCard('允甄 已撥補給凌華', money(o.petty.funded), 'F 單號調撥合計', false, {pool:'[私]花零用金池',cat:'內部調撥',dir:'in'});
     h += statCard('代收在管淨額(全站)', money((o.custodyAll||0)-(o.custodyAllOut||0)), '代收 '+money(o.custodyAll||0)+' − 代收轉付 '+money(o.custodyAllOut||0)+'(跨池過手錢,不入隊伍支出)', false, {cat:'代收款',all:1,dir:''});
-    h += statCard('代收款在手(花零用金池)', money(o.petty.custody), '待轉付廠商,非凌華資金', false, {pool:'[私]花零用金池',cat:'代收款'});
+    var opnA=custodyOpen();
+    h += statCard('代收款在手(花零用金池)', money((o.petty.custody||0)-(o.petty.custodyOut||0)),
+      (opnA.length?('未結:'+opnA.map(function(x){return esc(x.act)+' '+money(x.c-x.o);}).join('・')+'(結清自動不列)'):'全數結清'),
+      false, {pool:'[私]花零用金池',cat:'代收款'});
     h += statCard(netPos<0 ? '⚠️ 凌華目前墊付中' : '凌華手上隊款',
       money(Math.abs(netPos)),
       netPos<0 ? '允甄下次撥補時補足' : '無代墊,持有隊款');
