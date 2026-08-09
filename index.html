@@ -67,6 +67,13 @@ body.appOn{padding-bottom:92px}
   <p style="color:#fff;font-size:13px;margin-top:12px;opacity:.85">點任意處關閉</p>
   <a id="lbLink" href="#" target="_blank" onclick="event.stopPropagation()" style="color:#9ec5ff;font-size:12.5px;margin-top:4px">在 Drive 開啟原檔 ›</a>
 </div>
+<div id="vchOverlay" style="display:none;position:fixed;inset:0;background:#fff;z-index:80;overflow-y:auto;padding:14px 14px 90px">
+  <div style="display:flex;gap:8px;max-width:560px;margin:0 auto 12px">
+    <button class="ghost" style="flex:1;margin:0" onclick="closeVchOverlay()">✕ 關閉</button>
+    <button class="btn" style="flex:2;margin:0" onclick="printVchDoc()">🖨 列印 / 存 PDF</button>
+  </div>
+  <div id="vchDoc"></div>
+</div>
 <div id="navBar" class="nav hide"></div>
 <div id="moreWrap" class="hide">
   <div class="sheetBk" onclick="toggleMore(false)"></div>
@@ -99,7 +106,7 @@ body.appOn{padding-bottom:92px}
 
   <div id="pageHead" class="hide" style="margin-bottom:12px">
     <div style="display:flex;align-items:center;gap:10px">
-      <button class="ghost" style="width:auto;padding:8px 14px;margin:0" onclick="showTab('home')">‹ 首頁</button>
+      <button id="backBtn" class="ghost" style="width:auto;padding:8px 14px;margin:0" onclick="showTab('home')">‹ 首頁</button>
       <b id="pageTitle" style="font-size:15px"></b>
     </div>
   </div>
@@ -116,7 +123,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-09g</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-09z</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -133,6 +140,11 @@ body.appOn{padding-bottom:92px}
   <datalist id="memberList"></datalist>
   <datalist id="actList"></datalist>
 
+  <div id="vchSec" class="hide">
+    <div class="card" style="padding:8px 12px" id="vchSum"></div>
+    <div id="vchList"></div>
+  </div>
+
   <div id="pubSec" class="hide">
     <div id="pubBody"></div>
   </div>
@@ -142,7 +154,7 @@ body.appOn{padding-bottom:92px}
   </div>
 
   <div id="detSec" class="hide">
-    <div class="card" style="padding:10px">
+    <div class="card" style="padding:10px" id="detCtrl">
       <div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:8px">
         <button id="dtMain" onclick="setDetTab('main')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;font-size:13px">🔵 會費帳</button>
         <button id="dtPriv" onclick="setDetTab('priv')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;border-left:1px solid var(--line);font-size:13px">🟣 私帳</button>
@@ -161,6 +173,7 @@ body.appOn{padding-bottom:92px}
       </div>
       <input type="text" id="dKw" placeholder="🔍 搜尋明細/單號…" oninput="renderDetail()" style="margin:6px 0 0;font-size:13px;padding:9px">
     </div>
+    <p id="detFilterLink" style="display:none;margin:0 0 8px"><a href="javascript:void(0)" onclick="document.getElementById('detCtrl').style.display='block';this.parentNode.style.display='none'" style="font-size:12.5px;color:#1F3864">⚙ 顯示篩選條件(目前依報表鑽取自動設定)</a></p>
     <div id="dList"></div>
   </div>
 
@@ -206,10 +219,11 @@ body.appOn{padding-bottom:92px}
   </div>
 
   <div id="ovSec" class="hide">
-    <div class="card" style="padding:10px">
+    <div class="card" style="padding:10px" id="ovPillRow">
       <div id="ovPills" style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff"></div>
       <div id="ovSub" style="display:none;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:8px;background:#fff"></div>
     </div>
+    <button class="ghost" style="margin:8px 0;padding:9px;font-size:13px" onclick="printReport()">🖨 匯出 PDF(表格版,可預覽/儲存/傳送)</button>
     <div id="ovBody"></div>
   </div>
 
@@ -274,7 +288,7 @@ function tpDate(){
 var user=null, cur=null, photoData=null, lastData=null, ovMain='pool', ovView='pools', landed=true, ovActSel=null;
 function setOvMain(t){ ovMain=t; ovActSel=null; renderOverview(); }
 function ovActBack(){ ovActSel=null; renderOverview(); }
-var OV_VIEWS=[['pools','三池'],['team','隊伍'],['lina','會長'],['adv','代墊']];
+var OV_VIEWS=[['pools','📊 總表'],['team','隊伍'],['lina','會長'],['adv','代墊']];
 
 function api(payload){
   payload.token = localStorage.getItem('gf_token');
@@ -308,7 +322,8 @@ function enter(){
   document.getElementById('uname').textContent = '張'===user.slice(0,1)?user:user;
   document.getElementById('uname').textContent = ({'凌華':'張凌華','允甄':'張允甄','麗娜':'麗娜會長'})[user];
   document.getElementById('urole').textContent = roleName+'(已登入)';
-  ovMain='pool'; ovView = ({'麗娜':'lina','凌華':'adv','允甄':'pools'})[user]; ovActSel=null;
+  ovMain = user==='凌華' ? 'act' : 'pool';
+  ovView = ({'麗娜':'lina','凌華':'adv','允甄':'pools'})[user]; ovActSel=null;
   detTab = (user==='凌華') ? 'priv' : 'main'; privSub='';
   entryTab = (user==='凌華') ? 'priv' : 'main';
   renderNav();
@@ -323,11 +338,11 @@ var curTab='home';
 var NAV_DEF = {
   '凌華':[['home','🏠','首頁'],['entry','✏️','登帳'],['pay','💸','付款'],['det','📋','明細'],['more','☰','更多']],
   '允甄':[['home','🏠','首頁'],['entry','✏️','登帳'],['pay','💸','付款'],['det','📋','明細'],['more','☰','更多']],
-  '麗娜':[['home','🏠','首頁'],['det','📋','明細'],['ov','📊','報表']]
+  '麗娜':[['home','🏠','首頁'],['det','📋','明細'],['mem','👥','會員'],['ov','📊','報表']]
 };
 var MORE_DEF = {
-  '凌華':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽(零用金)'],['mem','👥 會員查詢']],
-  '允甄':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽'],['mem','👥 會員查詢'],['pub','📣 月結發布']],
+  '凌華':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽(零用金)'],['mem','👥 會員查詢'],['vch','🧾 會費傳票']],
+  '允甄':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽'],['mem','👥 會員查詢'],['vch','🧾 會費傳票'],['pub','📣 月結發布']],
   '麗娜':[]
 };
 
@@ -375,7 +390,7 @@ function navBadge(){
   else bd.classList.add('hide');
 }
 
-var PAGE_TITLES={entry:'✏️ 登帳',pay:'💸 付款請求',ov:'📊 報表視角',det:'📋 帳本明細',recon:'🔗 對帳勾稽',mem:'👥 會員查詢',pub:'📣 月結發布'};
+var PAGE_TITLES={entry:'✏️ 登帳',pay:'💸 付款請求',ov:'📊 報表視角',det:'📋 帳本明細',recon:'🔗 對帳勾稽',mem:'👥 會員查詢',pub:'📣 月結發布',vch:'🧾 會費傳票'};
 function showTab(t){
   if(t==='entry'&&user==='麗娜') t='home';
   curTab=t;
@@ -383,11 +398,23 @@ function showTab(t){
   document.getElementById('entrySec').classList.toggle('hide', t!=='entry');
   document.getElementById('paySec').classList.toggle('hide', t!=='pay');
   document.getElementById('ovSec').classList.toggle('hide', t!=='ov');
+  document.getElementById('vchSec').classList.toggle('hide', t!=='vch');
+  if(t==='vch') renderVch();
   document.getElementById('detSec').classList.toggle('hide', t!=='det');
   document.getElementById('reconSec').classList.toggle('hide', t!=='recon');
   document.getElementById('memberSec').classList.toggle('hide', t!=='mem');
   document.getElementById('pubSec').classList.toggle('hide', t!=='pub');
   document.getElementById('pageHead').classList.toggle('hide', t==='home');
+  var bb=document.getElementById('backBtn');
+  var dc=document.getElementById('detCtrl'), df=document.getElementById('detFilterLink');
+  if(t==='det' && drillFrom==='ov'){
+    bb.textContent='‹ 返回報表'; bb.onclick=function(){ showTab('ov'); };
+    dc.style.display='none'; if(df) df.style.display='block';
+  } else {
+    bb.textContent='‹ 首頁'; bb.onclick=function(){ showTab('home'); };
+    if(t!=='det') drillFrom=null;
+    dc.style.display='block'; if(df) df.style.display='none';
+  }
   navSync(t); toggleMore(false);
   if(t!=='home') document.getElementById('pageTitle').textContent = PAGE_TITLES[t]||'';
   if(t==='home') renderHome();
@@ -395,7 +422,11 @@ function showTab(t){
   if(t==='pay') renderReqs();
   if(t==='det'){ initCatSel(); renderDetail(); }
   if(t==='recon') renderRecon();
-  if(t==='mem') loadMembers(renderMembers);
+  if(t==='mem'){
+    var sy=document.querySelector('[onclick="memberSync()"]');
+    if(sy) sy.style.display = user==='麗娜' ? 'none' : 'inline-block';
+    loadMembers(renderMembers);
+  }
   if(t==='pub') renderPub();
 }
 
@@ -491,7 +522,283 @@ function fyOf(d){ d=Number(d); var y=Math.floor(d/10000), m=Math.floor(d/100)%10
 function attrFy(r){ return r.fy || fyOf(r.date); }
 function fyLabel(fy){ return fy+'/8–'+(fy+1)+'/7 年度'; }
 
+function aggTables(){
+  var o=lastData.overview, bal=lastData.balances;
+  var rows=(lastData.recent||[]).filter(function(r){ return !r.voided; });
+  var pools=['[主]會費池','[私]Lina贊助池','[私]花零用金池'].map(function(p){
+    var i=0,e2=0; rows.forEach(function(r){ if(r.pool===p){ i+=r.income; e2+=r.expense; } });
+    return {p:p, i:i, o:e2, b:bal[p]};
+  });
+  var teams=['創12','創主班','共用'].map(function(tm){
+    var mn=0,pv=0; rows.forEach(function(r){
+      if(r.team!==tm||!(r.expense>0)||r.cat==='內部調撥'||r.cat==='贊助轉出') return;
+      if(r.pool==='[主]會費池') mn+=r.expense; else pv+=r.expense;
+    });
+    return {t:tm, mn:mn, pv:pv};
+  });
+  var g={};
+  rows.forEach(function(r){
+    var k=r.act||(r.expense>0?'(未標活動)':null); if(!k) return;
+    g[k]=g[k]||{i:0,o:0}; g[k].i+=r.income; g[k].o+=r.expense;
+  });
+  var acts=Object.keys(g).sort(function(a,b){return g[b].o-g[a].o}).map(function(k){ return {a:k,i:g[k].i,o:g[k].o}; });
+  return {pools:pools, teams:teams, acts:acts, gift:o.lina.directGift||0, giftRows:rows.filter(function(r){return r.pool==='[外]會長直付'})};
+}
+
+function appTable(title, heads, trs){
+  return '<p style="font-size:13px;font-weight:600;margin:12px 0 5px;border-left:4px solid #1F3864;padding-left:8px">'+title+'</p>'+
+    '<div class="card" style="padding:0;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:12.5px">'+
+    '<thead><tr>'+heads.map(function(x,i){return '<th style="background:#EFF3F8;padding:8px 8px;text-align:'+(i===0?'left':'right')+';border-bottom:1px solid var(--line);font-weight:600;color:#334">'+x+'</th>'}).join('')+'</tr></thead>'+
+    '<tbody>'+trs+'</tbody></table></div>';
+}
+
+function tRow(cells, drillF, bold){
+  var d = drillF ? ' data-drill="'+esc(JSON.stringify(drillF))+'" style="cursor:pointer"' : '';
+  return '<tr'+d+' class="'+(bold?'ttr':'')+'">'+cells.map(function(c,i){
+    return '<td style="padding:8px;border-bottom:1px solid #EEF0F3;text-align:'+(i===0?'left':'right')+';'+(bold?'font-weight:700;background:#F7F8FA;':'')+'font-variant-numeric:tabular-nums">'+c+'</td>';
+  }).join('')+'</tr>';
+}
+
+function cnUpper(n){
+  var d='零壹貳參肆伍陸柒捌玖', u=['','拾','佰','仟'], g=['','萬','億'];
+  n=Math.round(Number(n)); if(!n) return '零元整';
+  var s='', gi=0, prevSeg=null;
+  while(n>0){
+    var seg=n%10000, seg0=seg, ss='';
+    if(seg){
+      var z=false;
+      for(var i=0;i<4 && seg>0;i++){
+        var dg=seg%10;
+        if(dg){ ss=d[dg]+u[i]+ss; z=false; }
+        else if(ss && !z){ ss='零'+ss; z=true; }
+        seg=Math.floor(seg/10);
+      }
+      s = ss+g[gi] + (s && prevSeg!==null && prevSeg<1000 ? '零' : '') + s;
+    }
+    prevSeg=seg0;
+    n=Math.floor(n/10000); gi++;
+  }
+  return s.replace(/零+/g,'零').replace(/^零|零$/g,'')+'元整';
+}
+
+var vchTab='in', vchPage=0, VCH_PAGE=10;
+function setVchTab(t){ vchTab=t; vchPage=0; renderVch(); }
+function renderVch(){
+  var all=(lastData&&lastData.recent||[]).filter(function(r){
+    return !r.voided && r.pool==='[主]會費池';
+  });
+  var inc=all.filter(function(r){ return r.cat==='會費收入' && r.income>0; });
+  var exp=all.filter(function(r){ return r.expense>0 && r.cat!=='內部調撥'; });
+  var ti=0,te=0;
+  inc.forEach(function(r){ ti+=r.income; });
+  exp.forEach(function(r){ te+=r.expense; });
+  var isIn = vchTab==='in';
+  var rows = isIn ? inc : exp;
+  var pages = Math.max(1, Math.ceil(rows.length/VCH_PAGE));
+  if(vchPage>=pages) vchPage=pages-1;
+  var slice = rows.slice(vchPage*VCH_PAGE, (vchPage+1)*VCH_PAGE);
+
+  document.getElementById('vchSum').innerHTML=
+    '<div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:8px">'+
+    '<button onclick="setVchTab(\'in\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;font-size:13px;'+(isIn?'background:#27500A;color:#fff':'background:#fff')+'">🟢 收款 '+inc.length+' 張</button>'+
+    '<button onclick="setVchTab(\'out\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;border-left:1px solid var(--line);font-size:13px;'+(!isIn?'background:#791F1F;color:#fff':'background:#fff')+'">🔴 支出 '+exp.length+' 張</button>'+
+    '</div>'+
+    '<p class="sub" style="font-size:11.5px">'+(isIn?'會費收款合計 '+money(ti):'球隊帳支出合計 '+money(te))+'・傳票號=帳列單號・點列開票</p>';
+
+  var col = isIn ? '#27500A' : '#791F1F';
+  var h = slice.map(function(r){
+    var amt = isIn ? r.income : r.expense;
+    return '<div class="card" data-vch="'+r.id+'" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:6px;cursor:pointer;border-left:4px solid '+col+'">'+
+      '<span style="min-width:0"><b style="font-size:13.5px">'+esc(r.desc)+'</b>'+
+      '<p class="sub" style="font-size:11px">🧾 '+r.id+'・'+String(r.date).slice(0,4)+'/'+String(r.date).slice(4,6)+'/'+String(r.date).slice(6,8)+(r.act?'・🎯'+esc(r.act):'')+(r.status?'・'+esc(r.status):'')+'</p></span>'+
+      '<b style="white-space:nowrap;color:'+col+'">'+(isIn?'+':'−')+money(amt)+' ›</b></div>';
+  }).join('') || '<p class="sub">'+(isIn?'尚無會費入帳':'尚無球隊帳支出')+'</p>';
+
+  if(pages>1){
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-top:8px">'+
+      '<button class="ghost" style="flex:1;padding:9px;font-size:13px" '+(vchPage===0?'disabled style="flex:1;padding:9px;font-size:13px;opacity:.4"':'')+' onclick="vchPage--;renderVch()">‹ 上一頁</button>'+
+      '<span class="sub" style="white-space:nowrap;font-size:12px">'+(vchPage+1)+' / '+pages+'</span>'+
+      '<button class="ghost" style="flex:1;padding:9px;font-size:13px" '+(vchPage>=pages-1?'disabled style="flex:1;padding:9px;font-size:13px;opacity:.4"':'')+' onclick="vchPage++;renderVch()">下一頁 ›</button>'+
+      '</div>';
+  }
+  var el=document.getElementById('vchList');
+  el.innerHTML=h;
+  el.onclick=function(ev){
+    var c=ev.target.closest('[data-vch]');
+    if(c) printVoucher(c.getAttribute('data-vch'));
+  };
+}
+
+var FULLNAME={'凌華':'張凌華','允甄':'張允甄','麗娜':'李麗娜'};
+function d8fmt(v){ var s=String(v).replace(/[^0-9]/g,''); return s.length>=8 ? s.slice(0,4)+'/'+s.slice(4,6)+'/'+s.slice(6,8) : String(v); }
+var TH='border:1px solid #555;padding:6px 8px;text-align:left;background:#F1F3F6;font-weight:600;vertical-align:top;font-size:12.5px;';
+var TD='border:1px solid #555;padding:6px 8px;vertical-align:top;';
+function vchDocHtml(r){
+  var isIn = r.income>0, amt = isIn?r.income:r.expense;
+  var q = null;
+  if(!isIn && r.ref && String(r.ref).charAt(0)==='R'){
+    q = ((lastData&&lastData.reqs)||[]).filter(function(x){ return x.ref===r.ref; })[0] || null;
+  }
+  var title, tbl;
+  if(q){
+    title = '請 款 單';
+    tbl = '<table style="border-collapse:collapse;width:100%;font-size:13px">'+
+      '<tr><th style="'+TH+'width:76px">請款人</th><td style="'+TD+'">'+esc(FULLNAME[q.applicant]||q.applicant||'—')+'</td>'+
+          '<th style="'+TH+'width:76px">申請日期</th><td style="'+TD+'">'+d8fmt(q.applyDate)+'</td></tr>'+
+      '<tr><th style="'+TH+'">類別</th><td style="'+TD+'">'+esc(q.cat||'—')+'</td>'+
+          '<th style="'+TH+'">匯款日期</th><td style="'+TD+'">'+d8fmt(r.date)+'</td></tr>'+
+      '<tr><th style="'+TH+'">請款事由</th><td style="'+TD+'" colspan="3">'+esc(q.desc)+(q.act?'|🎯'+esc(q.act):'')+'</td></tr>'+
+      '<tr><th style="'+TH+'">金額</th><td style="'+TD+'" colspan="3"><b>NT$ '+money(amt)+'</b>|<span style="font-size:12px">新臺幣 '+cnUpper(amt)+'</span></td></tr>'+
+      ((q.items&&q.items.length)?'<tr><th style="'+TH+'">明細</th><td style="'+TD+'" colspan="3">'+q.items.map(function(it){ return esc(it.n)+' '+money(it.amt); }).join('・')+'</td></tr>':'')+
+      '<tr><th style="'+TH+'">狀態</th><td style="'+TD+'" colspan="3">'+esc(r.status||'—')+'</td></tr>'+
+      '<tr><th style="'+TH+'">匯款資訊</th><td style="'+TD+'" colspan="3">'+esc(q.payee||'—')+'<br>'+
+          '<span style="font-family:monospace">'+esc(q.bankCode||'—')+(q.branch?' '+esc(q.branch):'')+'|'+esc(q.bankAcct||'—')+'</span></td></tr>'+
+      (q.note?'<tr><th style="'+TH+'">備註</th><td style="'+TD+'" colspan="3">'+esc(q.note)+'</td></tr>':'')+
+      '</table>';
+  } else {
+    title = isIn?'收 款 傳 票':'支 出 傳 票';
+    var showSt = r.status && r.status!=='—';
+    tbl = '<table style="border-collapse:collapse;width:100%;font-size:13px">'+
+      '<tr><th style="'+TH+'width:76px">傳票編號</th><td style="'+TD+'">'+esc(r.id)+'</td>'+
+          '<th style="'+TH+'width:76px">日期</th><td style="'+TD+'">'+d8fmt(r.date)+'</td></tr>'+
+      '<tr><th style="'+TH+'">'+(isIn?'經手人':'申請人')+'</th><td style="'+TD+'">'+esc(FULLNAME[r.handler]||r.handler||'—')+'</td>'+
+          '<th style="'+TH+'">類別</th><td style="'+TD+'">'+esc(r.cat)+(r.act?'|🎯'+esc(r.act):'')+'</td></tr>'+
+      '<tr><th style="'+TH+'">摘要</th><td style="'+TD+'" colspan="3">'+esc(r.desc)+'</td></tr>'+
+      '<tr><th style="'+TH+'">金額</th><td style="'+TD+'" colspan="3"><b>NT$ '+money(amt)+'</b>|<span style="font-size:12px">新臺幣 '+cnUpper(amt)+'</span></td></tr>'+
+      (showSt?'<tr><th style="'+TH+'">狀態</th><td style="'+TD+'" colspan="3">'+esc(r.status)+'</td></tr>':'')+
+      (r.note?'<tr><th style="'+TH+'">備註</th><td style="'+TD+'" colspan="3">'+esc(r.note)+'</td></tr>':'')+
+      '</table>';
+  }
+  var rcps = (r.rcp||'').split(',').filter(Boolean);
+  if(q && (!rcps.length)) rcps = q.receipts||[];
+  var rcpHtml='';
+  if(rcps.length){
+    rcpHtml='<p style="font-size:12.5px;font-weight:600;margin:12px 0 6px">📎 憑證('+rcps.length+' 張)</p>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+      rcps.map(function(u){
+        var id=driveId(u);
+        return id?'<img src="https://drive.google.com/thumbnail?id='+id+'&sz=w400" data-rcpu="'+esc(u)+'" style="width:48%;border:1px solid #999;border-radius:6px;cursor:pointer">':'';
+      }).join('')+'</div>';
+  }
+  return '<div style="max-width:560px;margin:0 auto">'+
+    '<h2 style="text-align:center;font-size:15px;margin:0">政大創業主班高爾夫球社第12屆(2026年)</h2>'+
+    '<h1 style="text-align:center;font-size:20px;letter-spacing:6px;margin:6px 0 14px;color:'+(isIn?'#27500A':'#791F1F')+'">'+title+'</h1>'+
+    tbl+rcpHtml+
+    '<div style="display:flex;margin-top:20px;gap:10px">'+
+    '<div style="flex:1;border:1px solid #777;height:70px;padding:6px 8px;font-size:12px;color:#333">製票<br><b style="font-size:14px">'+esc(FULLNAME[user]||user)+'</b></div>'+
+    '<div style="flex:1;border:1px solid #777;height:70px;padding:6px 8px;font-size:12px;color:#333">財務覆核'+
+      ((r.status==='已撥款'||(isIn&&r.handler==='允甄'))?'<br><b style="font-size:14px">張允甄</b>':'<br><br>')+'</div>'+
+    '<div style="flex:1;border:1px solid #777;height:70px;padding:6px 8px;font-size:12px;color:#333">核准<br><br></div>'+
+    '</div>'+
+    '<p style="text-align:center;color:#666;font-size:11px;margin-top:12px">'+tpDate()+'・GOLF-FIN 系統產出</p>'+
+    '</div>';
+}
+
+function printVoucher(id){
+  var r=(lastData.recent||[]).filter(function(x){ return x.id===id; })[0];
+  if(!r){ toast('查無此筆'); return; }
+  document.getElementById('vchDoc').innerHTML = vchDocHtml(r);
+  document.getElementById('vchOverlay').style.display='block';
+}
+
+function closeVchOverlay(){ document.getElementById('vchOverlay').style.display='none'; }
+document.addEventListener('click', function(ev){
+  var im=ev.target.closest('[data-rcpu]');
+  if(im) viewReceipt(im.getAttribute('data-rcpu'));
+});
+
+function printVchDoc(){
+  var html='<!doctype html><html><head><meta charset="utf-8"><title>傳票</title>'+
+    '<style>body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;padding:16px;color:#111}</style>'+
+    '</head><body>'+document.getElementById('vchDoc').innerHTML+'</body></html>';
+  var ifr=document.createElement('iframe');
+  ifr.style.cssText='position:fixed;width:0;height:0;border:0';
+  document.body.appendChild(ifr);
+  ifr.contentDocument.write(html);
+  ifr.contentDocument.close();
+  setTimeout(function(){
+    try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch(e){ toast('此環境不支援列印,請在正式版使用'); }
+    setTimeout(function(){ ifr.remove(); }, 2000);
+  }, 300);
+}
+
+function printReport(){
+  if(!lastData){ toast('資料載入中'); return; }
+  var o=lastData.overview, bal=lastData.balances;
+  var rows=(lastData.recent||[]).filter(function(r){ return !r.voided; });
+  function num(n){ return '<td style="text-align:right">'+money(n)+'</td>'; }
+  function T(title, heads, body){
+    return '<h3>'+title+'</h3><table><thead><tr>'+heads.map(function(x){return '<th>'+x+'</th>'}).join('')+'</tr></thead><tbody>'+body+'</tbody></table>';
+  }
+  var html='';
+  if(user==='麗娜'){
+    var gift=o.lina.directGift||0, total=o.lina.sponsor+gift;
+    html+=T('會長贊助總覽',['項目','金額 NT$'],
+      '<tr><td>注入 Lina 贊助池(現金/留用)</td>'+num(o.lina.sponsor)+'</tr>'+
+      '<tr><td>池外直付廠商(隊服等)</td>'+num(gift)+'</tr>'+
+      '<tr class="tt"><td>贊助貢獻合計</td>'+num(total)+'</tr>');
+    html+=T('資金流向',['流向','金額 NT$'],
+      '<tr><td>直付創12(禮品/獎品等)</td>'+num(o.lina.direct12)+'</tr>'+
+      '<tr><td>代付創主班</td>'+num(o.lina.directMain)+'</tr>'+
+      '<tr><td>轉入球隊帳</td>'+num(o.lina.toTeam)+'</tr>'+
+      '<tr><td>撥補零用金(創12營運)</td>'+num(o.lina.toPetty)+'</tr>'+
+      '<tr><td>私人用途(非隊伍)</td>'+num(o.lina.privUse||0)+'</tr>'+
+      '<tr><td>池外直付</td>'+num(gift)+'</tr>'+
+      '<tr class="tt"><td>Lina 池現時結餘</td>'+num(o.lina.balance)+'</tr>');
+    var gr='';
+    rows.forEach(function(r){ if(r.pool==='[外]會長直付') gr+='<tr><td>'+dfmt(r.date)+'</td><td>'+esc(r.desc)+'</td><td>'+esc(r.team)+'</td>'+num(r.expense)+'</tr>'; });
+    if(gr) html+=T('池外直付明細',['日期','明細','隊伍','金額 NT$'],gr);
+  } else {
+    html+=T('三池總覽',['資金池','累計收入','累計支出','結餘 NT$'],
+      ['[主]會費池','[私]Lina贊助池','[私]花零用金池'].map(function(p){
+        var i=0,e2=0; rows.forEach(function(r){ if(r.pool===p){ i+=r.income; e2+=r.expense; } });
+        return '<tr><td>'+p+'</td>'+num(i)+num(e2)+num(bal[p])+'</tr>';
+      }).join(''));
+    var g={};
+    rows.forEach(function(r){
+      var k=r.act||(r.expense>0?'(未標活動)':null); if(!k) return;
+      g[k]=g[k]||{i:0,o:0}; g[k].i+=r.income; g[k].o+=r.expense;
+    });
+    var ar='';
+    Object.keys(g).sort(function(a,b){return g[b].o-g[a].o}).forEach(function(k){
+      ar+='<tr><td>'+esc(k)+'</td>'+num(g[k].i)+num(g[k].o)+num(g[k].o-g[k].i)+'</tr>';
+    });
+    html+=T('活動彙總(不含餘額概念)',['活動','收入','支出','淨支出 NT$'],ar);
+    html+=T('隊伍支出歸屬',['隊伍','球隊帳([主]池)','私帳側代付','合計 NT$'],
+      ['創12','創主班','共用'].map(function(tm){
+        var mn=0,pv=0; rows.forEach(function(r){
+          if(r.team!==tm||!(r.expense>0)||r.cat==='內部調撥'||r.cat==='贊助轉出') return;
+          if(r.pool==='[主]會費池') mn+=r.expense; else pv+=r.expense;
+        });
+        return '<tr><td>'+tm+'</td>'+num(mn)+num(pv)+num(mn+pv)+'</tr>';
+      }).join(''));
+    var gift2=o.lina.directGift||0;
+    if(gift2) html+=T('會長池外直付(未經任何池)',['日期','明細','隊伍','金額 NT$'],
+      rows.filter(function(r){return r.pool==='[外]會長直付'}).map(function(r){
+        return '<tr><td>'+dfmt(r.date)+'</td><td>'+esc(r.desc)+'</td><td>'+esc(r.team)+'</td>'+num(r.expense)+'</tr>';
+      }).join(''));
+  }
+  var w=window.open('','_blank');
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>高球隊財務報表</title><style>'+
+    'body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;padding:24px;color:#111}'+
+    'h2{font-size:18px;margin:0 0 2px} .mt{color:#555;font-size:12px;margin-bottom:14px}'+
+    'h3{font-size:14px;margin:18px 0 6px;border-left:4px solid #1F3864;padding-left:8px}'+
+    'table{border-collapse:collapse;width:100%;font-size:13px}'+
+    'th,td{border:1px solid #999;padding:6px 9px;text-align:left}'+
+    'th{background:#EFF3F8} td:last-child{font-variant-numeric:tabular-nums}'+
+    '.tt td{font-weight:700;background:#F7F8FA}'+
+    '@media print{body{padding:0}}'+
+    '</style></head><body>'+
+    '<h2>⛳ 政大EMBA創業主班 高爾夫球聯誼會|第12屆 財務報表</h2>'+
+    '<p class="mt">製表:'+esc(user)+'・'+tpDate()+'・視角:'+(user==='麗娜'?'會長贊助':'總覽')+'</p>'+
+    html+'</body></html>');
+  w.document.close();
+  setTimeout(function(){ w.print(); }, 400);
+}
+
+var drillFrom=null;
 function drill(f){
+  drillFrom = !document.getElementById('ovSec').classList.contains('hide') ? 'ov' : null;
   initCatSel();
   detAct = f.act||'';
   detAll = false;
@@ -580,7 +887,6 @@ function voidTxn(txn){
 
 var memberCache=null;
 function loadMembers(cb){
-  if(user==='麗娜') return;
   if(memberCache){ if(cb) cb(); return; }
   api({action:'members'}).then(function(j){
     memberCache=j.members;
@@ -922,7 +1228,9 @@ function renderDetail(){
     '<span class="sub"> 淨 </span><b>'+money(tin-tout)+'</b></span></div>';
   var el=document.getElementById('dList'); el.innerHTML='';
   if(!rows.length){ el.innerHTML='<p class="sub" style="text-align:center;padding:20px">無符合條件的紀錄</p>'; return; }
-  var showBal = pools.length===1;
+  var showBal = pools.length===1 && !detAct && !detAll &&
+    !document.getElementById('dTeam').value && !document.getElementById('dCat').value &&
+    !document.getElementById('dDir').value && !document.getElementById('dKw').value.trim();
   var balMap = {};
   if(showBal){
     var run=0;
@@ -1427,6 +1735,8 @@ function buildFlowSvg(o,bal){
 
 function renderOverview(){
   var pills = document.getElementById('ovPills'); pills.innerHTML='';
+  if(user==='麗娜'){ ovMain='pool'; ovView='lina'; }
+  document.getElementById('ovPillRow').style.display = user==='麗娜' ? 'none' : 'block';
   [['pool','💰 帳池'],['act','🎯 活動']].forEach(function(mm,i){
     var b=document.createElement('button'); b.textContent=mm[1];
     b.style.cssText='flex:1;padding:10px 4px;margin:0;border:none;border-radius:0;font-size:13px;text-align:center'+
@@ -1460,9 +1770,23 @@ function renderOverview(){
     return;
   }
   if(ovMain==='pool' && ovView==='pools'){
-    ['[主]會費池','[私]Lina贊助池','[私]花零用金池'].forEach(function(p){
-      h += statCard(p+' 餘額', money(bal[p]), '', false, {pool:p});
-    });
+    var A=aggTables(), ti=0,to=0,tb=0;
+    h += appTable('三池收支總表',['資金池','收入','支出','結餘'],
+      A.pools.map(function(x){ ti+=x.i; to+=x.o; tb+=x.b;
+        return tRow([x.p.replace('[私]','').replace('[主]',''), money(x.i), money(x.o), money(x.b)], {pool:x.p});
+      }).join('') + tRow(['合計', money(ti), money(to), money(tb)], null, true));
+    var tm=0,tp=0;
+    h += appTable('隊伍支出歸屬(球隊帳與私帳側分列)',['隊伍','球隊帳','私帳側','合計'],
+      A.teams.map(function(x){ tm+=x.mn; tp+=x.pv;
+        return tRow([x.t, money(x.mn), money(x.pv), money(x.mn+x.pv)], {team:x.t,dir:'out'});
+      }).join('') + (A.gift?tRow(['🎁 會長池外直付','—',money(A.gift),money(A.gift)],{pool:'[外]會長直付',dir:'out'}):'') +
+      tRow(['合計', money(tm), money(tp+A.gift), money(tm+tp+A.gift)], null, true));
+    h += appTable('活動彙總(前8・支出排序,無餘額概念)',['活動','收入','支出','淨支出'],
+      A.acts.slice(0,8).map(function(x){
+        return tRow([esc(x.a), x.i?money(x.i):'—', money(x.o), money(x.o-x.i)],
+          x.a==='(未標活動)'?{act:'(未標活動)'}:{act:x.a});
+      }).join(''));
+    h += '<p class="sub" style="font-size:11px;margin-top:6px">點列可入逐筆明細・完整活動清單見 🎯 活動分頁・🖨 匯出同格式 PDF</p>';
   }
   if(ovMain==='act'){
     function actMatch(r,k){ return k==='(未標活動)' ? !r.act : r.act===k; }
@@ -1524,17 +1848,20 @@ function renderOverview(){
     if(o.teamSpend['待分類']>0) h += statCard('⚠️ 待分類支出', money(o.teamSpend['待分類']), tHint('待分類')+'・請裁定歸屬', false, {team:'待分類',dir:'out'});
   }
   if(ovMain==='pool' && ovView==='lina'){
-    h += statCard('麗娜會長 贊助總額', money(o.lina.sponsor), '利息另 +'+money(o.lina.interest), true, {pool:'[私]Lina贊助池',dir:'in'});
-    h += statCard('→ 直付創12', money(o.lina.direct12), '', false, {pool:'[私]Lina贊助池',team:'創12',dir:'out'});
-    h += statCard('→ 轉入球隊帳(正式贊助・記名致謝)', money(o.lina.toTeam||0), '同單號另見[主]會費池贊助收入', false, {pool:'[私]Lina贊助池',cat:'贊助轉出'});
-    h += statCard('→ 直付創業主班(代付)', money(o.lina.directMain), '', false, {pool:'[私]Lina贊助池',team:'創主班',dir:'out'});
-    if(o.lina.directGift) h += statCard('🎁 會長直接贊助(隊服/紅酒等・未經任何池)', money(o.lina.directGift), '池外獨立帳・不參與勾稽', false, {pool:'[外]會長直付',dir:'out'});
-    h += statCard('→ 撥入花零用金', money(o.lina.toPetty),
+    h += statCard('麗娜會長 贊助總額(注入池)', money(o.lina.sponsor), '利息另 +'+money(o.lina.interest), true, {pool:'[私]Lina贊助池',dir:'in'});
+    var sub='';
+    sub += statCard('→ 直付創12', money(o.lina.direct12), '', false, {pool:'[私]Lina贊助池',team:'創12',dir:'out'});
+    sub += statCard('→ 轉入球隊帳(正式贊助・記名致謝)', money(o.lina.toTeam||0), '同單號另見[主]會費池贊助收入', false, {pool:'[私]Lina贊助池',cat:'贊助轉出'});
+    sub += statCard('→ 直付創業主班(代付)', money(o.lina.directMain), '', false, {pool:'[私]Lina贊助池',team:'創主班',dir:'out'});
+    sub += statCard('→ 撥入花零用金', money(o.lina.toPetty),
       '零用金支出分佈:創12 '+money(o.petty.spent12)+'|創主班 '+money(o.petty.spentMain),
       false, {pool:'[私]花零用金池',dir:'out'});
-    if(o.lina.privUse>0) h += statCard('→ Lina 私人用途', money(o.lina.privUse), '非隊伍支出(如:球120盒)', false, {pool:'[私]Lina贊助池',team:'Lina私用',dir:'out'});
-    if(o.lina.unclassified>0) h += statCard('→ 待分類', money(o.lina.unclassified), '凌華裁定後歸隊', false, {pool:'[私]Lina贊助池',team:'待分類',dir:'out'});
-    h += statCard('尚在池中(餘額)', money(o.lina.balance), '', false, {pool:'[私]Lina贊助池'});
+    if(o.lina.privUse>0) sub += statCard('→ Lina 私人用途', money(o.lina.privUse), '非隊伍支出(如:球120盒)', false, {pool:'[私]Lina贊助池',team:'Lina私用',dir:'out'});
+    if(o.lina.unclassified>0) sub += statCard('→ 待分類', money(o.lina.unclassified), '凌華裁定後歸隊', false, {pool:'[私]Lina贊助池',team:'待分類',dir:'out'});
+    sub += statCard('→ 尚在池中(餘額)', money(o.lina.balance), '', false, {pool:'[私]Lina贊助池'});
+    h += '<div style="padding-left:22px;border-left:3px solid #D9D5F5;margin:2px 0 12px 8px">'+
+      '<p class="sub" style="font-size:11px;margin:2px 0 6px">↳ 這 40 萬的去向(點卡看逐筆)</p>'+sub+'</div>';
+    if(o.lina.directGift) h += statCard('🎁 會長直接贊助(隊服/紅酒等・未經任何池)', money(o.lina.directGift), '池外獨立帳・另一筆實際撥出', true, {pool:'[外]會長直付',dir:'out'});
   }
   if(ovMain==='pool' && ovView==='adv'){
     var netPos = o.petty.balance - o.petty.custody;
@@ -1545,7 +1872,7 @@ function renderOverview(){
       money(Math.abs(netPos)),
       netPos<0 ? '允甄下次撥補時補足' : '無代墊,持有隊款');
   }
-  if(ovMain==='pool') h = '<p class="sub" style="margin-bottom:6px;font-size:11px">點卡片看逐筆明細</p>'+h;
+  if(ovMain==='pool' && ovView!=='pools') h = '<p class="sub" style="margin-bottom:6px;font-size:11px">點卡片看逐筆明細</p>'+h;
   body.innerHTML=h;
   body.onclick = function(ev){
     var a = ev.target.closest('[data-actsel]');

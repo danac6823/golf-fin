@@ -227,11 +227,13 @@ function render(){
         var tot=byAct[k].reduce(function(s,x){return s+x.amt},0);
         h+='<tr><td colspan="3" class="actH">🎯 '+esc(k)+'<span style="float:right">'+money(tot)+'</span></td></tr>';
         byAct[k].forEach(function(x){
-          h+='<tr><td style="width:44px;color:var(--sub)">'+fmtD(x.d)+'</td>'+
+          window.__exps = window.__exps||[]; var exi = window.__exps.push(x)-1;
+          h+='<tr onclick="showExp('+exi+')" style="cursor:pointer"><td style="width:44px;color:var(--sub)">'+fmtD(x.d)+'</td>'+
              '<td>'+esc(x.desc)+'<br><span class="sub" style="font-size:12px">'+esc(x.cat)+
              (x.ref?'・'+esc(x.ref):'')+
-             ((x.rcps&&x.rcps.length)?'・<a href="javascript:void(0)" onclick="viewRcp('+esc(JSON.stringify(x.rcps)).replace(/"/g,'&quot;')+')" style="color:#0C447C;text-decoration:underline">憑證✓ 查看</a>'
-               : (x.rcp?'・憑證✓':'・<span style="color:#8a4a00">⚠缺憑</span>'))+'</span></td>'+
+             ((x.rcps&&x.rcps.length)?'・<span style="color:#0C447C;text-decoration:underline">憑證✓</span>'
+               : (x.rcp?'・憑證✓':'・<span style="color:#8a4a00">⚠缺憑</span>'))+
+             '・<span style="color:#0C447C">詳情 ›</span></span></td>'+
              '<td class="r">'+money(x.amt)+'</td></tr>';
         });
       });
@@ -248,7 +250,72 @@ function render(){
   <div id="lbNav" style="margin-top:12px"></div>
   <p style="color:#fff;font-size:14px;margin-top:8px;opacity:.85">點任意處關閉</p>
 </div>
+<div id="expBox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:90;overflow-y:auto;padding:18px" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#fff;border-radius:14px;max-width:560px;margin:0 auto;padding:16px 16px 20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b style="font-size:15px" id="expTitle">支出明細</b>
+      <button onclick="document.getElementById('expBox').style.display='none'" style="border:1px solid #ccc;background:#fff;border-radius:8px;padding:8px 14px;font-size:14px">✕ 關閉</button>
+    </div>
+    <div id="expDoc"></div>
+  </div>
+</div>
 <script>
+function cnUpper(n){
+  var d='零壹貳參肆伍陸柒捌玖', u=['','拾','佰','仟'], g=['','萬','億'];
+  n=Math.round(Number(n)); if(!n) return '零元整';
+  var s='', gi=0, prevSeg=null;
+  while(n>0){
+    var seg=n%10000, seg0=seg, ss='';
+    if(seg){
+      var z=false;
+      for(var i=0;i<4 && seg>0;i++){
+        var dg=seg%10;
+        if(dg){ ss=d[dg]+u[i]+ss; z=false; }
+        else if(ss && !z){ ss='零'+ss; z=true; }
+        seg=Math.floor(seg/10);
+      }
+      s = ss+g[gi] + (s && prevSeg!==null && prevSeg<1000 ? '零' : '') + s;
+    }
+    prevSeg=seg0;
+    n=Math.floor(n/10000); gi++;
+  }
+  return s.replace(/零+/g,'零').replace(/^零|零$/g,'')+'元整';
+}
+
+function showExp(i){
+  var x=(window.__exps||[])[i]; if(!x) return;
+  var TH='border:1px solid #999;padding:6px 8px;text-align:left;background:#F1F3F6;font-weight:600;width:76px;font-size:13px;vertical-align:top';
+  var TD='border:1px solid #999;padding:6px 8px;vertical-align:top;font-size:13px';
+  var q=x.rq||null;
+  document.getElementById('expTitle').textContent = q ? '請款單(公開快照)' : '支出明細';
+  var h='<table style="border-collapse:collapse;width:100%">';
+  if(q){
+    h+='<tr><th style="'+TH+'">請款人</th><td style="'+TD+'">'+esc(q.ap||'—')+'</td>'+
+       '<th style="'+TH+'">申請日期</th><td style="'+TD+'">'+fmtD(q.ad)+'</td></tr>';
+  }
+  h+='<tr><th style="'+TH+'">類別</th><td style="'+TD+'">'+esc(x.cat)+'</td>'+
+     '<th style="'+TH+'">'+(q?'匯款日期':'日期')+'</th><td style="'+TD+'">'+fmtD(x.d)+'</td></tr>';
+  h+='<tr><th style="'+TH+'">事由</th><td style="'+TD+'" colspan="3">'+esc(x.desc)+(x.act?'|🎯'+esc(x.act):'')+'</td></tr>';
+  h+='<tr><th style="'+TH+'">金額</th><td style="'+TD+'" colspan="3"><b>NT$ '+money(x.amt)+'</b>|<span style="font-size:12px">新臺幣 '+cnUpper(x.amt)+'</span></td></tr>';
+  if(q && q.items && q.items.length){
+    h+='<tr><th style="'+TH+'">明細</th><td style="'+TD+'" colspan="3">'+
+      q.items.map(function(it){ return '<div style="display:flex;justify-content:space-between"><span>'+esc(it.n)+'</span><span>'+money(it.amt)+'</span></div>'; }).join('')+'</td></tr>';
+  }
+  if(x.ref) h+='<tr><th style="'+TH+'">單號</th><td style="'+TD+'" colspan="3">'+esc(x.ref)+'</td></tr>';
+  h+='</table>';
+  if(x.rcps && x.rcps.length){
+    h+='<p style="font-size:12.5px;font-weight:600;margin:12px 0 6px">📎 憑證('+x.rcps.length+' 張)</p>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+      x.rcps.map(function(u){
+        var id=driveId(u);
+        return id?'<img src="https://drive.google.com/thumbnail?id='+id+'&sz=w500" onclick="viewRcp('+esc(JSON.stringify(x.rcps)).replace(/"/g,'&quot;')+')" style="width:48%;border:1px solid #999;border-radius:6px;cursor:pointer">':'';
+      }).join('')+'</div>';
+  }
+  h+='<p style="text-align:center;color:#888;font-size:11px;margin-top:12px">本快照僅供會員檢視・銀行帳戶資訊不對外公開</p>';
+  document.getElementById('expDoc').innerHTML=h;
+  document.getElementById('expBox').style.display='block';
+}
+
 var lbList=[], lbIdx=0;
 function driveId(u){
   var m = String(u).match(/\/d\/([\w-]{20,})/) || String(u).match(/[?&]id=([\w-]{20,})/);
