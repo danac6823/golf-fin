@@ -136,7 +136,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10l</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-10n</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -314,7 +314,7 @@ var TPL = {
 var FREE_TPL = { main:{t:'⚡ 自由登帳(會費帳)',pool:'[主]會費池',free:1},
                  priv:{t:'⚡ 自由登帳(私帳)',pool:'',free:1} };
 var TEAMS = ['創12','創主班','共用','Lina私用'];
-var CATS = ['餐飲','雜支','手續費','獎品','獎金','球隊用品','禮品','會員禮','球場費','球場訂金','球秘請款','出席補助','慶弔','贊助轉出','其他'];
+var CATS = ['餐飲','點心/水果/水','雜支','手續費','獎品','獎金','球隊用品','禮品','會員禮','球場費','球場訂金','球秘請款','出席補助','慶弔','贊助轉出','其他'];
 function tpDate(){
   return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei'}).format(new Date());
 }
@@ -973,9 +973,9 @@ var budEditRow=null;
 var BUD_POOL={'球隊帳':'[主]會費池','Lina贊助':'[私]Lina贊助池'};
 var BUD_COL={'球隊帳':['#EFF6FD','#0C447C'],'Lina贊助':['#F4F3FE','#3C3489']};
 function budActual(b){
-  var pool=BUD_POOL[b.src], s=0;
+  var pool=BUD_POOL[b.src], s=0, catOk=BUD_CAT_ALIAS[b.cat]||[b.cat];
   ((lastData&&lastData.recent)||[]).forEach(function(r){
-    if(!r.voided && r.pool===pool && r.expense>0 && (r.act||'')===b.act && r.cat===b.cat) s+=r.expense;
+    if(!r.voided && r.pool===pool && r.expense>0 && (r.act||'')===b.act && catOk.indexOf(r.cat)>-1) s+=r.expense;
   });
   return s;
 }
@@ -1007,8 +1007,15 @@ function setBudView(v){
 
 /* ── 表格輸入模式 ── */
 var budView='cards', budExtraActs=[], budExtraCats=[], budOrig={};
+var BUD_DEF_ACTS=['8月例賽','9月例賽','10月例賽','11月外地賽','12月例賽','1月例賽','2月例賽','3月例賽','4月國外賽','5月例賽','6月例賽','7月會長盃'];
+var BUD_DEF_CATS=['獎金','點心/水果/水','餐費','球秘執行費'];
+var BUD_CAT_ALIAS={'餐費':['餐費','餐飲'],'球秘執行費':['球秘執行費','球秘請款']};
+var BUD_DRILL_CAT={'餐費':'餐飲','球秘執行費':'球秘請款'};
 function budMatrix(){
-  var rows=(lastData.budget||[]), acts=[], cats=[], map={};
+  var hA=budHidden('gf_budHideActs'), hC=budHidden('gf_budHideCats');
+  var rows=(lastData.budget||[]),
+      acts=BUD_DEF_ACTS.filter(function(a){ return hA.indexOf(a)<0; }),
+      cats=BUD_DEF_CATS.filter(function(c){ return hC.indexOf(c)<0; }), map={};
   rows.forEach(function(b){
     if(acts.indexOf(b.act)<0) acts.push(b.act);
     if(cats.indexOf(b.cat)<0) cats.push(b.cat);
@@ -1017,8 +1024,10 @@ function budMatrix(){
   budExtraActs.forEach(function(a){ if(acts.indexOf(a)<0) acts.push(a); });
   budExtraCats.forEach(function(e){ if(cats.indexOf(e.c)<0) cats.push(e.c); });
   var ref=CATS.concat(['會費收入','來賓餐費收入','贊助收入']);
-  cats.sort(function(a,b){ var ia=ref.indexOf(a), ib=ref.indexOf(b); ia=ia<0?99:ia; ib=ib<0?99:ib; return ia-ib||String(a).localeCompare(b); });
-  return { acts:acts, cats:cats, map:map };
+  var defShown=BUD_DEF_CATS.filter(function(c){ return hC.indexOf(c)<0; });
+  var tail=cats.slice(defShown.length);
+  tail.sort(function(a,b){ var ia=ref.indexOf(a), ib=ref.indexOf(b); ia=ia<0?99:ia; ib=ib<0?99:ib; return ia-ib||String(a).localeCompare(b); });
+  return { acts:acts, cats:defShown.concat(cats.filter(function(c){ return defShown.indexOf(c)<0; })), map:map };
 }
 function budTableHtml(){
   var M=budMatrix(), edit=(user==='凌華');
@@ -1026,7 +1035,7 @@ function budTableHtml(){
   var TH2='padding:8px 6px;border-bottom:1px solid var(--line);border-right:1px solid #EEF0F3;background:#EFF3F8;font-weight:600;font-size:12px;white-space:nowrap;text-align:right;';
   var TD2='padding:5px 6px;border-bottom:1px solid #EEF0F3;border-right:1px solid #F3F4F6;text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px;white-space:nowrap;';
   var STK='position:sticky;left:0;z-index:2;background:#fff;box-shadow:2px 0 0 #E3E6EB;text-align:left;max-width:118px;overflow:hidden;text-overflow:ellipsis;';
-  if(!M.acts.length && !edit) return '<div class="card"><p class="sub">尚無預算資料(由凌華編列)</p></div>';
+  if(!(lastData.budget||[]).length && !edit) return '<div class="card"><p class="sub">尚無預算資料(由凌華編列)</p></div>';
   var h='';
   if(edit){
     h+='<div class="card" style="padding:10px" id="budCtl">'+
@@ -1038,20 +1047,24 @@ function budTableHtml(){
       '<select id="budNewCatSrc" style="width:110px;margin:0"><option>球隊帳</option><option>Lina贊助</option></select>'+
       '<button class="ghost" style="width:auto;padding:8px 12px;margin:0;font-size:12.5px" onclick="budAddCat()">加欄</button></div>'+
       '<p class="sub" style="font-size:10.5px;margin-top:6px">⇄ 編「Lina池→球隊帳」轉入款:加欄選<b>贊助轉出</b>+來源 <b>Lina贊助</b>,允甄執行轉帳時填同活動名即自動對上執行進度</p>'+
+      ((budHidden('gf_budHideActs').length||budHidden('gf_budHideCats').length)?'<a href="javascript:void(0)" onclick="budUnhideAll()" style="font-size:11px;color:#1F3864">↺ 還原已隱藏的預設列/欄('+(budHidden('gf_budHideActs').length+budHidden('gf_budHideCats').length)+')</a>':'')+
       '</div>';
   }
   h+='<div class="card" style="padding:0;overflow:hidden">'+
     '<div class="budScroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch">'+
     '<table style="border-collapse:separate;border-spacing:0;min-width:100%">'+
     '<thead><tr><th style="'+TH2+STK+'z-index:3">活動</th>'+
-    M.cats.map(function(c){ return '<th style="'+TH2+(c==='贊助轉出'?'color:#3C3489;':'')+'">'+(c==='贊助轉出'?'⇄':'')+esc(c)+'</th>'; }).join('')+
+    M.cats.map(function(c){ return '<th style="'+TH2+(c==='贊助轉出'?'color:#3C3489;':'')+'">'+(c==='贊助轉出'?'⇄':'')+esc(c)+
+      (edit?' <span data-bdelcat="'+esc(c)+'" style="color:#B03A3A;cursor:pointer;padding:2px 4px;font-size:11px">✕</span>':'')+'</th>'; }).join('')+
     '<th style="'+TH2+'background:#E8EDF5">小計</th>'+
     (edit?'<th style="'+TH2+'padding:4px"><button class="ghost" style="width:auto;padding:6px 10px;margin:0;font-size:12px;white-space:nowrap" onclick="budFocusCat()">＋欄</button></th>':'')+
     '</tr></thead><tbody>';
   var colSum={}, grand=0;
   M.acts.forEach(function(a){
     var rowSum=0;
-    h+='<tr><th style="'+TH2+STK+'font-size:12.5px">'+esc(a)+'</th>';
+    h+='<tr><th style="'+TH2+STK+'font-size:12.5px">'+
+      (edit?'<span style="display:flex;align-items:center;gap:2px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis">'+esc(a)+'</span>'+
+        '<span data-bdelact="'+esc(a)+'" style="color:#B03A3A;cursor:pointer;padding:2px 4px;font-size:11px">✕</span></span>':esc(a))+'</th>';
     M.cats.forEach(function(c){
       var b=M.map[a+'␟'+c], val=b?b.amt:'', key=a+'␟'+c;
       budOrig[key]=b?{row:b.row,amt:b.amt,src:b.src,note:b.note}:null;
@@ -1079,13 +1092,16 @@ function budTableHtml(){
   h+='</tbody><tfoot><tr><th style="'+TH2+STK+'background:#E8EDF5;z-index:3">合計</th>'+
     M.cats.map(function(c){ return '<td style="'+TD2+'background:#E8EDF5;font-weight:700" data-bcsum="'+esc(c)+'">'+money(colSum[c]||0)+'</td>'; }).join('')+
     '<td style="'+TD2+'background:#DCE4F0;font-weight:700" data-bgsum>'+money(grand)+'</td>'+(edit?'<td style="'+TD2+'background:#E8EDF5"></td>':'')+'</tr></tfoot></table></div></div>';
-  h+='<p class="sub" style="font-size:10.5px;margin:-6px 0 10px">↔ 表格可左右滑動・紫格=Lina贊助(金額下可填明細)・⇄贊助轉出=Lina池轉入球隊帳'+(edit?'・清空格=刪・小計即打即算':'')+'</p>';
+  h+='<p class="sub" style="font-size:10.5px;margin:-6px 0 10px">↔ 表格可左右滑動・紫格=Lina贊助(金額下可填明細)・餐費欄自動吸「餐飲」帳、球秘執行費欄吸「球秘請款」帳・⇄贊助轉出=Lina池轉入球隊帳'+(edit?'・清空格=刪・小計即打即算':'')+'</p>';
   if(edit){
     h+='<button class="btn" onclick="budTableSave()">💾 儲存表格變更</button>'+
       '<p class="sub" style="font-size:10.5px;margin:-6px 0 10px">新格預設來源=球隊帳;加欄可先選來源。既有格的來源/備註切「執行進度」用 ✎ 調整</p>';
   }
   return h;
 }
+function budHidden(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
+function budHide(k,v){ var a=budHidden(k); if(a.indexOf(v)<0){ a.push(v); localStorage.setItem(k,JSON.stringify(a)); } }
+function budUnhideAll(){ localStorage.removeItem('gf_budHideActs'); localStorage.removeItem('gf_budHideCats'); renderBudget(); }
 function budCatSrcOf(c){
   for(var i=0;i<budExtraCats.length;i++) if(budExtraCats[i].c===c) return budExtraCats[i].src;
   return null;
@@ -1142,6 +1158,27 @@ function budRecalc(){ /* 定點更新小計,不重建任何輸入元素 */
     el.textContent=money(colS[el.getAttribute('data-bcsum')]||0);
   });
   var ge=document.querySelector('#budBody [data-bgsum]'); if(ge) ge.textContent=money(g);
+}
+function budDelRun(hits, hideKey, hideVal, label){
+  if(budDirty() && !confirm('表格有未儲存的變更,刪除會重畫並捨棄。仍要繼續?')) return;
+  var finish=function(){
+    budHide(hideKey, hideVal);
+    budExtraActs=budExtraActs.filter(function(x){ return x!==hideVal; });
+    budExtraCats=budExtraCats.filter(function(x){ return x.c!==hideVal; });
+    renderBudget();
+  };
+  if(!hits.length){ finish(); toast('已移除'+label+'(未編任何預算,僅隱藏格線)'); return; }
+  if(!confirm('刪除'+label+'將一併刪除其 '+hits.length+' 格已編預算(不影響任何帳列)。確定?')) return;
+  api({action:'budgetBatch', ops:hits.map(function(b){ return {op:'del', row:b.row}; })}).then(function(){
+    return api({action:'summary'});
+  }).then(function(j){ lastData=j; finish(); toast('✓ 已刪除'+label+'及其 '+hits.length+' 格預算'); })
+  .catch(function(e){ toast('刪除失敗:'+e.message); });
+}
+function budDelAct(a){
+  budDelRun((lastData.budget||[]).filter(function(b){ return b.act===a; }), 'gf_budHideActs', a, '「'+a+'」列');
+}
+function budDelCat(c){
+  budDelRun((lastData.budget||[]).filter(function(b){ return b.cat===c; }), 'gf_budHideCats', c, '「'+c+'」欄');
 }
 function budTableSave(){
   var ops=[];
@@ -1204,7 +1241,7 @@ function budCardsHtml(){
       '<span class="sub" style="font-size:11.5px;font-variant-numeric:tabular-nums">小計 '+money(sa)+' / '+money(sb)+'</span></div>';
     list.forEach(function(b){
       var pct=budPct(b._a,b.amt);
-      var drillF={pool:BUD_POOL[b.src],act:b.act,cat:b.cat,dir:'out'};
+      var drillF={pool:BUD_POOL[b.src],act:b.act,cat:(BUD_DRILL_CAT[b.cat]||b.cat),dir:'out'};
       var c=BUD_COL[b.src];
       h+='<div data-drill="'+esc(JSON.stringify(drillF))+'" style="padding:7px 0;border-top:1px solid #EEF0F3;cursor:pointer">'+
         '<div style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:4px">'+
@@ -1224,6 +1261,10 @@ function budCardsHtml(){
   return h;
 }
 function budBodyClick(ev){
+  var dA=ev.target.closest('[data-bdelact]');
+  if(dA){ budDelAct(dA.getAttribute('data-bdelact')); return; }
+  var dC=ev.target.closest('[data-bdelcat]');
+  if(dC){ budDelCat(dC.getAttribute('data-bdelcat')); return; }
   var e1=ev.target.closest('[data-budedit]');
   if(e1){ budOpenEdit(Number(e1.getAttribute('data-budedit'))); return; }
   var c=ev.target.closest('[data-drill]');
