@@ -155,7 +155,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-12s</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-12u</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -1487,6 +1487,8 @@ function drill(f){
 
 /* ============ 活動管理 ============ */
 var actmEditRow=null;
+var actmTab='open'; /* 活動管理雙頁籤:open=規劃/進行中、closed=已結案 */
+function setActmTab(tb){ actmTab=tb; renderActm(); }
 function actStats(name){
   var s={i:0,o:0,reqs:0,bud:0,act:0};
   ((lastData&&lastData.recent)||[]).forEach(function(r){
@@ -1522,11 +1524,20 @@ function renderActm(){
     '<span class="sub">主檔 '+master.length+' 場'+(Object.keys(derived).length?'・未建檔標籤 '+Object.keys(derived).length:'')+'</span>'+
     '<span style="font-size:12px;font-variant-numeric:tabular-nums">預算執行 '+money(totA)+' / '+money(totB)+'</span></div>';
   h+='<button class="ghost" style="margin:2px 0 8px;padding:8px;font-size:12.5px" onclick="printActSummary()">📄 預覽/匯出活動彙總</button>';
+  /* 雙頁籤:規劃/進行中 vs 已結案(裁定) */
+  var mOpen=master.filter(function(a){ return a.status!=='已結案'; });
+  var mClosed=master.filter(function(a){ return a.status==='已結案'; });
+  h+='<div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:8px;background:#fff">'+
+    '<button onclick="setActmTab(\'open\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;font-size:13px;'+(actmTab==='open'?'background:#1F3864;color:#fff':'background:#fff')+'">🏌️ 進行中('+mOpen.length+')</button>'+
+    '<button onclick="setActmTab(\'closed\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;border-left:1px solid var(--line);font-size:13px;'+(actmTab==='closed'?'background:#1F3864;color:#fff':'background:#fff')+'">📁 已結案('+mClosed.length+')</button>'+
+    '</div>';
+  var shown=(actmTab==='closed')?mClosed:mOpen;
+  if(!shown.length) h+='<div class="card"><p class="sub">'+(actmTab==='closed'?'尚無已結案活動':'目前沒有規劃/進行中的活動')+'</p></div>';
   var GRP=[['創主班','🔵 創主班'],['創12','🟠 創12'],['共用','🟢 共用'],['','未標隊伍']];
   GRP.forEach(function(gp){
-    var grp=master.filter(function(a){ return (a.team||'')===gp[0]; });
+    var grp=shown.filter(function(a){ return (a.team||'')===gp[0]; });
     if(!grp.length) return;
-    if(master.some(function(a){return a.team;}))
+    if(shown.some(function(a){return a.team;}))
       h+='<p style="font-size:12.5px;font-weight:600;margin:8px 0 5px;color:#556">'+gp[1]+'（'+grp.length+'）</p>';
     grp.forEach(renderCard);
   });
@@ -1549,6 +1560,7 @@ function renderActm(){
       '</div>';
   }
   var dk=Object.keys(derived).sort();
+  if(actmTab==='closed') dk=[]; /* 未建檔提醒跟著進行中頁籤 */
   if(dk.length){
     h+='<p style="font-size:13px;font-weight:600;margin:10px 0 6px;color:#8a5a00">⚠️ 帳上有標籤但未建檔('+dk.length+')</p>';
     dk.forEach(function(n){
