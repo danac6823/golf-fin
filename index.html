@@ -155,7 +155,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-12w</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-12x</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -1322,9 +1322,20 @@ function exportDetailXlsx(){
     if(!lastData){ toast('資料載入中'); return; }
     var f=detFilterState(), rs=detFilteredRows(f);
     if(!rs.length){ toast('目前篩選無資料可匯出'); return; }
-    var aoa=[['日期','資金池','隊伍','類別','明細','單號','狀態','收款方式','活動','收入','支出','備註']];
+    /* 餘額欄:單池且無其他篩選才有(同 app/PDF 條件),跨帳或篩選中流水餘額無意義 */
+    var xBal=null;
+    if(f.pools.length===1 && !detAct && !detAll && !f.team && !f.cat && !f.dir && !f.kw){
+      xBal={}; var xRun=0;
+      (lastData.recent||[]).slice().sort(function(x,y){ return (x.date-y.date)||(x.id<y.id?-1:1); }).forEach(function(r){
+        if(!r.voided && r.pool===f.pools[0]){ xRun+=r.income-r.expense; xBal[r.id]=xRun; } });
+    }
+    var head=['日期','資金池','隊伍','類別','明細','單號','狀態','收款方式','活動','收入','支出'].concat(xBal?['餘額']:[]).concat(['備註']);
+    var aoa=[head];
     _asc(rs).forEach(function(r){
-      aoa.push([d8fmt(r.date), r.pool, r.team, r.cat, r.desc, r.ref||'', r.status||'', r.method||'', r.act||'', r.income||0, r.expense||0, r.note||'']);
+      var row=[d8fmt(r.date), r.pool, r.team, r.cat, r.desc, r.ref||'', r.status||'', r.method||'', r.act||'', r.income||0, r.expense||0];
+      if(xBal) row.push(xBal[r.id]||0);
+      row.push(r.note||'');
+      aoa.push(row);
     });
     var scope=(f.pools.length>1?'跨帳':String(f.pools[0]).replace(/^\[.\]/,'').replace('池',''))+
       (detAct?('_'+detAct):'')+(f.cat?('_'+f.cat):'')+(f.team?('_'+f.team):'')+(f.fySel?('_'+f.fySel):'');
