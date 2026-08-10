@@ -155,7 +155,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-12p</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-12r</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -3502,9 +3502,10 @@ function pick(tp){
 function catGuard(catEl, teamId){
   var teamEl = document.getElementById(teamId);
   if(!teamEl) return;
-  var lock = (catEl.value==='球秘請款' || catEl.value==='球秘執行費');
-  if(lock){ teamEl.value='創主班'; teamEl.disabled=true; toast('球秘支出=創主班支出,隊伍已鎖定'); }
-  else teamEl.disabled=false;
+  teamEl.disabled=false; /* 球秘不再硬鎖:預設歸創主班、可改(12q 裁定:如創12活動的球秘課程) */
+  if(catEl.value==='球秘請款' || catEl.value==='球秘執行費'){
+    teamEl.value='創主班'; toast('球秘支出預設歸創主班,可自行改隊');
+  }
 }
 
 function readPhoto(inp){
