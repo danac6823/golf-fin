@@ -155,7 +155,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-12u</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-12w</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -243,7 +243,10 @@ body.appOn{padding-bottom:92px}
       <input type="text" id="dKw" placeholder="🔍 搜尋明細/單號…" oninput="renderDetail()" style="margin:6px 0 0;font-size:13px;padding:9px">
     </div>
     <p id="detFilterLink" style="display:none;margin:0 0 8px"><a href="javascript:void(0)" onclick="document.getElementById('detCtrl').style.display='block';this.parentNode.style.display='none'" style="font-size:12.5px;color:#1F3864">⚙ 顯示篩選條件(目前依報表鑽取自動設定)</a></p>
-    <button class="ghost" style="margin:0 0 8px;padding:9px;font-size:13px" onclick="printDetail()">📄 預覽/匯出明細(上摘要・下明細・日期升冪)</button>
+    <div style="display:flex;gap:8px;margin:0 0 8px">
+      <button class="ghost" style="flex:1;margin:0;padding:9px;font-size:12.5px" onclick="printDetail()">📄 預覽/匯出明細(依日期升冪)</button>
+      <button class="ghost" style="width:auto;margin:0;padding:9px 12px;font-size:12.5px" onclick="exportDetailXlsx()">📥 Excel</button>
+    </div>
     <div id="dList"></div>
   </div>
 
@@ -367,7 +370,7 @@ var OV_VIEWS=[['pools','📊 總表'],['team','隊伍'],['mainv','創主班'],['
 
 var MUT_ACTIONS={add:1,'void':1,editEntry:1,reqCreate:1,reqEdit:1,reqCancel:1,reqPay:1,reqClose:1,reqReceipt:1,
   sponsorTransfer:1,directGift:1,reconCommit:1,publishMonth:1,memberConfirm:1,memberSync:1,
-  budgetSave:1,budgetDel:1,budgetBatch:1,actUpsert:1,actDel:1,exportPdf:1,incomeConfirm:1,pettyFundConfirm:1,custodyKeep:1};
+  budgetSave:1,budgetDel:1,budgetBatch:1,actUpsert:1,actDel:1,exportPdf:1,exportXlsx:1,incomeConfirm:1,pettyFundConfirm:1,custodyKeep:1};
 var apiInflight=null;
 function api(payload){
   if(MUT_ACTIONS[payload.action]){
@@ -1311,6 +1314,42 @@ function printActSummary(){
     if(!lastData){ toast('資料載入中'); return; }
     pdfStageOut('財務報表|活動彙總', _actT(aggTables().acts), pdfName('報表','活動彙總'));
   }catch(e){ toast('⚠️ 報表組表失敗:'+e.message, 6000); }
+}
+
+/* 明細 Excel 匯出:同篩選、同命名,雲端轉檔回 Drive 連結(沿用 PDF 進度浮層+防連按) */
+function exportDetailXlsx(){
+  try{
+    if(!lastData){ toast('資料載入中'); return; }
+    var f=detFilterState(), rs=detFilteredRows(f);
+    if(!rs.length){ toast('目前篩選無資料可匯出'); return; }
+    var aoa=[['日期','資金池','隊伍','類別','明細','單號','狀態','收款方式','活動','收入','支出','備註']];
+    _asc(rs).forEach(function(r){
+      aoa.push([d8fmt(r.date), r.pool, r.team, r.cat, r.desc, r.ref||'', r.status||'', r.method||'', r.act||'', r.income||0, r.expense||0, r.note||'']);
+    });
+    var scope=(f.pools.length>1?'跨帳':String(f.pools[0]).replace(/^\[.\]/,'').replace('池',''))+
+      (detAct?('_'+detAct):'')+(f.cat?('_'+f.cat):'')+(f.team?('_'+f.team):'')+(f.fySel?('_'+f.fySel):'');
+    if(pdfBusy) return;
+    pdfOvShow();
+    document.getElementById('pdfOvMsg').textContent='Excel 產生中…';
+    /* iOS 加到主畫面(PWA)下載不穩→走 Drive;其餘瀏覽器直接觸發下載,不落地 Drive */
+    var pwaIOS = (navigator.standalone===true);
+    api({action:'exportXlsx', name:pdfName('明細', scope), rows:aoa, mode:(pwaIOS?'drive':'b64')})
+      .then(function(j){
+        if(j.b64){
+          var bin=atob(j.b64), arr=new Uint8Array(bin.length);
+          for(var i2=0;i2<bin.length;i2++) arr[i2]=bin.charCodeAt(i2);
+          var bl=new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+          var u=URL.createObjectURL(bl), a=document.createElement('a');
+          a.href=u; a.download=j.name; document.body.appendChild(a); a.click();
+          setTimeout(function(){ URL.revokeObjectURL(u); a.remove(); },4000);
+          pdfOvClose(); toast('📥 已下載:'+j.name, 4000);
+        } else {
+          pdfOvDone(j.url, j.name, j.id, false);
+          document.getElementById('pdfOvMsg').textContent='Excel 已產生';
+        }
+      })
+      .catch(function(e){ pdfOvFail(e.message); });
+  }catch(e){ toast('⚠️ 匯出失敗:'+e.message, 6000); }
 }
 
 /* 明細頁匯出:上摘要、下明細(日期升冪) */
