@@ -155,7 +155,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-12x</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-13e</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -627,7 +627,8 @@ function initCatSel(){
 }
 
 function fyOf(d){ d=Number(d); var y=Math.floor(d/10000), m=Math.floor(d/100)%100; return m>=8 ? y : y-1; }
-function attrFy(r){ return r.fy || fyOf(r.date); }
+function feeFy(d){ d=Number(d); var y=Math.floor(d/10000), m=Math.floor(d/100)%100; return m>=5 ? y : y-1; } /* 會費=5月分界:預收歸新屆 */
+function attrFy(r){ return r.fy || (r.cat==='會費收入' ? feeFy(r.date) : fyOf(r.date)); }
 function fyLabel(fy){ return fy+'/8–'+(fy+1)+'/7 年度'; }
 
 /* 代收未結歸組:按 活動+池 配對代收款/代收轉付,結清(淨0)自動不列 */
@@ -3050,8 +3051,14 @@ function renderReqs(){
   }
 
   /* 雙頁籤:請款單流程 vs 入帳/撥補待辦(擠版優化裁定) */
-  var inboxN=0;
-  if(user==='允甄') inboxN=(lastData.recent||[]).filter(function(r){ return !r.voided && (r.status==='待存入'||r.status==='待對帳'); }).length;
+  var inboxN=0, pendM=[];
+  if(user==='允甄'){
+    inboxN=(lastData.recent||[]).filter(function(r){ return !r.voided && (r.status==='待存入'||r.status==='待對帳'); }).length;
+    /* 名冊待核=允甄的上游待辦:確認收款後才會生成帳列進入存入/對帳流 */
+    if(!memberCache){ loadMembers(function(){ if(curTab==='pay') renderReqs(); }); }
+    else pendM=memberCache.filter(function(m){ return m.status==='⚠️待核'; });
+    inboxN+=pendM.length;
+  }
   if(user==='凌華') inboxN=(lastData.recent||[]).filter(function(r){ return !r.voided && r.status==='待撥入確認'; }).length;
   if(user!=='麗娜'){
     el.insertAdjacentHTML('beforeend',
@@ -3084,6 +3091,27 @@ function renderReqs(){
     if(incP.length){
       head('🏦 待你對帳・入帳確認('+incP.length+')', 1, '#8a5a00');
       incP.forEach(function(r){ incCard(r,'✓ 已入帳'); });
+    }
+    var pendMC=pendM.filter(function(m){ return m.method==='現金'||m.method==='LINE Pay'; });
+    var pendMB=pendM.filter(function(m){ return !(m.method==='現金'||m.method==='LINE Pay'); });
+    function memCard(m){
+        var d=document.createElement('div'); d.className='card';
+        d.style.cssText='background:#FFFBF0;border-color:#E8D9B0;cursor:pointer;padding:9px 12px;margin-bottom:6px';
+        d.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
+          '<div style="flex:1;min-width:0"><b style="font-size:13px">'+esc(m.name)+'・會費待核</b>'+
+          '<p class="sub" style="font-size:11px;margin-top:2px">'+esc(m.method||'')+(m.note?'・'+esc(m.note):'')+'</p></div>'+
+          '<b class="amt-in" style="white-space:nowrap">'+money(Number(m.due)||0)+'</b>'+
+          '<span style="white-space:nowrap;font-size:12px;color:#1F3864">會員頁 ›</span></div>';
+        d.onclick=function(){ showTab('mem'); };
+        el.appendChild(d);
+    }
+    if(pendMC.length){
+      head('👥 會費待核・現金/LINE Pay,確認後需存入('+pendMC.length+')', 1, '#a3512d');
+      pendMC.forEach(memCard);
+    }
+    if(pendMB.length){
+      head('👥 會費待核・匯款,核對銀行後確認('+pendMB.length+')', 1, '#8a5a00');
+      pendMB.forEach(memCard);
     }
   }
   /* 凌華待辦:允甄撥補零用金→一鍵確認撥入(自動成對:花池收入+原列結案) */
