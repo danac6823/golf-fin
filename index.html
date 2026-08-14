@@ -175,7 +175,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-13w</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-13x</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -2238,7 +2238,7 @@ function openRowDetail(tr){
   add('資金池', r.pool); add('隊伍', r.team); add('類別', r.cat);
   if(r.method && r.income) add('收款方式', r.method);   /* 支出無收款方式,不顯空欄 */
   if(r.by) add('登帳人', r.by);
-  if(r.handler) add('付款經手', r.handler);              /* 實際經手/付款人,直付類與登帳人常不同 */
+  if(r.handler) add('經手人', r.handler);                /* 收/付共用同欄(帳本付款經手),用中性標籤 */
   if(r.at) add('登帳時間', r.at);
   if(r.edited) add('異動', '曾編輯分類');
   if(r.voided) add('作廢', r.voidReason || '此筆已作廢');
