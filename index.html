@@ -155,7 +155,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-13e</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-13g</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -3130,9 +3130,26 @@ function renderReqs(){
         el.appendChild(d);
       });
     }
+    /* 唯讀追蹤:我登的入帳,允甄尚未確認的(待對帳/待存入)。凌華無動作鈕,確認權在允甄 */
+    var watchP=(lastData.recent||[]).filter(function(r){ return !r.voided && (r.status==='待對帳'||r.status==='待存入'); });
+    if(watchP.length){
+      head('🏦 允甄尚未確認的入帳・唯讀追蹤('+watchP.length+')', 0, '#6b7280');
+      watchP.forEach(function(r){
+        var badge = r.status==='待存入' ? '💰待存入' : '⏳待對帳';
+        var d=document.createElement('div'); d.className='card';
+        d.style.cssText='background:#F7F8FA;border-color:#D9DEE5;padding:9px 12px;margin-bottom:6px';
+        d.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
+          '<div style="flex:1;min-width:0"><b style="font-size:13px">'+esc(r.desc)+'</b>'+
+          '<p class="sub" style="font-size:11px;margin-top:2px">'+d8fmt(r.date)+'・'+esc(String(r.pool).replace(/^\[.\]/,''))+'・'+esc(r.cat)+(r.method?'・💵'+esc(r.method):'')+'・'+r.id+(r.by?'・登帳:'+esc(r.by):'')+'</p></div>'+
+          '<div style="text-align:right;white-space:nowrap"><b class="amt-in">+'+money(r.income)+'</b>'+
+          '<p class="sub" style="font-size:11px;margin-top:2px;color:#8a5a00">'+badge+'</p></div></div>';
+        el.appendChild(d);
+      });
+    }
   }
   if(payTab==='inbox' && user!=='麗娜'){
-    if(!inboxN) el.insertAdjacentHTML('beforeend','<div class="card"><p class="sub">✅ 目前沒有入帳/撥補待辦</p></div>');
+    var hasWatch = user==='凌華' && (lastData.recent||[]).some(function(r){ return !r.voided && (r.status==='待對帳'||r.status==='待存入'); });
+    if(!inboxN && !hasWatch) el.insertAdjacentHTML('beforeend','<div class="card"><p class="sub">✅ 目前沒有入帳/撥補待辦</p></div>');
     return; /* 入帳頁籤不渲染請款單群組 */
   }
   var ORDER = user==='允甄'
