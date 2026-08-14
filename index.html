@@ -64,6 +64,26 @@ body.appOn{padding-bottom:92px}
   body.vchPrint #vchOverlay .vchBtns{display:none !important}
   body.vchPrint .nav{display:none !important}
 }
+/* 桌機加寬(≥860px):外框+底部導覽放寬,帳本明細/互動報表繼承變寬;手機(<860px)完全不受影響。
+   字體放大只作用於 #mainView(主內容),浮層/傳票/PDF畫布皆為 body 直屬、不受 zoom 影響→同構守住。
+   用 zoom 非 transform(不碰禁 fixed+transform 鐵律;#mainView 內無 fixed 元素)。
+   刻意不碰:傳票票面/PDF畫布/列印預覽浮層(同構,印出來就那寬)、登帳表單輸入(過寬難填) */
+@media(min-width:860px){
+  /* 導覽移到左側直向側欄(手機維持底部橫條) */
+  .nav{top:0;bottom:0;left:0;right:auto;width:190px;max-width:190px;height:100vh;margin:0;
+       flex-direction:column;justify-content:flex-start;gap:2px;overflow-y:auto;
+       border-top:none;border-right:1px solid var(--line);padding:18px 0}
+  .nav button{flex:none;width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:12px 16px}
+  .nav .ic{display:inline;font-size:24px;line-height:1;flex:none}       /* 側欄字體+30% */
+  .nav .lb{font-size:17.5px;flex:1;white-space:normal;line-height:1.25} /* 側欄字體+30% */
+  .nav .bdg{position:static;top:auto;right:auto;margin-left:auto}
+  /* 內容讓出左側、靠齊側欄,維持760可讀寬 */
+  body{max-width:760px;margin:0 0 0 190px}
+  body.appOn{padding-bottom:14px}
+  #mainView{zoom:1.30}
+  /* 金流總覽是100%自適應SVG,zoom無效;用max-width限寬讓整張圖等比縮小、易一屏完整呈現(視覺≈值×1.30) */
+  #homeFlow{max-width:300px;margin:0 auto}
+}
 </style>
 </head>
 <body>
@@ -155,7 +175,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-13g</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-13r</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -179,6 +199,10 @@ body.appOn{padding-bottom:92px}
 
   <div id="pubSec" class="hide">
     <div id="pubBody"></div>
+  </div>
+
+  <div id="histSec" class="hide">
+    <div id="histBody"></div>
   </div>
 
   <div id="actmSec" class="hide">
@@ -442,15 +466,28 @@ var NAV_DEF = {
   '麗娜':[['home','🏠','首頁'],['det','📋','明細'],['mem','👥','會員'],['ov','📊','報表'],['bud','📐','預算']]
 };
 var MORE_DEF = {
-  '凌華':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽(零用金)'],['mem','👥 會員查詢'],['vch','🧾 會費傳票'],['bud','📐 年度預算'],['actm','🎯 活動管理']],
-  '允甄':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽'],['mem','👥 會員查詢'],['vch','🧾 會費傳票'],['pub','📣 月結發布'],['bud','📐 年度預算'],['actm','🎯 活動管理']],
+  '凌華':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽(零用金)'],['mem','👥 會員查詢'],['vch','🧾 會費傳票'],['bud','📐 年度預算'],['actm','🎯 活動管理'],['hist','🕘 異動紀錄']],
+  '允甄':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽'],['mem','👥 會員查詢'],['vch','🧾 會費傳票'],['pub','📣 月結發布'],['bud','📐 年度預算'],['actm','🎯 活動管理'],['hist','🕘 異動紀錄']],
   '麗娜':[]
 };
 
+/* 桌機判定:jsdom 無 matchMedia,防呆回 false(=手機版,五關以手機佈局稽核) */
+function isDesktop(){ return typeof window.matchMedia==='function' && window.matchMedia('(min-width:860px)').matches; }
+/* 桌機側欄有直向空間→把「更多」內的項目直接攤平進導覽;手機維持底欄+更多浮層不變 */
+function navItems(){
+  var base=NAV_DEF[user]||[];
+  if(!isDesktop()) return base;
+  var out=base.filter(function(n){ return n[0]!=='more'; });
+  (MORE_DEF[user]||[]).forEach(function(m){
+    var sp=m[1].indexOf(' ');
+    out.push([m[0], sp>0?m[1].slice(0,sp):'•', sp>0?m[1].slice(sp+1):m[1]]);
+  });
+  return out;
+}
 function renderNav(){
   var nb=document.getElementById('navBar');
   nb.innerHTML='';
-  (NAV_DEF[user]||[]).forEach(function(n){
+  navItems().forEach(function(n){
     var b=document.createElement('button');
     b.setAttribute('data-nav',n[0]);
     b.innerHTML='<span class="ic">'+n[1]+'</span><span class="lb">'+n[2]+'</span>'+
@@ -477,6 +514,15 @@ function toggleMore(on){
   document.getElementById('moreWrap').classList.toggle('hide', !on);
 }
 
+/* 跨越桌機/手機斷點時重建導覽(展開↔更多);已登入才動,防呆 matchMedia */
+if(typeof window.matchMedia==='function'){
+  try{ window.matchMedia('(min-width:860px)').addEventListener('change',function(){
+    if(typeof user!=='undefined' && user && !document.getElementById('mainView').classList.contains('hide')){
+      renderNav(); navSync(curTab);
+    }
+  }); }catch(e){}
+}
+
 function navSync(t){
   var nb=document.getElementById('navBar');
   Array.prototype.forEach.call(nb.children,function(b){
@@ -491,7 +537,7 @@ function navBadge(){
   else bd.classList.add('hide');
 }
 
-var PAGE_TITLES={entry:'✏️ 登帳',pay:'💸 付款請求',ov:'📊 報表視角',det:'📋 帳本明細',recon:'🔗 對帳勾稽',mem:'👥 會員查詢',pub:'📣 月結發布',vch:'🧾 會費傳票',bud:'📐 年度預算',actm:'🎯 活動管理'};
+var PAGE_TITLES={entry:'✏️ 登帳',pay:'💸 付款請求',ov:'📊 報表視角',det:'📋 帳本明細',recon:'🔗 對帳勾稽',mem:'👥 會員查詢',pub:'📣 月結發布',vch:'🧾 會費傳票',bud:'📐 年度預算',actm:'🎯 活動管理',hist:'🕘 異動紀錄'};
 function showTab(t){
   if(t==='entry'&&user==='麗娜') t='home';
   if(curTab==='bud' && t!=='bud' && budView==='table' && typeof budDirty==='function' && budDirty()){
@@ -508,6 +554,7 @@ function showTab(t){
   document.getElementById('reconSec').classList.toggle('hide', t!=='recon');
   document.getElementById('memberSec').classList.toggle('hide', t!=='mem');
   document.getElementById('pubSec').classList.toggle('hide', t!=='pub');
+  document.getElementById('histSec').classList.toggle('hide', t!=='hist');
   document.getElementById('budSec').classList.toggle('hide', t!=='bud');
   document.getElementById('actmSec').classList.toggle('hide', t!=='actm');
   document.getElementById('pageHead').classList.toggle('hide', t==='home');
@@ -534,6 +581,7 @@ function showTab(t){
     loadMembers(renderMembers);
   }
   if(t==='pub') renderPub();
+  if(t==='hist') renderHistory();
   if(t==='bud') renderBudget();
   if(t==='actm') renderActm();
 }
@@ -2137,10 +2185,82 @@ var MY_POOLS={'凌華':['[私]花零用金池','[主]會費池','[私]Lina贊助
 var ALL_TEAMS=['創主班','創12','共用','Lina私用','待分類'];
 var ALL_CATS=['會費收入','來賓餐費收入','贊助收入','利息','移交款','代收款','內部調撥'].concat(CATS);
 
+/* 獨立異動紀錄頁:全站帳列分類異動(池/隊/類/活動/帳屬年度)集中追蹤,新到舊。log 來自後端第18欄異動紀錄。 */
+function renderHistory(){
+  var el=document.getElementById('histBody');
+  var evs=[];
+  (lastData.recent||[]).forEach(function(r){
+    var log=String(r.log||''); if(!log.trim()) return;
+    log.split('\n').forEach(function(line){
+      line=line.trim(); if(!line) return;
+      var m=line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\s+([^:：]+)[:：]([\s\S]*)$/);
+      evs.push({ time:m?m[1]:'', who:m?m[2]:'', detail:m?m[3]:line, id:r.id, desc:r.desc, voided:r.voided });
+    });
+  });
+  evs.sort(function(a,b){ return a.time<b.time?1:(a.time>b.time?-1:0); });
+  if(!evs.length){
+    el.innerHTML='<div class="card"><p class="sub">目前沒有任何分類異動。帳列的資金池/隊伍/類別/活動/帳屬年度被編輯後,會自動記錄在此頁,可追蹤誰在何時改了什麼。</p></div>';
+    return;
+  }
+  var h='<div class="card" style="padding:4px 12px 10px">'+
+    '<p class="sub" style="margin:8px 0">共 '+evs.length+' 筆異動・新到舊(帳列分類被編輯的完整軌跡)</p>';
+  evs.forEach(function(e){
+    h+='<div style="border-top:1px solid var(--line);padding:9px 0">'+
+      '<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">'+
+        '<b style="font-size:13px">'+esc(e.who||'—')+'</b>'+
+        '<span class="sub" style="font-size:11px;white-space:nowrap">'+esc(e.time||'')+'</span></div>'+
+      '<p style="font-size:12.5px;margin:4px 0 3px">'+esc(e.detail)+'</p>'+
+      '<p class="sub" style="font-size:11px">'+esc(e.id)+'・'+esc(e.desc)+(e.voided?' <span style="color:#A32D2D">(已作廢)</span>':'')+'</p>'+
+      '</div>';
+  });
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+/* 點明細列本體→行內展開該筆唯讀完整資料(備註/方式/活動/帳屬年度/登帳人/憑證等)。全角色可用,含麗娜。 */
+function openRowDetail(tr){
+  var txn=tr.getAttribute('data-txn');
+  var r=(lastData.recent||[]).find(function(x){return x.id===txn});
+  if(!r) return;
+  var ed=document.getElementById('editRow'); if(ed) ed.remove();       /* 明細/編輯二擇一 */
+  var old=document.getElementById('rowDetail');
+  if(old){ var same=old.getAttribute('data-for')===txn; old.remove(); if(same) return; }
+  var cells=[];
+  /* full=true 的欄位跨兩欄(明細/備註較長);其餘短欄左右雙排,壓低整體高度 */
+  var add=function(k,v,full){ if(v===''||v==null) return;
+    cells.push('<div style="display:flex;gap:6px;padding:1px 0'+(full?';grid-column:1/-1':'')+'">'+
+      '<span style="color:#6b7280;flex:none;min-width:48px;font-size:11px">'+k+'</span>'+
+      '<span style="flex:1;min-width:0;overflow-wrap:break-word">'+esc(String(v))+'</span></div>'); };
+  /* 只顯示「列」上看不到或被縮寫的資訊;列已呈現的日期/明細/金額/狀態/活動/年度/單據編號不重複 */
+  add('單號', r.id);
+  add('資金池', r.pool); add('隊伍', r.team); add('類別', r.cat);
+  if(r.method && r.income) add('收款方式', r.method);   /* 支出無收款方式,不顯空欄 */
+  if(r.by) add('登帳人', r.by);
+  if(r.handler) add('付款經手', r.handler);              /* 實際經手/付款人,直付類與登帳人常不同 */
+  if(r.at) add('登帳時間', r.at);
+  if(r.edited) add('異動', '曾編輯分類');
+  if(r.voided) add('作廢', r.voidReason || '此筆已作廢');
+  add('備註', r.note || '(無備註)', true);
+  var rcps=(r.rcp||'').split(',').filter(Boolean), rcpHtml='';
+  if(rcps.length){
+    rcpHtml='<div style="margin-top:8px"><span style="color:#6b7280">📎 憑證('+rcps.length+')・點看大圖</span>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+
+      rcps.map(function(u){ var id=driveId(u); return id?'<img src="https://drive.google.com/thumbnail?id='+id+'&sz=w400" data-rcpu="'+esc(u)+'" style="width:72px;height:72px;object-fit:cover;border:1px solid #bbb;border-radius:6px;cursor:pointer">':''; }).join('')+
+      '</div></div>';
+  }
+  var cols=tr.children.length;
+  var dr=document.createElement('tr'); dr.id='rowDetail'; dr.setAttribute('data-for',txn);
+  dr.innerHTML='<td colspan="'+cols+'" style="padding:10px 12px;background:#F7F8FA;border-left:3px solid #1F3864">'+
+    '<b style="font-size:13px">📋 明細資料</b>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 16px;margin-top:6px;font-size:12px">'+cells.join('')+'</div>'+rcpHtml+'</td>';
+  tr.parentNode.insertBefore(dr, tr.nextSibling);
+}
+
 function openEditor(tr){
   var txn=tr.getAttribute('data-txn');
   var r=(lastData.recent||[]).find(function(x){return x.id===txn});
   if(!r||r.voided) return;
+  var rd=document.getElementById('rowDetail'); if(rd) rd.remove();     /* 明細/編輯二擇一 */
   if(MY_POOLS[user].indexOf(r.pool)<0){ toast('此筆屬'+r.pool+',您無編輯權限'); return; }
   var old=document.getElementById('editRow');
   if(old){
@@ -2620,9 +2740,14 @@ function renderDetail(){
   });
   h+='</tbody></table></div>';
   el.innerHTML=h;
+  el.querySelectorAll('tr[data-txn]').forEach(function(tr){
+    tr.style.cursor='pointer';
+    tr.onclick=function(){ openRowDetail(tr); };
+  });
   if(user!=='麗娜'){
     el.querySelectorAll('button[data-edit]').forEach(function(b){
-      b.onclick=function(){
+      b.onclick=function(e){
+        if(e) e.stopPropagation();   /* 不觸發列本體的明細展開 */
         var tr=this.closest('tr');
         openEditor(tr);
       };
