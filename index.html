@@ -175,7 +175,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-13r</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-08-13w</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -190,7 +190,6 @@ body.appOn{padding-bottom:92px}
     <div id="mList"></div>
   </div>
   <datalist id="memberList"></datalist>
-  <datalist id="actList"></datalist>
 
   <div id="vchSec" class="hide">
     <div class="card" style="padding:8px 12px" id="vchSum"></div>
@@ -229,7 +228,7 @@ body.appOn{padding-bottom:92px}
     <div class="card hide" id="budForm">
       <b id="budFormTitle" style="font-size:13px">➕ 追加預算列</b>
       <p class="sub" style="margin:2px 0 8px">同活動+同類別的池內支出自動計入「實際」;來源=球隊帳抓[主]池、Lina贊助抓Lina池</p>
-      <input type="text" id="budAct" list="actList" placeholder="活動(例:8月例賽)">
+      <span id="budActBox"></span>
       <select id="budCat"></select>
       <input type="number" id="budAmt" placeholder="預算金額" inputmode="numeric" min="1">
       <select id="budSrc"><option>球隊帳</option><option>Lina贊助</option></select>
@@ -288,7 +287,7 @@ body.appOn{padding-bottom:92px}
         <label>支出資金池 — 允甄將由此戶頭匯出</label>
         <select id="rPool"><option>[主]會費池</option><option>[私]Lina贊助池</option></select>
         <input type="text" id="rDesc" placeholder="項目說明,例:8月獎品採購 保溫瓶×10">
-        <input type="text" id="rAct" list="actList" placeholder="活動(例:8月例賽;球秘請款必填)">
+        <span id="rActBox"></span>
         <div id="rItems" class="hide" style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:6px">
           <p class="sub" style="margin-bottom:6px">請款明細(逐項填入,總額自動加總)</p>
           <div id="rItemRows"></div>
@@ -1779,6 +1778,7 @@ function renderBudget(){
   var bc=document.getElementById('budCat');
   if(!bc.options.length) bc.innerHTML=CATS.map(function(c){return '<option>'+c+'</option>'}).join('');
   document.getElementById('budForm').classList.toggle('hide', !(user==='凌華' && budView==='cards'));
+  (function(){ var bb=document.getElementById('budActBox'); if(bb && !bb.querySelector('select')) actBox('budActBox','budAct','','活動(例:8月例賽)'); })();
   var pills='<div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:10px">'+
     '<button onclick="setBudView(\'table\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;font-size:13px;'+(budView==='table'?'background:#1F3864;color:#fff':'background:#fff')+'">🧮 預算編列</button>'+
     '<button onclick="setBudView(\'cards\')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;border-left:1px solid var(--line);font-size:13px;'+(budView==='cards'?'background:#1F3864;color:#fff':'background:#fff')+'">📊 執行進度</button>'+
@@ -1836,9 +1836,9 @@ function budTableHtml(){
   var h='';
   if(edit){
     h+='<div class="card" style="padding:10px" id="budCtl">'+
-      '<div style="display:flex;gap:6px;margin-bottom:6px">'+
-      '<input type="text" id="budNewAct" list="actList" placeholder="＋新活動列(例:9月例賽)" style="flex:1;margin:0">'+
-      '<button class="ghost" style="width:auto;padding:8px 12px;margin:0;font-size:12.5px" onclick="budAddAct()">加列</button></div>'+
+      '<div style="margin-bottom:6px">'+
+      actField('budNewAct','','＋ 選/輸入活動(新增預算列)')+
+      '<button class="ghost" style="width:100%;padding:8px 12px;margin:0;font-size:12.5px" onclick="budAddAct()">加列</button></div>'+
       '<div style="display:flex;gap:6px">'+
       '<select id="budNewCat" style="flex:1;margin:0">'+CATS.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select>'+
       '<select id="budNewCatSrc" style="width:110px;margin:0"><option>球隊帳</option><option>Lina贊助</option></select>'+
@@ -1942,7 +1942,7 @@ function budCatSrcOf(c){
   return null;
 }
 function budFocusAct(){
-  var i=document.getElementById('budNewAct');
+  var i=document.getElementById('budNewAct__s')||document.getElementById('budNewAct');
   if(i){ if(i.scrollIntoView) i.scrollIntoView({behavior:'smooth',block:'center'}); i.focus(); }
 }
 function budFocusCat(){
@@ -2139,7 +2139,7 @@ function budOpenEdit(row){
   if(!b) return;
   budEditRow=row;
   document.getElementById('budFormTitle').textContent='✎ 編輯預算列('+b.act+'|'+b.cat+')';
-  document.getElementById('budAct').value=b.act;
+  actBox('budActBox','budAct',b.act,'活動(例:8月例賽)');
   document.getElementById('budCat').value=b.cat;
   document.getElementById('budAmt').value=b.amt;
   document.getElementById('budSrc').value=b.src;
@@ -2151,11 +2151,13 @@ function budOpenEdit(row){
 function budResetForm(){
   budEditRow=null;
   document.getElementById('budFormTitle').textContent='➕ 追加預算列';
-  ['budAct','budAmt','budNote'].forEach(function(i){document.getElementById(i).value='';});
+  ['budAmt','budNote'].forEach(function(i){document.getElementById(i).value='';});
+  actBox('budActBox','budAct','','活動(例:8月例賽)');
   document.getElementById('budEditBtns').classList.add('hide');
 }
 function budSave(){
-  var act=document.getElementById('budAct').value.trim(),
+  var budActEl=document.getElementById('budAct');
+  var act=budActEl?budActEl.value.trim():'',
       cat=document.getElementById('budCat').value,
       amt=Number(document.getElementById('budAmt').value),
       src=document.getElementById('budSrc').value,
@@ -2277,7 +2279,7 @@ function openEditor(tr){
     '<select id="eTeam" style="margin-bottom:6px">'+opt(ALL_TEAMS,r.team)+'</select>'+
     '<select id="eCat" onchange="catGuard(this,\'eTeam\')" style="margin-bottom:6px">'+opt(ALL_CATS,r.cat)+'</select>'+
     '<select id="eFy" style="margin-bottom:6px">'+fyOptions(r)+'</select>'+
-    '<input type="text" id="eAct" list="actList" value="'+esc(r.act||'')+'" placeholder="活動(選填)" style="margin-bottom:6px">'+
+    actField('eAct', r.act||'', '活動(選填)')+
     '<input type="text" id="eReason" placeholder="異動原因(留痕用,建議填)" style="margin-bottom:8px">'+
     '<button class="btn" style="margin-bottom:6px" onclick="saveEdit(\''+txn+'\')">儲存變更(留異動紀錄)</button>'+
     '<div style="display:flex;gap:8px">'+
@@ -2769,8 +2771,18 @@ function fillVendorSel(onlyType){
 function toggleReqForm(){
   var fm=document.getElementById('reqForm');
   fm.classList.toggle('hide');
+  if(!fm.classList.contains('hide')){   /* 展開=開新單:清除未存檔的編輯態,避免送出時覆寫舊單 */
+    if(reqEditRef){
+      ['rDesc','rAmt','rPayee','rBank','rBranch','rAcct','rNote'].forEach(function(id){var e=document.getElementById(id); if(e) e.value='';});
+      document.getElementById('rItemRows').innerHTML=''; var rt=document.getElementById('rItemTotal'); if(rt) rt.textContent='0';
+    }
+    reqEditRef=null;
+    fm.querySelector('b').textContent='新付款請求';
+    fm.querySelector('.btn').textContent='送出給允甄匯款';
+  }
   var sel=document.getElementById('rCat');
   if(!sel.options.length) sel.innerHTML=CATS.map(function(c){return '<option>'+c+'</option>'}).join('');
+  actBox('rActBox','rAct','','活動(例:8月例賽;球秘請款必填)');   /* 新請款單:活動重置為空 */
   fillVendorSel(reqType==='sec'?'球秘':null);
 }
 
@@ -2945,7 +2957,7 @@ function reqOpenEdit(ref){
   setReqType((r.items&&r.items.length)?'sec':'gen');
   document.getElementById('rPool').value=r.pool;
   document.getElementById('rDesc').value=r.desc;
-  document.getElementById('rAct').value=r.act||'';
+  actBox('rActBox','rAct',r.act||'','活動(例:8月例賽;球秘請款必填)');
   document.getElementById('rAmt').value=r.amount;
   document.getElementById('rTeam').value=r.team;
   document.getElementById('rCat').value=r.cat;
@@ -2972,13 +2984,14 @@ function reqCancelGo(ref){
   }).catch(function(e){ toast('撤銷失敗:'+e.message); });
 }
 function reqCreate(){
+  var rActEl=document.getElementById('rAct');
   var q={ desc:document.getElementById('rDesc').value.trim(),
     amount:parseInt(document.getElementById('rAmt').value||'0',10),
     pool:document.getElementById('rPool').value, team:document.getElementById('rTeam').value,
     cat:document.getElementById('rCat').value, payee:document.getElementById('rPayee').value.trim(),
     bankCode:document.getElementById('rBank').value.trim(), branch:document.getElementById('rBranch').value.trim(),
     bankAcct:document.getElementById('rAcct').value.trim(),
-    act:document.getElementById('rAct').value.trim(),
+    act:rActEl?rActEl.value.trim():'',
     note:document.getElementById('rNote').value.trim() };
   if(reqType==='sec'){
     q.pool='[主]會費池';
@@ -3664,6 +3677,32 @@ function renderTpls(){
   fb.onclick=function(){ pick(ft) }; g.appendChild(fb);
 }
 
+/* 活動選擇器:手機 datalist 常不跳選項→改原生 <select>(含「＋手動輸入新活動」逃生口)。
+   #<id> 仍是實際值輸入框,存檔讀 .value 不變;選現有活動時隱藏輸入框並代填其值。 */
+function actNames(){ var s={};
+  ((lastData&&lastData.actMaster)||[]).forEach(function(a){ if(a.name) s[a.name]=1; });
+  ((lastData&&lastData.recent)||[]).forEach(function(r){ if(!r.voided&&r.act) s[r.act]=1; });
+  return Object.keys(s).sort(); }
+function actField(id, cur, ph){
+  cur=cur||''; var names=actNames(), isNew = !!cur && names.indexOf(cur)<0;
+  var opts='<option value="">'+esc(ph||'活動(選填)')+'</option>';
+  names.forEach(function(a){ opts+='<option value="'+esc(a)+'"'+(a===cur?' selected':'')+'>'+esc(a)+'</option>'; });
+  opts+='<option value="__new__"'+(isNew?' selected':'')+'>＋ 手動輸入新活動…</option>';
+  return '<select id="'+id+'__s" onchange="actSelPick(\''+id+'\')" style="margin-bottom:6px">'+opts+'</select>'+
+    '<input type="text" id="'+id+'" placeholder="輸入新活動名稱" value="'+esc(cur)+'" style="margin-bottom:6px;'+(isNew?'':'display:none')+'">';
+}
+function actSelPick(id){
+  var s=document.getElementById(id+'__s'), inp=document.getElementById(id);
+  if(!s||!inp) return;
+  if(s.value==='__new__'){ inp.style.display=''; inp.value=''; inp.focus(); }
+  else { inp.style.display='none'; inp.value=s.value; }
+}
+/* 把活動選擇器塞進指定容器(靜態表單用) */
+function actBox(boxId, fieldId, cur, ph){
+  var box=document.getElementById(boxId);
+  if(box) box.innerHTML=actField(fieldId, cur, ph);
+}
+
 function pick(tp){
   cur=tp; photoData=null;
   document.getElementById('form').classList.remove('hide');
@@ -3686,7 +3725,7 @@ function pick(tp){
   if(tp.dir>0) h+='<select id="fPay"><option>匯款</option><option>現金</option><option>LINE Pay</option></select>'; /* 收款方式:現金/LINE Pay→待存入提醒允甄 */
   if(tp.catSel) h+='<select id="fCat" onchange="catGuard(this,\'fTeamE\')">'+CATS.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select>';
   h+='<input type="text" id="fDesc" placeholder="明細,例:8/27長庚月例賽">';
-  h+='<input type="text" id="fAct" list="actList" placeholder="活動(選填,例:9月例賽)">';
+  h+=actField('fAct','','活動(選填,例:9月例賽)');
   if(tp.payer) h+='<input type="text" id="fPayer" placeholder="繳款人/贊助者姓名(必填)">';
   if(tp.refManual) h+='<input type="text" id="fRefM" placeholder="對應調撥單號,例:F12-005">';
   if(tp.free){
@@ -3699,7 +3738,7 @@ function pick(tp){
     h+='<select id="fCat" onchange="catGuard(this,\'fTeamE\')">'+ALL_CATS.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select>';
     h+='<select id="fTeamE">'+ALL_TEAMS.map(function(x){return '<option>'+x+'</option>'}).join('')+'</select>';
     h+='<input type="text" id="fDesc" placeholder="明細">';
-    h+='<input type="text" id="fAct" list="actList" placeholder="活動(選填)">';
+    h+=actField('fAct','','活動(選填)');
     h+='<select id="fRef"><option value="">單號:無</option><option value="R">單號:R12 自動取號</option><option value="F">單號:F12 自動取號</option></select>';
     h+='<input type="text" id="fPayer" list="memberList" placeholder="繳款人/對象(選填)">';
     h+='<label>收據照片(選填)</label><input type="file" id="fPhoto" accept="image/*" capture="environment" onchange="readPhoto(this)">';
@@ -3712,13 +3751,13 @@ function pick(tp){
   }
   if(tp.pair){ h='<input type="date" id="fDate" value="'+today+'">'+
     '<input type="number" id="fAmt" placeholder="轉帳金額" inputmode="numeric">'+
-    '<input type="text" id="fActP" list="actList" placeholder="活動(選填;與年度預算「贊助轉出」欄同名即對上進度)">'+
+    actField('fActP','','活動(選填;與年度預算「贊助轉出」欄同名即對上進度)')+
     '<input type="text" id="fNote" placeholder="備註(選填)">'+
     '<p class="sub">按下儲存將同時產生:[私]Lina贊助池 贊助轉出(支出)+[主]會費池 贊助收入・記名 李麗娜(收入),同掛一個 F 單號</p>'; }
   else if(tp.ckeep){ h='<input type="date" id="fDate" value="'+today+'">'+
     '<input type="number" id="fAmt" placeholder="留用金額" inputmode="numeric">'+
     '<input type="text" id="fDesc" placeholder="明細,例:團體課代收結餘留用">'+
-    '<input type="text" id="fAct" list="actList" placeholder="活動(選填,同原代收活動)">'+
+    actField('fAct','','活動(選填,同原代收活動)')+
     '<p class="sub">麗娜會長同意不退回的代收款,一鍵成對:代收轉付(沖銷在管)+贊助收入・記名 李麗娜(留在零用金池)。銀行不動、池餘額不變、在管淨額同額歸零;超過在管淨額會擋下。</p>'; }
   else if(tp.dgift){ h='<input type="date" id="fDate" value="'+today+'">'+
     '<input type="text" id="fDesc" placeholder="明細,例:幹部隊服 3,000×16套">'+
@@ -3867,11 +3906,7 @@ function refresh(){
       return (user==='允甄'&&r.status==='待匯款')||(user==='凌華'&&r.status==='已匯款');
     }).length;
     navBadge();
-    var acts={};
-    (j.actMaster||[]).forEach(function(a){ acts[a.name]=1; });
-    (j.recent||[]).forEach(function(r){ if(!r.voided&&r.act) acts[r.act]=1; });
-    document.getElementById('actList').innerHTML =
-      Object.keys(acts).sort().map(function(a){return '<option value="'+esc(a)+'">'}).join('');
+    /* 活動選項統一由 actNames()/actField() 現算,不再維護 actList datalist(已無 list="actList" 引用) */
     if(curTab==='home') renderHome();
     if(curTab==='det') renderDetail();
     if(curTab==='recon') renderRecon();
