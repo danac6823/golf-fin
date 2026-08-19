@@ -370,7 +370,7 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
   <!-- 會員主檔 -->
   <div id="memberSec" class="hide">
     <div class="head"><b><span class="hico" data-ic="users"></span>會員主檔</b><input id="memSearch" type="text" placeholder="🔍 搜尋姓名/屆別" style="width:170px;margin:0;padding:8px 11px;font-size:14px" oninput="renderMember()"></div>
-    <p class="sub" style="margin:0 0 8px 2px">來源:共用「會員名冊」(同 golf-fin);點開看完整資料。<b style="color:var(--warn)">出生年/期初差點/幹部</b>等判定欄位待補。</p>
+    <p id="memSrcNote" class="sub" style="margin:0 0 8px 2px">來源:共用「會員名冊」(同 golf-fin);點開看完整資料。<b style="color:var(--warn)">出生年/期初差點/幹部</b>等判定欄位待補。</p>
     <div id="memberBody"></div>
   </div>
 </div>
@@ -1252,6 +1252,7 @@ function doSyncPlayers(){
 }
 function renderMember(){
   var el=document.getElementById('memberBody'); if(!el) return;
+  var _sn=document.getElementById('memSrcNote'); if(_sn) _sn.style.display=(user==='凌華')?'':'none';  /* 來源說明僅總幹事 */
   var q=(document.getElementById('memSearch')?document.getElementById('memSearch').value.trim():'');
   var ms=DATA.members.slice();
   if(q) ms=ms.filter(function(m){ return (m.name&&m.name.indexOf(q)>=0)||(m.cohort&&m.cohort.indexOf(q)>=0); });
@@ -1275,7 +1276,7 @@ function renderMember(){
   ms.forEach(function(m){
     var co=m.cohort||'其他';
     if(co!==cur){ cur=co; h+='<tr class="cgrp"><td colspan="2">'+esc(co)+'<span class="n">'+cnt[co]+' 人</span></td></tr>'; }
-    var role=m.cadre||memRole(m.role);
+    var role=m.cadre||m.pastRole||memRole(m.role);  /* 本屆幹部 → 歷屆職務欄 → (過渡)備註抽取 */
     var isNow=!!role&&(!!m.cadre||!/第\d+屆/.test(role));  /* cadre 或 無「第N屆」前綴 = 本屆幹部 */
     var roleLbl=role?(isNow&&!/屆/.test(role)?('本屆'+role):role):'';
     var roleTag=role?' <span class="rolebadge '+(isNow?'role-now':'role-past')+'">'+(isNow?'⭐ ':'')+esc(roleLbl)+'</span>':'';
@@ -1296,8 +1297,8 @@ function renderMember(){
     if(role) kv+='<span class="k">身分</span><span class="v"'+(isNow?' style="color:#1F7A34;font-weight:600"':'')+'>'+(isNow?'⭐ ':'')+esc(roleLbl)+'</span>';
     if(m.tenure) kv+='<span class="k">會員年資</span><span class="v">'+esc(m.tenure)+'</span>';
     if(m.golfLife) kv+='<span class="k">高球生活</span><span class="v">'+esc(m.golfLife)+'</span>';
-    if(m.words) kv+='<span class="k">想說</span><span class="v">'+esc(m.words)+'</span>';
-    kv+='<span class="k">大群</span><span class="v">'+(m.bigGroup?'✅ 已邀':'—')+'</span>';
+    if(m.words && user==='凌華') kv+='<span class="k">想說</span><span class="v">'+esc(m.words)+'</span>';
+    if(user==='凌華') kv+='<span class="k">大群</span><span class="v">'+(m.bigGroup?'✅ 已邀':'—')+'</span>';
     if(m.regTs && user==='凌華') kv+='<span class="k">報名時間</span><span class="v sub">'+esc(m.regTs)+'</span>';
     if(user==='凌華'){  /* 出生年+差點明細:僅總幹事;來賓在列上已見當期差點 */
     kv+='<span class="k">出生年</span><span class="v" style="'+wc+'">'+(m.birthYear||'待補')+'</span>';
@@ -1330,7 +1331,7 @@ function openMemberEdit(id){
   document.getElementById('mIdentity').innerHTML='<b>'+esc(m.id)+'</b>　<b>'+esc(m.name)+'</b> '+esc(m.enName||'')+'　'+esc(m.cohort||'')+'　'+esc(m.sex||'')+(m.phone?'　'+esc(m.phone):'')+'<br><span style="font-size:12px">識別欄(編號/姓名/性別…)來自共用會員名冊，不在此改</span>';
   document.getElementById('mBirth').value=m.birthYear||'';
   document.getElementById('mTenure').value=m.tenure||'';
-  document.getElementById('mRole').value=m.cadre||memRole(m.role)||'';
+  document.getElementById('mRole').value=m.cadre||m.pastRole||memRole(m.role)||'';
   document.getElementById('mHcpInit').value=(m.hcpInit||m.hcpInit===0)?m.hcpInit:'';
   document.getElementById('mHcpCur').value=(m.hcpCur||m.hcpCur===0)?m.hcpCur:'';
   openOv('memberOv');
