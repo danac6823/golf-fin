@@ -533,8 +533,8 @@ function authBtnClick(){ if(user==='凌華'){ if(confirm('登出總幹事,回到
 function setAuthBtn(){ var l=document.getElementById('authLbl'), b=document.getElementById('authBtn');
   if(l) l.textContent=(user==='凌華')?'凌華・登出':'🔑';
   if(b) b.title=(user==='凌華')?'登出':'總幹事登入'; }
-function enterAdmin(){ applyRole(user); setAuthBtn(); refresh(); }
-function enterGuest(){ user='來賓'; applyRole('來賓'); setAuthBtn(); refresh(); }
+function enterAdmin(){ applyRole(user); setAuthBtn(); refreshCached(); }
+function enterGuest(){ user='來賓'; applyRole('來賓'); setAuthBtn(); refreshCached(); }
 /* 預設=來賓唯讀(免登入看資料);有存 token 則嘗試總幹事登入 */
 function boot(){ var tok=localStorage.getItem('gp_token');
   if(tok){ gasPost({action:'whoami'}).then(function(j){ user=j.name; enterAdmin(); }).catch(function(){ localStorage.removeItem('gp_token'); enterGuest(); }); }
@@ -590,7 +590,16 @@ function applyRole(r){ user=r;
   ['sessAddBtn','courseAddBtn'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.toggle('hide',ro); });
 }
 function switchRole(r){ applyRole(r); refresh(); }
-function refresh(){ return api('playSummary').then(function(j){ DATA=j; showTab(curTab); }).catch(function(e){ toast('⚠️ 資料載入失敗:'+(e&&e.message||e)); console.error('playSummary 失敗',e); }); }
+var CACHE_KEY='gp_cache_v1';
+function loadCache(){ try{ var s=localStorage.getItem(CACHE_KEY); return s?JSON.parse(s):null; }catch(e){ return null; } }
+function saveCache(j){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(j)); }catch(e){} }
+function refresh(){ return api('playSummary').then(function(j){
+    var same=DATA&&JSON.stringify(j)===JSON.stringify(DATA);
+    DATA=j; if(!PREVIEW) saveCache(j);
+    if(!same) showTab(curTab);
+  }).catch(function(e){ toast('⚠️ 資料載入失敗:'+(e&&e.message||e)); console.error('playSummary 失敗',e); }); }
+/* 秒開:先用上次快取立即渲染,再背景抓最新(有變才重繪) */
+function refreshCached(){ if(!PREVIEW){ var c=loadCache(); if(c){ DATA=c; showTab(curTab); } } return refresh(); }
 
 function fmtMD(d){ d=String(d); return d.length===8?(+d.slice(4,6))+'/'+(+d.slice(6,8)):d; }
 /* 行程卡:同 tripId 的多天場次合成一塊(每天各自球場/時間/計分性質/盃賽) */
