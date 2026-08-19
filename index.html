@@ -2237,6 +2237,7 @@ function openRowDetail(tr){
   add('單號', r.id);
   add('資金池', r.pool); add('隊伍', r.team); add('類別', r.cat);
   if(r.method && r.income) add('收款方式', r.method);   /* 支出無收款方式,不顯空欄 */
+  if(r.last5 && r.income) add('匯款後5碼', r.last5);
   if(r.by) add('登帳人', r.by);
   if(r.handler) add('經手人', r.handler);                /* 收/付共用同欄(帳本付款經手),用中性標籤 */
   if(r.at) add('登帳時間', r.at);
@@ -2866,6 +2867,7 @@ function itemTotal(){
   return t;
 }
 
+function toggleLast5(){ var f=document.getElementById('fPay'), l=document.getElementById('fLast5'); if(f&&l) l.style.display=(f.value==='匯款')?'':'none'; }
 function vendorPick(idx){
   if(idx===''){ return; }
   var v=((lastData&&lastData.vendors)||[])[Number(idx)];
@@ -2965,6 +2967,8 @@ function reqOpenEdit(ref){
   document.getElementById('rBank').value=r.bankCode||'';
   document.getElementById('rBranch').value=r.branch||'';
   document.getElementById('rAcct').value=r.bankAcct||'';
+  (function(){ var vs=document.getElementById('rVendor'); if(!vs) return; vs.value='';
+    if(r.vendorId){ var vl=(lastData&&lastData.vendors)||[]; for(var i=0;i<vl.length;i++){ if(String(vl[i].id)===String(r.vendorId)){ vs.value=String(i); break; } } } })();  /* 編輯:依存的廠商編號重選下拉,不觸發帶入(保留單上帳戶) */
   document.getElementById('rNote').value=r.note||'';
   if(r.items&&r.items.length){
     document.getElementById('rItemRows').innerHTML='';
@@ -2993,6 +2997,7 @@ function reqCreate(){
     bankAcct:document.getElementById('rAcct').value.trim(),
     act:rActEl?rActEl.value.trim():'',
     note:document.getElementById('rNote').value.trim() };
+  q.vendorId=(function(){ var s=document.getElementById('rVendor').value; return (s!==''&&lastData.vendors&&lastData.vendors[+s])?lastData.vendors[+s].id:''; })();  /* 選到的廠商 id:回寫直接更新那一筆,不猜名字 */
   if(reqType==='sec'){
     q.pool='[主]會費池';
     q.items=gatherItems();
@@ -3722,7 +3727,7 @@ function pick(tp){
     h+='<select id="fTeamE">'+to.map(function(x){return '<option>'+x+'</option>'}).join('')+'</select>';
   }
   h+='<input type="number" id="fAmt" placeholder="金額" inputmode="numeric">';
-  if(tp.dir>0) h+='<select id="fPay"><option>匯款</option><option>現金</option><option>LINE Pay</option></select>'; /* 收款方式:現金/LINE Pay→待存入提醒允甄 */
+  if(tp.dir>0) h+='<select id="fPay" onchange="toggleLast5()"><option>匯款</option><option>現金</option><option>LINE Pay</option></select><input type="text" id="fLast5" maxlength="5" inputmode="numeric" placeholder="匯款後5碼(選填)">'; /* 收款方式:現金/LINE Pay→待存入提醒允甄 */
   if(tp.catSel) h+='<select id="fCat" onchange="catGuard(this,\'fTeamE\')">'+CATS.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select>';
   h+='<input type="text" id="fDesc" placeholder="明細,例:8/27長庚月例賽">';
   h+=actField('fAct','','活動(選填,例:9月例賽)');
@@ -3734,7 +3739,7 @@ function pick(tp){
     if(poolOpts.length>1) h+='<select id="fPool">'+poolOpts.map(function(p){return '<option>'+p+'</option>'}).join('')+'</select>';
     h+='<select id="fDir"><option value="out">支出</option><option value="in">收入</option></select>';
     h+='<input type="number" id="fAmt" placeholder="金額" inputmode="numeric">';
-    h+='<select id="fPay"><option>匯款</option><option>現金</option><option>LINE Pay</option></select>'; /* 收款方式(收入適用;支出忽略) */
+    h+='<select id="fPay" onchange="toggleLast5()"><option>匯款</option><option>現金</option><option>LINE Pay</option></select><input type="text" id="fLast5" maxlength="5" inputmode="numeric" placeholder="匯款後5碼(選填)">'; /* 收款方式(收入適用;支出忽略) */
     h+='<select id="fCat" onchange="catGuard(this,\'fTeamE\')">'+ALL_CATS.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select>';
     h+='<select id="fTeamE">'+ALL_TEAMS.map(function(x){return '<option>'+x+'</option>'}).join('')+'</select>';
     h+='<input type="text" id="fDesc" placeholder="明細">';
@@ -3808,6 +3813,7 @@ function save(){
       refType: refT,
       status: dir==='out'?(refT?'已撥款':'已支付'):'—',
       method: dir==='in'?document.getElementById('fPay').value:'',
+      last5: dir==='in'&&document.getElementById('fLast5')?document.getElementById('fLast5').value.trim():'',
       note:''
     };
     if(photoData){ en0.photoBase64=photoData.b64; en0.photoMime=photoData.mime; }
@@ -3886,6 +3892,7 @@ function save(){
     refType: cur.ref||'',
     status: cur.dir<0?(cur.ref?'已撥款':'已支付'):'—',
     method: (cur.dir>0&&document.getElementById('fPay'))?document.getElementById('fPay').value:'',
+    last5: (cur.dir>0&&document.getElementById('fLast5'))?document.getElementById('fLast5').value.trim():'',
     note: refM&&refM.value?('對應 '+refM.value):''
   };
   if(photoData){ en.photoBase64=photoData.b64; en.photoMime=photoData.mime; }
