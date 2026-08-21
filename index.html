@@ -200,6 +200,17 @@ body.appOn{padding-bottom:92px}
     <div id="pubBody"></div>
   </div>
 
+  <div id="giftSec" class="hide">
+    <div class="card">
+      <p class="sub" style="margin-bottom:8px">非現金贊助(球券/送球/獎盃等)<b>不進現金帳、不影響結餘</b>,僅顯示於月報「贊助芳名錄」。日期決定歸哪個月。</p>
+      <input type="date" id="gDate" style="margin-bottom:6px">
+      <input type="text" id="gName" placeholder="贊助人(必填)" style="margin-bottom:6px">
+      <input type="text" id="gItem" placeholder="品項,例:益莊球券×10" style="margin-bottom:6px">
+      <input type="text" id="gNote" placeholder="說明(選填)" style="margin-bottom:8px">
+      <button class="btn" onclick="giftAdd()">＋ 新增非現金贊助</button>
+    </div>
+    <div id="giftList"></div>
+  </div>
   <div id="histSec" class="hide">
     <div id="histBody"></div>
   </div>
@@ -391,7 +402,7 @@ function setLinaTab(t){ linaTab=t; renderOverview(); }
 function ovActBack(){ ovActSel=null; ovMain='pool'; showTab('actm'); } /* 返回活動管理(列表層已拆) */
 var OV_VIEWS=[['pools','📊 總表'],['team','隊伍'],['mainv','創主班'],['lina','會長'],['yz','允甄'],['adv','花']];
 
-var MUT_ACTIONS={add:1,'void':1,editEntry:1,reqCreate:1,reqEdit:1,reqCancel:1,reqPay:1,reqClose:1,reqReceipt:1,
+var MUT_ACTIONS={add:1,'void':1,giftAdd:1,giftDel:1,editEntry:1,reqCreate:1,reqEdit:1,reqCancel:1,reqPay:1,reqClose:1,reqReceipt:1,
   sponsorTransfer:1,directGift:1,reconCommit:1,publishMonth:1,memberConfirm:1,memberSync:1,
   budgetSave:1,budgetDel:1,budgetBatch:1,actUpsert:1,actDel:1,exportPdf:1,exportXlsx:1,incomeConfirm:1,pettyFundConfirm:1,custodyKeep:1};
 var apiInflight=null;
@@ -465,7 +476,7 @@ var NAV_DEF = {
   '麗娜':[['home','🏠','首頁'],['det','📋','明細'],['mem','👥','會員'],['ov','📊','報表'],['bud','📐','預算']]
 };
 var MORE_DEF = {
-  '凌華':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽(零用金)'],['mem','👥 會員查詢'],['vch','🧾 會費傳票'],['bud','📐 年度預算'],['actm','🎯 活動管理'],['hist','🕘 異動紀錄']],
+  '凌華':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽(零用金)'],['mem','👥 會員查詢'],['vch','🧾 會費傳票'],['bud','📐 年度預算'],['actm','🎯 活動管理'],['gift','🙏 非現金贊助'],['hist','🕘 異動紀錄']],
   '允甄':[['ov','📊 報表視角'],['recon','🔗 對帳勾稽'],['mem','👥 會員查詢'],['vch','🧾 會費傳票'],['pub','📣 月結發布'],['bud','📐 年度預算'],['actm','🎯 活動管理'],['hist','🕘 異動紀錄']],
   '麗娜':[]
 };
@@ -536,7 +547,7 @@ function navBadge(){
   else bd.classList.add('hide');
 }
 
-var PAGE_TITLES={entry:'✏️ 登帳',pay:'💸 付款請求',ov:'📊 報表視角',det:'📋 帳本明細',recon:'🔗 對帳勾稽',mem:'👥 會員查詢',pub:'📣 月結發布',vch:'🧾 會費傳票',bud:'📐 年度預算',actm:'🎯 活動管理',hist:'🕘 異動紀錄'};
+var PAGE_TITLES={entry:'✏️ 登帳',pay:'💸 付款請求',ov:'📊 報表視角',det:'📋 帳本明細',recon:'🔗 對帳勾稽',mem:'👥 會員查詢',pub:'📣 月結發布',vch:'🧾 會費傳票',bud:'📐 年度預算',actm:'🎯 活動管理',gift:'🙏 非現金贊助',hist:'🕘 異動紀錄'};
 function showTab(t){
   if(t==='entry'&&user==='麗娜') t='home';
   if(curTab==='bud' && t!=='bud' && budView==='table' && typeof budDirty==='function' && budDirty()){
@@ -556,6 +567,8 @@ function showTab(t){
   document.getElementById('histSec').classList.toggle('hide', t!=='hist');
   document.getElementById('budSec').classList.toggle('hide', t!=='bud');
   document.getElementById('actmSec').classList.toggle('hide', t!=='actm');
+  document.getElementById('giftSec').classList.toggle('hide', t!=='gift');
+  if(t==='gift') renderGift();
   document.getElementById('pageHead').classList.toggle('hide', t==='home');
   var bb=document.getElementById('backBtn');
   var dc=document.getElementById('detCtrl'), df=document.getElementById('detFilterLink');
@@ -847,6 +860,33 @@ function sponsorOf(r){
   return '';
 }
 function setVchTab(t){ vchTab=t; vchPage=0; renderVch(); }
+function renderGift(){
+  var dEl=document.getElementById('gDate'); if(dEl && !dEl.value) dEl.value=tpDate();
+  var el=document.getElementById('giftList'); if(!el) return;
+  el.innerHTML='<p class="sub" style="text-align:center;padding:20px 0">載入中…</p>';
+  api({action:'giftList'}).then(function(j){
+    var list=(j&&j.list)||[];
+    if(!list.length){ el.innerHTML='<div class="card"><p class="sub">尚無非現金贊助紀錄</p></div>'; return; }
+    var h='<div class="card" style="padding:0;overflow:hidden"><table>';
+    list.forEach(function(g){
+      h+='<tr><td><b>'+esc(g.name)+'</b><br><span class="sub" style="font-size:12px">'+d8fmt(g.date)+'・'+esc(g.item||'')+(g.note?'・'+esc(g.note):'')+'</span></td>'+
+         '<td style="text-align:right;white-space:nowrap"><button class="ghost" style="width:auto;padding:5px 10px;margin:0;color:#A32D2D" onclick="giftDel('+g.row+')">刪</button></td></tr>';
+    });
+    h+='</table></div>'; el.innerHTML=h;
+  }).catch(function(e){ el.innerHTML='<div class="card"><p class="sub">載入失敗:'+esc(e.message||'')+'</p></div>'; });
+}
+function giftAdd(){
+  var name=document.getElementById('gName').value.trim();
+  if(!name){ toast('贊助人必填'); return; }
+  api({action:'giftAdd',g:{ date:(document.getElementById('gDate').value||'').replace(/-/g,''),
+    name:name, item:document.getElementById('gItem').value.trim(), note:document.getElementById('gNote').value.trim() }})
+  .then(function(){ toast('✓ 已新增非現金贊助');
+    document.getElementById('gName').value=''; document.getElementById('gItem').value=''; document.getElementById('gNote').value='';
+    renderGift();
+  }).catch(function(e){ toast(e.message); });
+}
+function giftDel(row){ if(!confirm('刪除這筆非現金贊助?')) return;
+  api({action:'giftDel',row:row}).then(function(){ toast('✓ 已刪除'); renderGift(); }).catch(function(e){ toast(e.message); }); }
 function renderVch(){
   if(!memberCache && user!=='麗娜'){ loadMembers(function(){ if(curTab==='vch') renderVch(); }); }
   var fa = feeAttrib();
@@ -2274,11 +2314,15 @@ function openEditor(tr){
   var cols=tr.children.length;
   var er=document.createElement('tr'); er.id='editRow'; er.setAttribute('data-for',txn);
   var opt=function(list,cur){return list.map(function(x){return '<option'+(x===cur?' selected':'')+'>'+x+'</option>'}).join('')};
+  /* 類別下拉依收支方向過濾:支出筆不列收入類別,反之亦然(避免跨方向誤植) */
+  var INCOME_CATS_F=['會費收入','來賓餐費收入','贊助收入','利息','代收款'], isIn=(r.income>0);
+  var catList=ALL_CATS.filter(function(c){ return isIn ? (INCOME_CATS_F.indexOf(c)>=0||['移交款','內部調撥','移轉款'].indexOf(c)>=0) : INCOME_CATS_F.indexOf(c)<0; });
+  if(catList.indexOf(r.cat)<0) catList=[r.cat].concat(catList);   /* 現值(含已誤植的)一定在,可改回 */
   er.innerHTML='<td colspan="'+cols+'" style="padding:10px;background:#F7F8FA">'+
     '<b style="font-size:13px">編輯分類 '+txn+'</b><p class="sub" style="margin:2px 0 8px">金額與日期不可改;如需更正請作廢後重登</p>'+
     '<select id="ePool" style="margin-bottom:6px">'+opt(MY_POOLS[user],r.pool)+'</select>'+
     '<select id="eTeam" style="margin-bottom:6px">'+opt(ALL_TEAMS,r.team)+'</select>'+
-    '<select id="eCat" onchange="catGuard(this,\'eTeam\')" style="margin-bottom:6px">'+opt(ALL_CATS,r.cat)+'</select>'+
+    '<select id="eCat" onchange="catGuard(this,\'eTeam\')" style="margin-bottom:6px">'+opt(catList,r.cat)+'</select>'+
     '<select id="eFy" style="margin-bottom:6px">'+fyOptions(r)+'</select>'+
     actField('eAct', r.act||'', '活動(選填)')+
     '<input type="text" id="eReason" placeholder="異動原因(留痕用,建議填)" style="margin-bottom:8px">'+

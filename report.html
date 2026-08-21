@@ -34,7 +34,7 @@ td{padding:9px 6px;border-top:1px solid var(--line);vertical-align:top}
 <div class="hd" style="display:flex;align-items:center;gap:12px">
   <img src="gp-mark.png" alt="" style="width:52px;height:52px;flex:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.18))">
   <div>
-    <h1 style="font-size:18px;line-height:1.25">政大EMBA創業主班<br>高爾夫球聯誼會</h1>
+    <h1 style="font-size:16px;line-height:1.3;white-space:nowrap">政大EMBA創業主班 高爾夫球聯誼會</h1>
     <p style="margin-top:4px">第12屆 財務月報|球隊帳・由財務發布</p>
   </div>
 </div>
@@ -48,6 +48,10 @@ td{padding:9px 6px;border-top:1px solid var(--line);vertical-align:top}
 <p class="foot">本頁僅呈現球隊正式帳已發布之月結資料<br>第12屆</p>
 <script>
 var curView='rpt', msList=[], repCache={};
+/* 本地快取(第二次開秒出;背景仍抓最新) */
+var LS='rep_cache_v1';
+function lsGet(){ try{ return JSON.parse(localStorage.getItem(LS))||{}; }catch(e){ return {}; } }
+function lsSet(o){ try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(e){} }
 function setView(v){
   curView=v;
   Array.prototype.forEach.call(document.getElementById('tabBar').children,function(b){
@@ -64,7 +68,7 @@ function setView(v){
 function fetchReport(ym){
   if(repCache[ym]) return Promise.resolve(repCache[ym]);
   return fetch(GAS_URL+'?pub=report&ym='+ym).then(function(r){return r.json()}).then(function(j){
-    if(j.ok) repCache[ym]=j.report;
+    if(j.ok){ repCache[ym]=j.report; var c=lsGet(); c.reports=c.reports||{}; c.reports[ym]=j.report; lsSet(c); }
     return j.report;
   });
 }
@@ -76,12 +80,13 @@ function renderSummary(){
   Promise.all(msList.map(fetchReport)).then(function(reps){
     reps = reps.filter(Boolean).sort(function(a,b){ return a.ym<b.ym?-1:1; });
     var first=reps[0], last=reps[reps.length-1];
-    var tin=0,tout=0,byCat={},feeM=0,feeF=0,sponsors=[],byAct={},byXCat={};
+    var tin=0,tout=0,byCat={},feeM=0,feeF=0,sponsors=[],giftSponsors=[],byAct={},byXCat={};
     reps.forEach(function(d){
       tin+=d.income.total; tout+=d.expense.total;
       Object.keys(d.income.byCat).forEach(function(c){ byCat[c]=(byCat[c]||0)+d.income.byCat[c]; });
       feeM+=d.income.feeM||0; feeF+=d.income.feeF||0;
       (d.income.sponsors||[]).forEach(function(s){ sponsors.push(s); });
+      (d.income.giftSponsors||[]).forEach(function(g){ giftSponsors.push(g); });
       d.expense.items.forEach(function(x){
         var k=x.act||'一般支出';
         byAct[k]=(byAct[k]||0)+x.amt;
@@ -102,10 +107,9 @@ function renderSummary(){
       h+='<tr><td>'+esc(c)+note+'</td><td class="r">+'+money(byCat[c])+'</td></tr>';
     });
     h+='</tbody></table>';
-    if(sponsors.length){
-      h+='<p style="font-size:14px;font-weight:600;margin:10px 0 5px">🙏 本屆贊助芳名錄</p><table><tbody>';
-      sponsors.forEach(function(s){ h+='<tr><td>'+esc(s.desc)+'</td><td class="r">+'+money(s.amt)+'</td></tr>'; });
-      h+='</tbody></table>';
+    var hrS=honorRows(sponsors, giftSponsors);
+    if(hrS.has){
+      h+='<p style="font-size:14px;font-weight:600;margin:10px 0 5px">🙏 本屆贊助芳名錄</p><table><tbody>'+hrS.html+'</tbody></table>';
     }
     h+='</div>';
     /* 累計支出|依活動:已隱藏(2026/08 Hana) */
@@ -159,12 +163,41 @@ var curYm = new URLSearchParams(location.search).get('ym') || '';
 function money(n){ return Number(n).toLocaleString('zh-Hant'); }
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
 function fmtD(d){ var s=String(d); return s.slice(4,6)+'/'+s.slice(6,8); }
+/* 贊助人:取摘要括號內容第一段(去掉「・益莊球券」這類附註);無括號則去掉「贊助收入」前綴 */
+function sponsorName(desc){
+  var m=String(desc).match(/[(（]([^)）]+)[)）]/);
+  if(m) return m[1].split(/[・,、]/)[0].trim();
+  return String(desc).replace(/^贊助收入[:：]?/,'').trim()||String(desc);
+}
+/* 同一贊助人合計金額,顯示一列 */
+function aggSponsors(list){
+  var by={}, order=[];
+  (list||[]).forEach(function(s){ var n=sponsorName(s.desc); if(!(n in by)){ by[n]=0; order.push(n); } by[n]+=(s.amt||0); });
+  return order.map(function(n){ return {name:n, amt:by[n]}; });
+}
+/* 芳名錄:現金(依人合計)+ 非現金品項,依人合併一列 */
+function mergeHonor(cashList, giftList){
+  var by={}, order=[];
+  function ensure(n){ if(!(n in by)){ by[n]={name:n,amt:0,items:[]}; order.push(n); } return by[n]; }
+  aggSponsors(cashList).forEach(function(s){ ensure(s.name).amt+=s.amt; });
+  (giftList||[]).forEach(function(g){ ensure(g.name).items.push(g.item+(g.note?'('+g.note+')':'')); });
+  return order.map(function(n){ var e=by[n]; return {name:e.name, amt:e.amt, items:e.items.join('・')}; });
+}
+function honorRows(cashList, giftList){
+  var arr=mergeHonor(cashList, giftList), h='';
+  arr.forEach(function(s){
+    h+='<tr><td>'+esc(s.name)+(s.items?' <span class="sub">'+esc(s.items)+'</span>':'')+'</td>'+
+       '<td class="r">'+(s.amt?'+'+money(s.amt):'<span class="sub">非現金</span>')+'</td></tr>';
+  });
+  return { has:arr.length>0, html:h };
+}
 
-fetch(GAS_URL+'?pub=months').then(function(r){return r.json()}).then(function(j){
-  var ms = j.months||[]; msList = ms;
+function buildMonths(ms){
+  msList = ms;
   if(!ms.length){ document.getElementById('body').innerHTML='<div class="card"><p class="sub">尚未有已發布之月報</p></div>'; return; }
   if(!curYm || ms.indexOf(curYm)<0) curYm = ms[0];
-  var el=document.getElementById('months');
+  var el=document.getElementById('months'); el.innerHTML='';
+  function markOn(){ Array.prototype.forEach.call(el.children,function(b,i){ b.className = ms[i]===curYm?'on':''; }); }
   ms.forEach(function(m){
     var b=document.createElement('button');
     b.textContent = m.replace('-','年')+'月';
@@ -172,16 +205,30 @@ fetch(GAS_URL+'?pub=months').then(function(r){return r.json()}).then(function(j)
     b.onclick=function(){ curYm=m; history.replaceState(null,'','?ym='+m); render(); markOn(); };
     el.appendChild(b);
   });
-  function markOn(){ Array.prototype.forEach.call(el.children,function(b,i){ b.className = ms[i]===curYm?'on':''; }); }
   render();
-}).catch(function(){ document.getElementById('body').innerHTML='<div class="card"><p class="sub">載入失敗,請稍後再試</p></div>'; });
+}
+/* 秒開:先用快取的月份+報表立即畫,再背景抓最新覆蓋 */
+(function boot(){
+  var c=lsGet();
+  if(c.months && c.months.length){ if(c.reports) for(var k in c.reports) repCache[k]=c.reports[k]; buildMonths(c.months); }
+  fetch(GAS_URL+'?pub=months').then(function(r){return r.json()}).then(function(j){
+    var ms=j.months||[]; var cc=lsGet(); cc.months=ms; lsSet(cc); buildMonths(ms);
+  }).catch(function(){ if(!(c.months&&c.months.length)) document.getElementById('body').innerHTML='<div class="card"><p class="sub">載入失敗,請稍後再試</p></div>'; });
+})();
 
 function render(){
   var body=document.getElementById('body');
-  body.innerHTML='<p class="sub" style="text-align:center;padding:30px 0">載入中…</p>';
+  var cached=repCache[curYm]||((lsGet().reports||{})[curYm]);
+  if(cached){ repCache[curYm]=cached; drawReport(cached); }
+  else body.innerHTML='<p class="sub" style="text-align:center;padding:30px 0">載入中…</p>';
   fetch(GAS_URL+'?pub=report&ym='+curYm).then(function(r){return r.json()}).then(function(j){
-    if(!j.ok){ body.innerHTML='<div class="card"><p class="sub">'+esc(j.error||'讀取失敗')+'</p></div>'; return; }
-    var d=j.report, h='';
+    if(!j.ok){ if(!cached) document.getElementById('body').innerHTML='<div class="card"><p class="sub">'+esc(j.error||'讀取失敗')+'</p></div>'; return; }
+    repCache[curYm]=j.report; var c=lsGet(); c.reports=c.reports||{}; c.reports[curYm]=j.report; lsSet(c);
+    drawReport(j.report);
+  }).catch(function(){ if(!cached) document.getElementById('body').innerHTML='<div class="card"><p class="sub">載入失敗,請稍後再試</p></div>'; });
+}
+function drawReport(d){
+  var body=document.getElementById('body'), h='';
     h+='<div class="card">';
     h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'+
        '<b style="font-size:17px">'+d.ym.replace('-','年')+'月 月結</b>'+
@@ -204,12 +251,9 @@ function render(){
     });
     if(!Object.keys(d.income.byCat).length) h+='<tr><td class="sub">本月無收入</td><td></td></tr>';
     h+='</tbody></table>';
-    if(d.income.sponsors && d.income.sponsors.length){
-      h+='<p style="font-size:14px;font-weight:600;margin:10px 0 5px">🙏 贊助芳名錄</p><table><tbody>';
-      d.income.sponsors.forEach(function(s){
-        h+='<tr><td>'+esc(s.desc)+'</td><td class="r">+'+money(s.amt)+'</td></tr>';
-      });
-      h+='</tbody></table>';
+    var hr=honorRows(d.income.sponsors, d.income.giftSponsors);
+    if(hr.has){
+      h+='<p style="font-size:14px;font-weight:600;margin:10px 0 5px">🙏 贊助芳名錄</p><table><tbody>'+hr.html+'</tbody></table>';
     }
     h+='</div>';
 
@@ -240,8 +284,7 @@ function render(){
     }
     h+='</div>';
     h+='<p class="sub" style="text-align:center">發布:'+esc(d.publishedBy)+'・'+esc(d.publishedAt)+'</p>';
-    body.innerHTML=h;
-  }).catch(function(){ body.innerHTML='<div class="card"><p class="sub">載入失敗,請稍後再試</p></div>'; });
+  body.innerHTML=h;
 }
 </script>
 <div id="lightbox" onclick="closeLb()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:99;align-items:center;justify-content:center;flex-direction:column">
