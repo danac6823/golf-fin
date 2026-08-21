@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1F3864">
+<meta name="theme-color" content="#37866A">
 <title>政大EMBA創業主班 高爾夫球聯誼會 第12屆|財務月報</title>
-<link rel="apple-touch-icon" href="golf-icon.png">
-<link rel="icon" type="image/png" href="golf-icon.png">
+<link rel="apple-touch-icon" href="gp-icon.png">
+<link rel="icon" type="image/png" href="gp-icon.png">
+<meta name="apple-mobile-web-app-title" content="財務月報">
 <style>
-:root{--navy:#1F3864;--bg:#F5F6F8;--card:#fff;--line:#E3E6EB;--sub:#6b7280;
---blue:#EFF6FD;--blueT:#0C447C;--amber:#FAEEDA;--amberT:#633806;--green:#EAF3DE;--greenT:#27500A}
-*{box-sizing:border-box;margin:0}
+:root{--navy:#37866A;--bg:#FAF6F0;--card:#fff;--line:#EEE6DC;--sub:#8A8A94;
+--blue:#E2F1EA;--blueT:#37866A;--amber:#FBF1D5;--amberT:#8A6A1E;--green:#E4F3EC;--greenT:#2E6B4F}
 body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:#1c1c1e;max-width:520px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left))}
 .hd{background:var(--navy);color:#fff;border-radius:14px;padding:16px 14px;margin-bottom:12px}
 .hd h1{font-size:20px}.hd p{font-size:14px;opacity:.9;margin-top:3px}
@@ -22,7 +22,7 @@ body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;bac
 .stat{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;border:1px solid var(--line);border-left:4px solid var(--blueT);background:var(--blue);border-radius:10px;margin-bottom:6px}
 .stat span{font-size:14.5px;color:var(--blueT)}.stat b{font-size:19px}
 table{width:100%;border-collapse:collapse;font-size:14px}
-th{padding:9px 6px;text-align:left;color:var(--sub);font-weight:600;background:#F0F2F5}
+th{padding:9px 6px;text-align:left;color:var(--sub);font-weight:600;background:#F3EEE6}
 td{padding:9px 6px;border-top:1px solid var(--line);vertical-align:top}
 .r{text-align:right}
 .actH{background:var(--amber);color:var(--amberT);font-weight:600;font-size:14px;padding:8px 10px}
@@ -31,12 +31,15 @@ td{padding:9px 6px;border-top:1px solid var(--line);vertical-align:top}
 </style>
 </head>
 <body>
-<div class="hd">
-  <h1>⛳ 政大EMBA創業主班 高爾夫球聯誼會</h1>
-  <p>第12屆 財務月報|球隊帳・由財務發布</p>
+<div class="hd" style="display:flex;align-items:center;gap:12px">
+  <img src="gp-mark.png" alt="" style="width:52px;height:52px;flex:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.18))">
+  <div>
+    <h1 style="font-size:18px;line-height:1.25">政大EMBA創業主班<br>高爾夫球聯誼會</h1>
+    <p style="margin-top:4px">第12屆 財務月報|球隊帳・由財務發布</p>
+  </div>
 </div>
 <div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:10px;background:#fff" id="tabBar">
-  <button data-v="rpt" onclick="setView('rpt')" style="flex:1;padding:12px 2px;border:none;font-size:14.5px;background:#1F3864;color:#fff">📄 月報</button>
+  <button data-v="rpt" onclick="setView('rpt')" style="flex:1;padding:12px 2px;border:none;font-size:14.5px;background:#37866A;color:#fff">📄 月報</button>
   <button data-v="sum" onclick="setView('sum')" style="flex:1;padding:12px 2px;border:none;border-left:1px solid var(--line);font-size:14.5px;background:#fff">📊 本屆總表</button>
   <button data-v="roster" onclick="setView('roster')" style="flex:1;padding:12px 2px;border:none;border-left:1px solid var(--line);font-size:14.5px;background:#fff">👥 繳費確認</button>
 </div>
@@ -49,7 +52,7 @@ function setView(v){
   curView=v;
   Array.prototype.forEach.call(document.getElementById('tabBar').children,function(b){
     var on = b.getAttribute('data-v')===v;
-    b.style.background = on ? '#1F3864' : '#fff';
+    b.style.background = on ? '#37866A' : '#fff';
     b.style.color = on ? '#fff' : '#1c1c1e';
   });
   document.getElementById('months').style.display = v==='rpt' ? 'flex' : 'none';
@@ -105,11 +108,7 @@ function renderSummary(){
       h+='</tbody></table>';
     }
     h+='</div>';
-    h+='<div class="card"><b style="font-size:15px">累計支出|依活動</b><table style="margin-top:6px"><tbody>';
-    Object.keys(byAct).sort(function(a,b){return byAct[b]-byAct[a]}).forEach(function(k){
-      h+='<tr><td>🎯 '+esc(k)+'</td><td class="r">'+money(byAct[k])+'</td></tr>';
-    });
-    h+='</tbody></table></div>';
+    /* 累計支出|依活動:已隱藏(2026/08 Hana) */
     h+='<div class="card"><b style="font-size:15px">累計支出|依類別</b><table style="margin-top:6px"><tbody>';
     Object.keys(byXCat).sort(function(a,b){return byXCat[b]-byXCat[a]}).forEach(function(k){
       h+='<tr><td>'+esc(k)+'</td><td class="r">'+money(byXCat[k])+'</td></tr>';
@@ -231,9 +230,9 @@ function render(){
           h+='<tr onclick="showExp('+exi+')" style="cursor:pointer"><td style="width:44px;color:var(--sub)">'+fmtD(x.d)+'</td>'+
              '<td>'+esc(x.desc)+'<br><span class="sub" style="font-size:12px">'+esc(x.cat)+
              (x.ref?'・'+esc(x.ref):'')+
-             ((x.rcps&&x.rcps.length)?'・<span style="color:#0C447C;text-decoration:underline">憑證✓</span>'
+             ((x.rcps&&x.rcps.length)?'・<span style="color:#37866A;text-decoration:underline">憑證✓</span>'
                : (x.rcp?'・憑證✓':'・<span style="color:#8a4a00">⚠缺憑</span>'))+
-             '・<span style="color:#0C447C">詳情 ›</span></span></td>'+
+             '・<span style="color:#37866A">詳情 ›</span></span></td>'+
              '<td class="r">'+money(x.amt)+'</td></tr>';
         });
       });
@@ -299,7 +298,7 @@ function cnUpper(n){
 
 function showExp(i){
   var x=(window.__exps||[])[i]; if(!x) return;
-  var TH='border:1px solid #999;padding:6px 8px;text-align:left;background:#F1F3F6;font-weight:600;width:76px;font-size:13px;vertical-align:top';
+  var TH='border:1px solid #999;padding:6px 8px;text-align:left;background:#F3EEE6;font-weight:600;width:76px;font-size:13px;vertical-align:top';
   var TD='border:1px solid #999;padding:6px 8px;vertical-align:top;font-size:13px';
   var q=x.rq||null;
   document.getElementById('expTitle').textContent = q ? '請款單(公開快照)' : '支出明細';
@@ -322,7 +321,7 @@ function showExp(i){
     h+='<p style="font-size:12.5px;font-weight:600;margin:12px 0 6px">📎 憑證('+x.rcps.length+' 張)</p>'+
       '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
       x.rcps.map(function(u,ri){
-        return '<img data-pubimg="'+esc(u)+'" onclick="viewRcp('+esc(JSON.stringify(x.rcps)).replace(/"/g,'&quot;')+')" style="width:48%;min-height:60px;background:#F1F3F6;border:1px solid #999;border-radius:6px;cursor:pointer" alt="憑證載入中">';
+        return '<img data-pubimg="'+esc(u)+'" onclick="viewRcp('+esc(JSON.stringify(x.rcps)).replace(/"/g,'&quot;')+')" style="width:48%;min-height:60px;background:#F3EEE6;border:1px solid #999;border-radius:6px;cursor:pointer" alt="憑證載入中">';
       }).join('')+'</div>';
   }
   h+='<p style="text-align:center;color:#888;font-size:11px;margin-top:12px">本快照僅供會員檢視・銀行帳戶資訊不對外公開</p>';
@@ -351,7 +350,7 @@ function lbShow(){
   var nav=document.getElementById('lbNav');
   nav.innerHTML = lbList.length>1
     ? lbList.map(function(_,i){
-        return '<button onclick="event.stopPropagation();lbIdx='+i+';lbShow()" style="margin:0 4px;padding:8px 14px;border-radius:8px;border:1px solid #fff;background:'+(i===lbIdx?'#fff':'transparent')+';color:'+(i===lbIdx?'#1F3864':'#fff')+';font-size:14px">'+(i+1)+'</button>';
+        return '<button onclick="event.stopPropagation();lbIdx='+i+';lbShow()" style="margin:0 4px;padding:8px 14px;border-radius:8px;border:1px solid #fff;background:'+(i===lbIdx?'#fff':'transparent')+';color:'+(i===lbIdx?'#37866A':'#fff')+';font-size:14px">'+(i+1)+'</button>';
       }).join('')
     : '';
 }
