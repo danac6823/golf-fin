@@ -438,7 +438,8 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
     <div style="flex:1"><label>出生年(比序用)</label><input type="number" id="mBirth" inputmode="numeric" placeholder="例:1970"></div>
     <div style="flex:1"><label>會員年資</label><select id="mTenure"><option value="">—</option><option>舊會員</option><option>新會員</option></select></div>
   </div>
-  <label>幹部身分(親密獎基準用；本屆幹部填，歷屆不用)</label><input type="text" id="mRole" placeholder="例:會長/總幹事/財務">
+  <label>本屆幹部(親密獎基準用；只填本屆，顯示⭐綠)</label><input type="text" id="mRole" placeholder="例:會長/總幹事/財務">
+  <label>歷屆職務(歷屆/榮譽頭銜，顯示灰色歷屆)</label><input type="text" id="mPast" placeholder="例:第7屆總幹事/榮譽會長">
   <div class="row" style="gap:8px">
     <div style="flex:1"><label>期初差點</label><input type="number" id="mHcpInit" inputmode="decimal" placeholder="0~36"></div>
     <div style="flex:1"><label>當期差點</label><input type="number" id="mHcpCur" inputmode="decimal" placeholder="留空=同期初"></div>
@@ -1303,7 +1304,7 @@ function renderMember(){
     var co=m.cohort||'其他';
     if(co!==cur){ cur=co; h+='<tr class="cgrp"><td colspan="2">'+esc(co)+'<span class="n">'+cnt[co]+' 人</span></td></tr>'; }
     var role=m.cadre||m.pastRole||memRole(m.role);  /* 本屆幹部 → 歷屆職務欄 → (過渡)備註抽取 */
-    var isNow=!!role&&(!!m.cadre||!/第\d+屆/.test(role));  /* cadre 或 無「第N屆」前綴 = 本屆幹部 */
+    var isNow=!!m.cadre;  /* 本屆 = 幹部身分欄有值;歷屆職務欄/備註抽取一律歷屆(如榮譽會長) */
     var roleLbl=role?(isNow&&!/屆/.test(role)?('本屆'+role):role):'';
     var roleTag=role?' <span class="rolebadge '+(isNow?'role-now':'role-past')+'">'+(isNow?'⭐ ':'')+esc(roleLbl)+'</span>':'';
     var payPend=(m.status&&m.status!=='已繳');
@@ -1357,7 +1358,10 @@ function openMemberEdit(id){
   document.getElementById('mIdentity').innerHTML='<b>'+esc(m.id)+'</b>　<b>'+esc(m.name)+'</b> '+esc(m.enName||'')+'　'+esc(m.cohort||'')+'　'+esc(m.sex||'')+(m.phone?'　'+esc(m.phone):'')+'<br><span style="font-size:12px">識別欄(編號/姓名/性別…)來自共用會員名冊，不在此改</span>';
   document.getElementById('mBirth').value=m.birthYear||'';
   document.getElementById('mTenure').value=m.tenure||'';
-  document.getElementById('mRole').value=m.cadre||m.pastRole||memRole(m.role)||'';
+  var _cad=m.cadre||'', _past=m.pastRole||memRole(m.role)||'';
+  if(/榮譽|第\d+屆/.test(_cad)){ _past=_past||_cad; _cad=''; }  /* 幹部身分欄若混入榮譽/歷屆 → 自動歸到歷屆職務 */
+  document.getElementById('mRole').value=_cad;
+  document.getElementById('mPast').value=_past;
   document.getElementById('mHcpInit').value=(m.hcpInit||m.hcpInit===0)?m.hcpInit:'';
   document.getElementById('mHcpCur').value=(m.hcpCur||m.hcpCur===0)?m.hcpCur:'';
   openOv('memberOv');
@@ -1365,7 +1369,7 @@ function openMemberEdit(id){
 function saveMember(){
   var v=function(id){ return document.getElementById(id).value.trim(); };
   var hi=v('mHcpInit'), hc=v('mHcpCur');
-  var p={id:v('mId'), birthYear:v('mBirth'), cadre:v('mRole'), tenure:v('mTenure'),
+  var p={id:v('mId'), birthYear:v('mBirth'), cadre:v('mRole'), pastRole:v('mPast'), tenure:v('mTenure'),
     hcpInit:hi===''?'':Number(hi), hcpCur:hc===''?(hi===''?'':Number(hi)):Number(hc)};
   api('memberUpsert',p).then(function(){ closeOv('memberOv'); toast('✓ 已儲存球員資料'); return refresh(); }).catch(function(e){ toast(e.message); });
 }
