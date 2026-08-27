@@ -474,6 +474,8 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
     <span id="attCount" class="pill st-done" style="white-space:nowrap"></span>
   </div>
   <div id="attBody"></div>
+  <div id="attGuests"></div>
+  <button type="button" class="ghost" onclick="addAttGuest()" style="width:100%;border-style:dashed;color:var(--pri);margin:6px 0 4px;padding:9px">＋ 臨時來賓(記出席)</button>
   <p class="sub" style="margin:6px 2px 8px">只記「誰來了」；桿數之後進「📝 成績登錄」再補，補桿不會清掉這裡的出席。</p>
   <button class="btn" onclick="saveAtt()">儲存出席</button>
 </div></div>
@@ -779,22 +781,38 @@ function openAtt(sid){
       '<div class="nm"'+(m.sex==='女'?' style="color:#C2185B"':'')+'>'+esc(m.name)+'<span class="hc">'+(m.cohort||'')+'</span></div></label>';
   });
   document.getElementById('attBody').innerHTML=h;
+  document.getElementById('attGuests').innerHTML='';
+  DATA.scores.filter(function(x){return x.sid===sid && x.guest;}).forEach(function(g){ addAttGuest(g); });
   updateAttCount(); openOv('attOv');
+}
+function addAttGuest(g){
+  g=g||{};
+  var div=document.createElement('div'); div.className='scrow guest';
+  div.setAttribute('data-gross', (g.gross!==''&&g.gross!=null)?g.gross:'');   /* 保留成績登錄已填的桿數 */
+  div.innerHTML='<span style="flex:none;width:20px;text-align:center">👤</span>'+
+    '<input type="text" class="gname" placeholder="來賓姓名" value="'+esc(g.name||'')+'" style="flex:1;margin:0;padding:7px 9px;font-size:15px">'+
+    '<button type="button" class="ghost gdel" style="flex:none;padding:6px 9px;margin:0;border:none;color:#791F1F">✕</button>';
+  div.querySelector('.gdel').onclick=function(){ div.remove(); updateAttCount(); };
+  div.querySelector('.gname').oninput=updateAttCount;
+  document.getElementById('attGuests').appendChild(div);
 }
 function filterAtt(){ var q=document.getElementById('attSearch').value.trim().toLowerCase();
   document.querySelectorAll('#attBody .scrow').forEach(function(r){ var nm=r.querySelector('.nm').textContent.toLowerCase(); r.style.display=(!q||nm.indexOf(q)>=0)?'':'none'; }); }
 function attAll(on){ document.querySelectorAll('#attBody .scrow').forEach(function(r){ if(r.style.display==='none') return; var c=r.querySelector('.chk'); c.checked=on; r.classList.toggle('off',!on); }); updateAttCount(); }
-function updateAttCount(){ var n=document.querySelectorAll('#attBody .scrow .chk:checked').length; document.getElementById('attCount').textContent='出席 '+n+' 人'; }
+function updateAttCount(){ var n=document.querySelectorAll('#attBody .scrow .chk:checked').length;
+  document.querySelectorAll('#attGuests .scrow').forEach(function(r){ if(r.querySelector('.gname').value.trim()) n++; });
+  document.getElementById('attCount').textContent='出席 '+n+' 人'; }
 function saveAtt(){
   var prev={}; DATA.scores.filter(function(x){return x.sid===attSid && !x.guest;}).forEach(function(r){ prev[r.mid]=r; });
   var rows=[];
   document.querySelectorAll('#attBody .scrow').forEach(function(r){ if(!r.querySelector('.chk').checked) return;
     var mid=r.getAttribute('data-mid'), old=prev[mid];
     rows.push({sid:attSid, mid:mid, gross:(old&&old.gross!==''&&old.gross!=null)?old.gross:''}); });
-  /* 保留既有來賓列，不因出席登記被清掉 */
-  DATA.scores.filter(function(x){return x.sid===attSid && x.guest;}).forEach(function(g){
-    rows.push({sid:attSid, mid:'', guest:true, name:g.name, gross:(g.gross!==''&&g.gross!=null)?g.gross:''}); });
-  api('scoreSave',{sid:attSid, rows:rows}).then(function(){ closeOv('attOv'); toast('✓ 已存出席 '+rows.filter(function(x){return !x.guest;}).length+' 人'); return refresh(); }).catch(function(e){ toast(e.message); });
+  /* 來賓:從畫面讀(新增/既有),保留成績登錄已填的桿數 */
+  document.querySelectorAll('#attGuests .scrow').forEach(function(r){ var nm=r.querySelector('.gname').value.trim(); if(!nm) return;
+    var g=r.getAttribute('data-gross')||'';
+    rows.push({sid:attSid, mid:'', guest:true, name:nm, gross:g===''?'':Number(g)}); });
+  api('scoreSave',{sid:attSid, rows:rows}).then(function(){ closeOv('attOv'); toast('✓ 已存出席 '+rows.length+' 人'); return refresh(); }).catch(function(e){ toast(e.message); });
 }
 /* ===== 會員禮發放(總幹事;🏷️球標+酒 / 👕衣服分男女款 S~3XL)===== */
 var GIFT_SIZES=['S','M','L','XL','2XL','3XL'];
