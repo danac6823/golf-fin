@@ -1224,12 +1224,41 @@ function awardRowsHtml(rows){
     h+='<tr><td class="sub">'+esc(r.cat)+'</td><td'+(r.mid&&(memById(r.mid)||{}).sex==='女'?' style="color:#C2185B"':'')+'>'+esc(r.name||r.winner||'—')+'</td><td>'+esc(r.awardName)+'</td><td class="mono" style="text-align:right">'+esc(prize)+'</td><td class="sub">'+esc(poolLbl)+'</td></tr>'; });
   return h+'</tbody></table></div>';
 }
+/* 送球發放清單:依得主 × 獎項系列 累加條數(明細之外的實用彙總) */
+function giftSeries(awardName){ var n=String(awardName);
+  if(/^PAR ?ON/i.test(n)) return 'PAR ON系列';
+  if(/^黑白切/.test(n)) return '黑白切';
+  if(/^直入/.test(n)) return '直入獎';
+  if(/^BIRDIE/i.test(n)) return 'BIRDIE';
+  if(/^EAGLE/i.test(n)) return 'EAGLE';
+  if(/^一桿進洞/.test(n)) return '一桿進洞';
+  if(/^BB/i.test(n)) return 'BB獎';
+  return baseAward(n); }
+function tiaoOf(r){ var num=Number(String(r.val).replace(/[^0-9.]/g,''))||0; return /盒/.test(r.val)?num*BOX_TIAO:num; }
+function giftPayoutHtml(rows){
+  var gift=(rows||[]).filter(function(r){return r.type==='送球';}); if(!gift.length) return '';
+  var byW={}, order=[];
+  gift.forEach(function(r){ var name=r.name||r.winner||'—', key=r.mid||('n:'+name);
+    if(!byW[key]){ byW[key]={name:name, mid:r.mid||'', ser:{}, sorder:[], total:0}; order.push(key); }
+    var w=byW[key], s=giftSeries(r.awardName), t=tiaoOf(r);
+    if(w.ser[s]===undefined){ w.ser[s]=0; w.sorder.push(s); }
+    w.ser[s]+=t; w.total+=t; });
+  order.sort(function(a,b){ return byW[b].total-byW[a].total; });
+  var h='<div class="card"><div class="sub" style="margin-bottom:5px">🏐 送球發放清單(依得主)</div>';
+  order.forEach(function(k){ var w=byW[k];
+    var parts=w.sorder.map(function(s){ return esc(s)+' ×'+w.ser[s]; }).join('・');
+    var f=(w.mid&&(memById(w.mid)||{}).sex==='女');
+    h+='<div style="font-size:14px;line-height:1.95;display:flex;justify-content:space-between;gap:8px">'+
+      '<span><b'+(f?' style="color:#C2185B"':'')+'>'+esc(w.name)+'</b>　<span class="sub">'+parts+'</span></span>'+
+      '<b style="color:var(--pri);white-space:nowrap">共'+w.total+'條</b></div>'; });
+  return h+'</div>';
+}
 function awardLogPanel(sid){
   var landed=DATA.awardLog.filter(function(x){return x.sid===sid;}), preview=buildAwardLog(sid), ro=(user!=='凌華'), h='';
   if(landed.length){
     h+='<div class="card" style="border-color:#BFE3C6;background:#F1FAF3">'+
       '<div class="sub" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="color:#1B7A34;font-weight:600">📒 獎項紀錄 · 已落底 '+landed.length+' 筆</span>'+(ro?'':'<button class="ghost" style="padding:3px 11px;font-size:12px" onclick="landAwards(\''+sid+'\')">↻ 重新落底</button>')+'</div>'+
-      awardTotalsHtml(awardTotals(landed))+awardRowsHtml(landed);
+      awardTotalsHtml(awardTotals(landed))+giftPayoutHtml(landed)+awardRowsHtml(landed);
     if(preview.length!==landed.length&&!ro) h+='<div class="sub" style="color:#A32D2D;margin-top:6px">⚠️ 判定結果已變動(現算 '+preview.length+' 筆),請「重新落底」更新紀錄。</div>';
     h+='<p class="sub" style="margin:6px 2px 0">現金/送球拋轉 golf-fin(依池分球會/LINA)＋年度累計 下一輪做。個人贊助直付，不入小計、不拋轉。</p></div>';
   } else {
@@ -1237,7 +1266,7 @@ function awardLogPanel(sid){
     if(ro) h+='<span class="sub">本場尚未落底獎項紀錄。</span>';
     else if(!preview.length) h+='<span class="sub">尚無可落底得獎資料(先完成判定/技術獎)。</span>';
     else h+='<div class="sub" style="margin-bottom:6px">本場判定＋技術＋特殊＋來賓 = <b>'+preview.length+'</b> 筆待落底(年度限領/全勤/個人成就/拋轉的根)。</div>'+
-      awardTotalsHtml(awardTotals(preview))+'<button class="btn" style="margin-top:8px" onclick="landAwards(\''+sid+'\')">📒 落底獎項紀錄 → 記錄本場全部得獎</button>';
+      awardTotalsHtml(awardTotals(preview))+giftPayoutHtml(preview)+'<button class="btn" style="margin-top:8px" onclick="landAwards(\''+sid+'\')">📒 落底獎項紀錄 → 記錄本場全部得獎</button>';
     h+='</div>';
   }
   return h;
@@ -1287,7 +1316,10 @@ function openJudge(sid){
   var J=judgeSession(sid), s=J.s;
   document.getElementById('judgeTitle').textContent='🏆 '+((s.tripName?s.tripName+'・':'')+s.name)+'・本場成績';
   document.getElementById('judgeSub').textContent=fmtMD(s.date)+' ｜ 出席 '+J.attend+' 人 ｜ 淨桿排名 '+J.net.length+' 人'+(s.base?' ｜ 親密基準:'+esc(s.base):'');
-  var champHcp=(J.champ&&(J.champ.hcpNew||J.champ.hcpNew===0))?' <span class="sub" style="font-weight:400">｜差點 '+J.champ.hcp+' → <b style="color:var(--warn)">'+J.champ.hcpNew+'</b></span>':'';
+  var champHcp='';
+  if(J.champ&&(J.champ.hcp||J.champ.hcp===0)){ champHcp=' <span class="sub" style="font-weight:400">｜差點 '+J.champ.hcp;
+    if((J.champ.hcpNew||J.champ.hcpNew===0)&&J.champ.hcpNew!==J.champ.hcp) champHcp+=' → <b style="color:var(--warn)">'+J.champ.hcpNew+'</b>';
+    champHcp+='</span>'; }
   var h=sessAwardConfigHtml(s)+'<div class="card"><div class="sub" style="margin-bottom:2px">🥇 總桿冠軍</div><div style="font-size:17px;font-weight:700">'+(J.champ?esc(J.champ.name)+' <span class="sub" style="font-weight:400">總桿 '+J.champ.gross+'</span>'+champHcp:'<span class="sub" style="font-weight:400">—(無符合資格或無成績)</span>')+'</div></div>';
   if(J.noHcp.length) h+='<div class="card" style="background:#FBE6EC;border-color:#F0CAD6"><div class="sub" style="color:#791F1F">⚠️ 有成績但缺當期差點，無法進淨桿排名:'+J.noHcp.map(function(r){return esc(r.name);}).join('、')+'</div></div>';
   h+='<div class="card" style="padding:0;overflow:hidden"><table class="jtab"><colgroup><col style="width:9%"><col style="width:20%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:20%"><col style="width:12%"></colgroup><thead><tr><th>名次</th><th>姓名</th><th style="text-align:right">總桿</th><th style="text-align:right">差點</th><th style="text-align:right">淨桿</th><th>獎項</th><th style="text-align:right">新差</th></tr></thead><tbody>';
@@ -1298,7 +1330,7 @@ function openJudge(sid){
       '<td class="mono" style="text-align:right;color:var(--sub)">'+r.hcp+'</td>'+
       '<td class="mono" style="text-align:right;font-weight:700;color:var(--pri)">'+r.net+'</td>'+
       '<td>'+aw.map(function(a){return '<span class="pill jaw">'+esc(a)+'</span>';}).join('')+'</td>'+
-      '<td class="mono" style="text-align:right;color:var(--warn)">'+((r.hcpNew||r.hcpNew===0)?r.hcpNew:'—')+'</td></tr>';
+      '<td class="mono" style="text-align:right;color:var(--warn)">'+((r.hcpNew||r.hcpNew===0)&&r.hcpNew!==r.hcp?r.hcpNew:'—')+'</td></tr>';
   });
   h+='</tbody></table></div>';
   var tech=DATA.tech.filter(function(x){return x.sid===sid;});
@@ -1306,7 +1338,7 @@ function openJudge(sid){
     tech.forEach(function(t){ var nm=(memById(t.mid)||{}).name||t.mid; var type=t.type;
       if(type==='paron'){ var par=_jpars?_jpars[t.hole-1]:null; type='paron'+(par===3?3:par===5?5:4); }
       (g[type]=g[type]||[]).push({name:nm,hole:t.hole}); });
-    var LBL={paron3:'🟢 PAR ON・三桿洞',paron4:'🟢 PAR ON・四桿洞',paron5:'🟢 PAR ON・五桿洞',bwcut:'🔪 黑白切',onputt:'⛳ 直入獎',birdie:'🐦 BIRDIE',eagle:'🦅 EAGLE',hio:'🕳️ 一桿進洞'};
+    var LBL={paron3:'🟢 PAR ON<br>三桿洞',paron4:'🟢 PAR ON<br>四桿洞',paron5:'🟢 PAR ON<br>五桿洞',bwcut:'🔪 黑白切',onputt:'⛳ 直入獎',birdie:'🐦 BIRDIE',eagle:'🦅 EAGLE',hio:'🕳️ 一桿進洞'};
     var tline=function(type){ var arr=g[type]; if(!arr||!arr.length) return ''; arr.sort(function(a,b){return (a.hole||99)-(b.hole||99);});
       return '<div class="techln"><b class="lb">'+LBL[type]+'</b><span class="nm">'+arr.map(function(e){ var hv=(e.hole&&+e.hole>=1&&+e.hole<=18)?+e.hole:''; return esc(e.name)+(hv?' <span class="sub">'+holeLabel(s,hv)+'</span>':''); }).join(' ｜ ')+'</span></div>'; };
     h+='<div class="card"><div class="sub" style="margin-bottom:5px">🎯 技術獎</div>'+['paron3','paron4','paron5','bwcut','onputt','birdie','eagle','hio'].map(tline).join('')+'</div>';
