@@ -708,9 +708,7 @@ function eventCardHtml(days,isNext){
 /* 有設定才顯示「本場獎項」:獎項洞已配置 / 盃賽 / 親密獎幹部 任一 */
 function hasAwards(s){ return (s.holeAwards&&s.holeAwards.length===18)||!!s.cup||!!s.base; }
 /* 本場獎項公布:只講該場會變動的兩件—黑白切洞(其餘皆PAR ON)+親密獎幹部(+盃賽) */
-function showSessAwards(sid){
-  var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
-  document.getElementById('awShowTitle').textContent='🏆 '+esc((s.tripName?s.tripName+'・':'')+s.name)+'　'+fmtMD(s.date);
+function sessAwardConfigHtml(s){
   var hasCfg=(s.holeAwards&&s.holeAwards.length===18), bw=[];
   if(hasCfg) s.holeAwards.forEach(function(v,i){ if(v==='bwcut') bw.push(i+1); });
   var _mz=sessMultiZone(s);
@@ -724,7 +722,12 @@ function showSessAwards(sid){
   h+='</div>';
   h+='<div class="card"><div class="sub" style="margin-bottom:4px">💑 親密獎基準幹部</div><div style="font-size:16px;font-weight:600">'+(s.base?esc(s.base):'<span style="color:#B08A5A">？？？ <span class="sub" style="font-weight:400;font-size:13px">待當日公布</span></span>')+'</div></div>';
   if(s.cup) h+='<div class="card"><div class="sub" style="margin-bottom:4px">🏅 盃賽</div><div style="font-size:16px;font-weight:600">'+esc(s.cup)+'</div></div>';
-  document.getElementById('awShowBody').innerHTML=h;
+  return h;
+}
+function showSessAwards(sid){
+  var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
+  document.getElementById('awShowTitle').textContent='🏆 '+esc((s.tripName?s.tripName+'・':'')+s.name)+'　'+fmtMD(s.date);
+  document.getElementById('awShowBody').innerHTML=sessAwardConfigHtml(s);
   openOv('awShowOv');
 }
 /* 成績登錄:出席勾選 + 總桿→淨桿(淨桿=總桿−當期差點) */
@@ -1218,7 +1221,7 @@ function awardRowsHtml(rows){
     if(x.g.o!==curO){ curO=x.g.o; var items=rs.filter(function(y){return y.g.o===curO;}).map(function(y){return y.r;});
       h+='<tr class="awgrp"><td colspan="5"><div class="awgrp-in"><span>'+x.g.label+'</span><span class="awgrp-sub">'+groupSubtotal(curO,items)+'</span></div></td></tr>'; }
     var prize=[r.type,r.val].filter(Boolean).join(' '); var poolLbl=(r.pool||'')+(r.sponsor?'·'+r.sponsor:'');
-    h+='<tr><td class="sub">'+esc(r.cat)+'</td><td'+(r.mid&&(memById(r.mid)||{}).sex==='女'?' style="color:#C2185B"':'')+'>'+esc(r.name||'—')+'</td><td>'+esc(r.awardName)+'</td><td class="mono" style="text-align:right">'+esc(prize)+'</td><td class="sub">'+esc(poolLbl)+'</td></tr>'; });
+    h+='<tr><td class="sub">'+esc(r.cat)+'</td><td'+(r.mid&&(memById(r.mid)||{}).sex==='女'?' style="color:#C2185B"':'')+'>'+esc(r.name||r.winner||'—')+'</td><td>'+esc(r.awardName)+'</td><td class="mono" style="text-align:right">'+esc(prize)+'</td><td class="sub">'+esc(poolLbl)+'</td></tr>'; });
   return h+'</tbody></table></div>';
 }
 function awardLogPanel(sid){
@@ -1285,7 +1288,7 @@ function openJudge(sid){
   document.getElementById('judgeTitle').textContent='🏆 '+((s.tripName?s.tripName+'・':'')+s.name)+'・本場成績';
   document.getElementById('judgeSub').textContent=fmtMD(s.date)+' ｜ 出席 '+J.attend+' 人 ｜ 淨桿排名 '+J.net.length+' 人'+(s.base?' ｜ 親密基準:'+esc(s.base):'');
   var champHcp=(J.champ&&(J.champ.hcpNew||J.champ.hcpNew===0))?' <span class="sub" style="font-weight:400">｜差點 '+J.champ.hcp+' → <b style="color:var(--warn)">'+J.champ.hcpNew+'</b></span>':'';
-  var h='<div class="card"><div class="sub" style="margin-bottom:2px">🥇 總桿冠軍</div><div style="font-size:17px;font-weight:700">'+(J.champ?esc(J.champ.name)+' <span class="sub" style="font-weight:400">總桿 '+J.champ.gross+'</span>'+champHcp:'<span class="sub" style="font-weight:400">—(無符合資格或無成績)</span>')+'</div></div>';
+  var h=sessAwardConfigHtml(s)+'<div class="card"><div class="sub" style="margin-bottom:2px">🥇 總桿冠軍</div><div style="font-size:17px;font-weight:700">'+(J.champ?esc(J.champ.name)+' <span class="sub" style="font-weight:400">總桿 '+J.champ.gross+'</span>'+champHcp:'<span class="sub" style="font-weight:400">—(無符合資格或無成績)</span>')+'</div></div>';
   if(J.noHcp.length) h+='<div class="card" style="background:#FBE6EC;border-color:#F0CAD6"><div class="sub" style="color:#791F1F">⚠️ 有成績但缺當期差點，無法進淨桿排名:'+J.noHcp.map(function(r){return esc(r.name);}).join('、')+'</div></div>';
   h+='<div class="card" style="padding:0;overflow:hidden"><table class="jtab"><colgroup><col style="width:9%"><col style="width:20%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:20%"><col style="width:12%"></colgroup><thead><tr><th>名次</th><th>姓名</th><th style="text-align:right">總桿</th><th style="text-align:right">差點</th><th style="text-align:right">淨桿</th><th>獎項</th><th style="text-align:right">新差</th></tr></thead><tbody>';
   if(!J.net.length) h+='<tr><td colspan="7" class="sub" style="text-align:center;padding:14px">尚無可排名淨桿成績(需總桿+當期差點)</td></tr>';
@@ -1343,10 +1346,11 @@ function nextBadgeHtml(){ return '<span class="nextbadge">'+pi('hourglass')+' �
 /* 行事曆每場入口鈕:出席・分組(有出席或已分組才顯示)/ 獎項(有設定才顯示)*/
 function calBtns(s){
   var hasAtt=attList(s.id).length, hasGrp=(DATA.groups||[]).some(function(g){return g.sid===s.id;});
+  var hasScr=(DATA.scores||[]).some(function(x){return x.sid===s.id && x.gross!=='' && x.gross!=null;});
   var st='margin:6px 6px 0 0;padding:5px 11px;font-size:12.5px;border-radius:7px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:600';
   var b=[];
   if(hasAtt||hasGrp) b.push('<button style="'+st+';color:#3B6EA5" onclick="event.stopPropagation();showAttGroup(\''+s.id+'\')">👥 出席・分組</button>');
-  if(hasAwards(s)) b.push('<button style="'+st+';color:#8a6a20" onclick="event.stopPropagation();showSessAwards(\''+s.id+'\')">🏆 獎項</button>');
+  if(hasAwards(s)||hasScr) b.push('<button style="'+st+';color:#8a6a20" onclick="event.stopPropagation();openJudge(\''+s.id+'\')">🏆 獎項・成績</button>');
   return b.length?'<div style="margin-top:2px">'+b.join('')+'</div>':'';
 }
 function oneEventHtml(s,isNext){
@@ -1389,7 +1393,7 @@ function heroHtml(it){
   var btns=[];
   if(s.regUrl) btns.push('<a class="btn gd" style="flex:1;text-align:center;text-decoration:none" href="'+esc(s.regUrl)+'" target="_blank" rel="noopener">前往報名</a>');
   if(attList(s.id).length||(DATA.groups||[]).some(function(g){return g.sid===s.id;})) btns.push('<button class="btn sec" style="flex:1" onclick="showAttGroup(\''+s.id+'\')">出席・分組</button>');
-  btns.push('<button class="btn sec" style="flex:1" onclick="showSessAwards(\''+s.id+'\')">本場獎項</button>');  /* 英雄卡一定顯示,未設定→骨架「待當日公布」 */
+  btns.push('<button class="btn sec" style="flex:1" onclick="openJudge(\''+s.id+'\')">獎項・成績</button>');  /* 英雄卡一定顯示,未設定→骨架「待當日公布」 */
   var row2=btns.length?'<div class="hrow2">'+btns.join('')+'</div>':'';
   return '<div class="hero"><span class="htag">'+pi('hourglass')+' 下一場 · '+when+'</span>'+
     '<div class="hcourse">'+head+'</div><div class="hmeta">'+meta+'</div>'+times+row2+'</div>';
@@ -1526,6 +1530,11 @@ function doSyncPlayers(){
   toast('同步中…');
   api('syncPlayers').then(function(r){ toast('✓ 已同步 '+(r&&r.n!=null?r.n:'')+' 筆'); return refresh(); }).catch(function(e){ toast('同步失敗:'+e.message); });
 }
+/* 會員禮領取狀態(總幹事會員明細用;球標+酒 與 衣服 各自一欄)*/
+function giftOf(mid){ return (DATA.gift||[]).find(function(x){return x.mid===mid;})||{}; }
+function giftBallHtml(g){ return g.ball?('<b style="color:#1F7A34">✅ 已領</b> <span class="sub">'+fmtMD(g.ball)+'</span>'):'<b style="color:#A32D2D">未領</b>'; }
+function giftShirtHtml(g){ var sd=(g.style?g.style+'款 ':'')+(g.size||'');
+  return g.shirt?('<b style="color:#1F7A34">✅ 已領</b> <span class="sub">'+(sd?sd+' ':'')+fmtMD(g.shirt)+'</span>'):('<b style="color:#A32D2D">未領</b>'+(sd?' <span class="sub">('+sd+')</span>':'')); }
 function renderMember(){
   var el=document.getElementById('memberBody'); if(!el) return;
   var _sn=document.getElementById('memSrcNote'); if(_sn) _sn.style.display=(user==='凌華')?'':'none';  /* 來源說明僅總幹事 */
@@ -1576,6 +1585,9 @@ function renderMember(){
     if(m.golfLife) kv+='<span class="k">高球生活</span><span class="v">'+esc(m.golfLife)+'</span>';
     if(m.words && user==='凌華') kv+='<span class="k">想說</span><span class="v">'+esc(m.words)+'</span>';
     if(user==='凌華') kv+='<span class="k">大群</span><span class="v">'+(m.bigGroup?'✅ 已邀':'—')+'</span>';
+    if(user==='凌華'){ var _gft=giftOf(m.id);
+      kv+='<span class="k">🏷️球標+酒</span><span class="v" style="font-size:13px">'+giftBallHtml(_gft)+'</span>';
+      kv+='<span class="k">👕衣服</span><span class="v" style="font-size:13px">'+giftShirtHtml(_gft)+'</span>'; }
     if(m.regTs && user==='凌華') kv+='<span class="k">報名時間</span><span class="v sub">'+esc(m.regTs)+'</span>';
     if(user==='凌華'){  /* 出生年+差點明細:僅總幹事;來賓在列上已見當期差點 */
     kv+='<span class="k">出生年</span><span class="v" style="'+wc+'">'+(m.birthYear||'待補')+'</span>';
