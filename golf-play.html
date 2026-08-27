@@ -1276,22 +1276,50 @@ function giftPayoutHtml(rows){
       '<b style="color:var(--pri);white-space:nowrap">共'+w.total+'條</b></div>'; });
   return h+'</div>';
 }
-/* 逐項明細收合(原生 details;點開才看完整每人每獎每洞列) */
-function detailFold(inner){ return '<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--pri);font-weight:600;font-size:13px;padding:7px 2px">📋 點開看更多明細(逐項紀錄)</summary>'+inner+'</details>'; }
+/* 得主別視角:每人拿了什麼(現金逐筆 + 送球依系列彙總) */
+function awardByWinnerHtml(rows){
+  if(!rows||!rows.length) return '<div class="card"><span class="sub">無資料</span></div>';
+  var byW={}, order=[];
+  rows.forEach(function(r){ var name=r.name||r.winner||'—', key=r.mid||('n:'+name);
+    if(!byW[key]){ byW[key]={name:name,mid:r.mid||'',cash:[],other:[],gift:{},gorder:[],tiao:0}; order.push(key); }
+    var w=byW[key];
+    if(r.type==='送球'){ var s=giftSeries(r.awardName), t=tiaoOf(r); if(w.gift[s]===undefined){w.gift[s]=0;w.gorder.push(s);} w.gift[s]+=t; w.tiao+=t; }
+    else if(r.type==='現金'){ w.cash.push(r); }
+    else w.other.push(r); });
+  var h='<div class="card" style="padding:0;overflow:hidden"><table class="jtab awlog"><thead><tr><th style="width:26%">得主</th><th>獎項</th></tr></thead><tbody>';
+  order.forEach(function(k){ var w=byW[k], f=(w.mid&&(memById(w.mid)||{}).sex==='女'), lines=[];
+    w.cash.forEach(function(r){ lines.push(esc(r.awardName)+' <b style="color:#B26A00">現金'+esc(r.val)+'</b><span class="sub"> '+esc(r.pool||'')+'</span>'); });
+    w.other.forEach(function(r){ lines.push(esc(r.awardName)+' <span class="sub">'+esc([r.type,r.val].filter(Boolean).join(' '))+(r.pool?'·'+esc(r.pool):'')+'</span>'); });
+    if(w.tiao){ lines.push('🏐 '+w.gorder.map(function(s){return esc(s)+'×'+w.gift[s];}).join('・')+' <b style="color:var(--pri)">共'+w.tiao+'條</b>'); }
+    h+='<tr><td style="vertical-align:top"><b'+(f?' style="color:#C2185B"':'')+'>'+esc(w.name)+'</b></td><td style="font-size:13px;line-height:1.95">'+(lines.join('<br>')||'—')+'</td></tr>';
+  });
+  return h+'</tbody></table></div>';
+}
+/* 類別 / 得主別 切換視角 */
+function awLogViews(rows){
+  return '<div class="segbar" style="margin-top:6px"><button class="seg on" data-awt="cat" onclick="switchAwLog(this,\'cat\')">📂 類別</button><button class="seg" data-awt="win" onclick="switchAwLog(this,\'win\')">👤 得主別</button></div>'+
+    '<div class="awlView" data-awv="cat">'+awardRowsHtml(rows)+'</div>'+
+    '<div class="awlView hide" data-awv="win">'+awardByWinnerHtml(rows)+'</div>';
+}
+function switchAwLog(btn,w){
+  var card=btn.closest('.card')||document;
+  card.querySelectorAll('.awlView').forEach(function(v){ v.classList.toggle('hide', v.getAttribute('data-awv')!==w); });
+  btn.parentNode.querySelectorAll('.seg').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-awt')===w); });
+}
 function awardLogPanel(sid){
   var landed=DATA.awardLog.filter(function(x){return x.sid===sid;}), preview=buildAwardLog(sid), ro=(user!=='凌華'), h='';
   if(landed.length){
     h+='<div class="card" style="border-color:#BFE3C6;background:#F1FAF3">'+
       '<div class="sub" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="color:#1B7A34;font-weight:600">📒 獎項紀錄 · 已落底 '+landed.length+' 筆</span>'+(ro?'':'<button class="ghost" style="padding:3px 11px;font-size:12px" onclick="landAwards(\''+sid+'\')">↻ 重新落底</button>')+'</div>'+
-      awardTotalsHtml(awardTotals(landed))+detailFold(awardRowsHtml(landed))+giftPayoutHtml(landed);
+      awardTotalsHtml(awardTotals(landed))+awLogViews(landed);
     if(preview.length!==landed.length&&!ro) h+='<div class="sub" style="color:#A32D2D;margin-top:6px">⚠️ 判定結果已變動(現算 '+preview.length+' 筆),請「重新落底」更新紀錄。</div>';
-    h+='<p class="sub" style="margin:6px 2px 0">現金/送球拋轉 golf-fin(依池分球會/LINA)＋年度累計 下一輪做。個人贊助直付，不入小計、不拋轉。</p></div>';
+    h+=(ro?'':'<p class="sub" style="margin:6px 2px 0">現金/送球拋轉 golf-fin(依池分球會/LINA)＋年度累計 下一輪做。個人贊助直付，不入小計、不拋轉。</p>')+'</div>';
   } else {
     h+='<div class="card"><div class="sub" style="margin-bottom:4px">📒 獎項紀錄(判定=算，紀錄=存，分開存一張)</div>';
     if(ro) h+='<span class="sub">本場尚未落底獎項紀錄。</span>';
     else if(!preview.length) h+='<span class="sub">尚無可落底得獎資料(先完成判定/技術獎)。</span>';
     else h+='<div class="sub" style="margin-bottom:6px">本場判定＋技術＋特殊＋來賓 = <b>'+preview.length+'</b> 筆待落底(年度限領/全勤/個人成就/拋轉的根)。</div>'+
-      awardTotalsHtml(awardTotals(preview))+giftPayoutHtml(preview)+'<button class="btn" style="margin-top:8px" onclick="landAwards(\''+sid+'\')">📒 落底獎項紀錄 → 記錄本場全部得獎</button>';
+      awardTotalsHtml(awardTotals(preview))+awLogViews(preview)+'<button class="btn" style="margin-top:8px" onclick="landAwards(\''+sid+'\')">📒 落底獎項紀錄 → 記錄本場全部得獎</button>';
     h+='</div>';
   }
   return h;
