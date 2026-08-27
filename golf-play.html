@@ -496,6 +496,27 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
   <button class="btn" onclick="saveGift()">儲存</button>
 </div></div>
 
+<!-- 分組編輯(總幹事) -->
+<div class="overlay full" id="groupOv"><div class="sheet sheet-full">
+  <div class="head" style="margin-top:0"><b id="grpTitle">👥 分組</b><button class="ghost" onclick="closeOv('groupOv')">✕</button></div>
+  <p class="sub" id="grpSub" style="margin:0 0 8px"></p>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+    <button type="button" class="ghost" onclick="grpAuto()" style="padding:8px 10px;font-size:13px;margin:0">⚡ 自動每4人一組</button>
+    <button type="button" class="ghost" onclick="grpAddOne()" style="padding:8px 10px;font-size:13px;margin:0">＋ 加一組</button>
+    <span id="grpNlbl" class="sub"></span>
+    <span id="grpCount" class="pill st-done" style="white-space:nowrap;margin-left:auto"></span>
+  </div>
+  <div id="groupBody"></div>
+  <p class="sub" style="margin:6px 2px 8px">出席者才會出現在這;先做「✅ 出席登記」。可含臨時來賓。</p>
+  <button class="btn" onclick="saveGroups()">儲存分組</button>
+</div></div>
+
+<!-- 出席・分組 檢視(全員) -->
+<div class="overlay" id="agOv"><div class="sheet">
+  <div class="head" style="margin-top:0"><b id="agTitle">👥 出席・分組</b><button class="ghost" onclick="closeOv('agOv')">✕</button></div>
+  <div id="agBody"></div>
+</div></div>
+
 <!-- 技術獎登錄(總幹事；每洞簽名制:PAR ON/黑白切，每人上限2洞) -->
 <div class="overlay full" id="techOv"><div class="sheet sheet-full">
   <div class="head" style="margin-top:0"><b id="techTitle">🎯 技術獎登錄</b><button class="ghost" onclick="closeOv('techOv')">✕</button></div>
@@ -703,8 +724,6 @@ function showSessAwards(sid){
   h+='</div>';
   h+='<div class="card"><div class="sub" style="margin-bottom:4px">💑 親密獎基準幹部</div><div style="font-size:16px;font-weight:600">'+(s.base?esc(s.base):'<span style="color:#B08A5A">？？？ <span class="sub" style="font-weight:400;font-size:13px">待當日公布</span></span>')+'</div></div>';
   if(s.cup) h+='<div class="card"><div class="sub" style="margin-bottom:4px">🏅 盃賽</div><div style="font-size:16px;font-weight:600">'+esc(s.cup)+'</div></div>';
-  var att=attList(sid);
-  if(att.length) h+='<div class="card"><div class="sub" style="margin-bottom:4px">👥 出席名單('+att.length+' 人)</div><div style="font-size:15px;line-height:1.9">'+attNamesHtml(sid)+'</div></div>';
   document.getElementById('awShowBody').innerHTML=h;
   openOv('awShowOv');
 }
@@ -865,6 +884,61 @@ function updateGiftCount(){ var n=0,t=0; DATA.members.forEach(function(m){ var g
 function saveGift(){
   var rows=DATA.members.map(function(m){ var g=giftModel[m.id]||{}; return {mid:m.id, ball:!!g.ball, style:g.style||'', size:g.size||'', shirt:!!g.shirt}; });
   api('giftSave',{rows:rows}).then(function(){ closeOv('giftOv'); toast('✓ 會員禮已儲存'); return refresh(); }).catch(function(e){ toast(e.message); });
+}
+/* ===== 今日分組(總幹事編輯;全員可見)===== */
+function attGroupList(sid){ var arr=[], seen={};
+  (DATA.scores||[]).forEach(function(x){ if(x.sid!==sid) return;
+    if(x.guest){ if(x.name) arr.push({mid:'', name:x.name, sex:'', guest:true}); }
+    else if(x.mid && !seen[x.mid]){ seen[x.mid]=1; var m=memById(x.mid); if(m) arr.push({mid:m.id, name:m.name, sex:m.sex, guest:false}); } });
+  return arr; }
+function attKey(a){ return a.guest?('g:'+a.name):('m:'+a.mid); }
+var grpSid=null, grpModel={}, grpAtts=[], grpN=1;
+function openGroups(sid){
+  var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
+  grpAtts=attGroupList(sid);
+  if(!grpAtts.length){ toast('請先做「✅ 出席登記」'); return; }
+  grpSid=sid; grpModel={};
+  var maxG=0; (DATA.groups||[]).filter(function(g){return g.sid===sid;}).forEach(function(g){ grpModel[g.mid?('m:'+g.mid):('g:'+g.name)]=g.grp; if(g.grp>maxG)maxG=g.grp; });
+  grpN=Math.max(maxG, Math.ceil(grpAtts.length/4), 1);
+  document.getElementById('grpTitle').textContent='👥 '+((s.tripName?s.tripName+'・':'')+s.name)+'・分組';
+  document.getElementById('grpSub').textContent=fmtMD(s.date)+' ｜ 出席 '+grpAtts.length+' 人 ｜ 指定每人第幾組';
+  renderGroupEditor(); openOv('groupOv');
+}
+function renderGroupEditor(){
+  var h=grpAtts.map(function(a){ var k=attKey(a), cur=grpModel[k]||0;
+    var o='<option value="0"'+(cur?'':' selected')+'>未分</option>'; for(var i=1;i<=grpN;i++)o+='<option value="'+i+'"'+(cur===i?' selected':'')+'>第'+i+'組</option>';
+    return '<label class="scrow'+(cur?'':' off')+'" data-k="'+esc(k)+'" style="cursor:default">'+
+      '<div class="nm"'+(a.sex==='女'?' style="color:#C2185B"':'')+'>'+(a.guest?'👤 ':'')+esc(a.name)+'</div>'+
+      '<select class="grpsel" style="flex:none;width:84px;margin:0;padding:6px;font-size:14px">'+o+'</select></label>'; }).join('');
+  var el=document.getElementById('groupBody'); el.innerHTML=h;
+  el.querySelectorAll('.scrow').forEach(function(row){ var k=row.getAttribute('data-k'); row.querySelector('.grpsel').onchange=function(){ grpModel[k]=+this.value; row.classList.toggle('off',!this.value||this.value==='0'); updateGrpCount(); }; });
+  document.getElementById('grpNlbl').textContent='目前 '+grpN+' 組'; updateGrpCount();
+}
+function grpAddOne(){ grpN++; renderGroupEditor(); }
+function grpAuto(){ grpN=Math.max(1,Math.ceil(grpAtts.length/4)); grpAtts.forEach(function(a,i){ grpModel[attKey(a)]=Math.floor(i/4)+1; }); renderGroupEditor(); }
+function updateGrpCount(){ var un=grpAtts.filter(function(a){return !grpModel[attKey(a)];}).length;
+  document.getElementById('grpCount').textContent=un?('未分 '+un+' 人'):'全部已分組'; }
+function saveGroups(){
+  var rows=[]; grpAtts.forEach(function(a){ var g=grpModel[attKey(a)]||0; if(!g) return; rows.push({sid:grpSid, grp:g, mid:a.mid||'', name:a.guest?a.name:''}); });
+  api('groupSave',{sid:grpSid, rows:rows}).then(function(){ closeOv('groupOv'); toast('✓ 已存分組 '+rows.length+' 人'); return refresh(); }).catch(function(e){ toast(e.message); });
+}
+/* 出席・分組 檢視(全員;行事曆入口)*/
+function showAttGroup(sid){
+  var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
+  document.getElementById('agTitle').textContent='👥 '+esc((s.tripName?s.tripName+'・':'')+s.name)+'　'+fmtMD(s.date);
+  var atts=attGroupList(sid), h='';
+  var gs=(DATA.groups||[]).filter(function(g){return g.sid===sid;});
+  if(gs.length){ var byG={}; gs.forEach(function(g){ (byG[g.grp]=byG[g.grp]||[]).push(g); });
+    var keys=Object.keys(byG).map(Number).sort(function(a,b){return a-b;});
+    h+='<div class="card"><div class="sub" style="margin-bottom:5px">🏌️ 分組('+keys.length+' 組)</div>';
+    keys.forEach(function(k){ var names=byG[k].map(function(g){ if(g.mid){ var m=memById(g.mid); return m?('<span'+(m.sex==='女'?' class="mname-f"':'')+'>'+esc(m.name)+'</span>'):esc(g.mid); } return '👤'+esc(g.name); }).join('、');
+      h+='<div style="font-size:15px;line-height:1.95;margin-bottom:2px"><b style="color:var(--pri)">第'+k+'組</b>　'+names+'</div>'; });
+    h+='</div>';
+  }
+  if(atts.length){ h+='<div class="card"><div class="sub" style="margin-bottom:4px">✅ 出席名單('+atts.length+' 人)</div><div style="font-size:15px;line-height:1.9">'+atts.map(function(a){ return (a.guest?'👤':'')+'<span'+(a.sex==='女'?' class="mname-f"':'')+'>'+esc(a.name)+'</span>'; }).join('、')+'</div></div>'; }
+  else h+='<div class="card"><span class="sub">尚無出席紀錄(等總幹事登錄出席)</span></div>';
+  if(gs.length===0 && atts.length) h+='<p class="sub" style="margin:2px 2px 0">尚未分組。</p>';
+  document.getElementById('agBody').innerHTML=h; openOv('agOv');
 }
 /* ===== 技術獎登錄 A:每洞簽名制(PAR ON/黑白切；每人各≤2洞硬擋) ===== */
 var techSid=null;
@@ -1266,6 +1340,15 @@ function togglePast(){ var b=document.getElementById('pastBody'),c=document.getE
   var open=b.classList.toggle('hide')===false; if(c)c.style.transform=open?'rotate(90deg)':''; }
 function nextBadgeHtml(){ return '<span class="nextbadge">'+pi('hourglass')+' 下一場</span>'; }
 /* 單場卡片(從 renderCal 抽出，供過往/未來共用) */
+/* 行事曆每場入口鈕:出席・分組(有出席或已分組才顯示)/ 獎項(有設定才顯示)*/
+function calBtns(s){
+  var hasAtt=attList(s.id).length, hasGrp=(DATA.groups||[]).some(function(g){return g.sid===s.id;});
+  var st='margin:6px 6px 0 0;padding:5px 11px;font-size:12.5px;border-radius:7px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:600';
+  var b=[];
+  if(hasAtt||hasGrp) b.push('<button style="'+st+';color:#3B6EA5" onclick="event.stopPropagation();showAttGroup(\''+s.id+'\')">👥 出席・分組</button>');
+  if(hasAwards(s)) b.push('<button style="'+st+';color:#8a6a20" onclick="event.stopPropagation();showSessAwards(\''+s.id+'\')">🏆 獎項</button>');
+  return b.length?'<div style="margin-top:2px">'+b.join('')+'</div>':'';
+}
 function oneEventHtml(s,isNext){
   var away=(s.type&&s.type!=='月例賽');
   var tb=away?'<span class="typebadge">'+esc(s.type)+'</span>':'';
@@ -1287,8 +1370,7 @@ function oneEventHtml(s,isNext){
       times+
       (meta.length?'<div class="calsub">'+meta.join(' · ')+'</div>':'')+
       (s.note?'<div class="calsub">📝 '+esc(s.note)+'</div>':'')+reg+
-      /* 本場獎項鈕只在下一場英雄卡顯示,列表列不顯示 */
-      ''+
+      calBtns(s)+
       '</div></div>';
 }
 function daysUntil(ymd){ ymd=String(ymd); var t=String(todayYmd());
@@ -1306,6 +1388,7 @@ function heroHtml(it){
     : '<div class="htimes"><div class="tcap wait"><div class="v" style="font-size:15px;color:var(--sub)">午球，時間待定</div></div></div>';
   var btns=[];
   if(s.regUrl) btns.push('<a class="btn gd" style="flex:1;text-align:center;text-decoration:none" href="'+esc(s.regUrl)+'" target="_blank" rel="noopener">前往報名</a>');
+  if(attList(s.id).length||(DATA.groups||[]).some(function(g){return g.sid===s.id;})) btns.push('<button class="btn sec" style="flex:1" onclick="showAttGroup(\''+s.id+'\')">出席・分組</button>');
   btns.push('<button class="btn sec" style="flex:1" onclick="showSessAwards(\''+s.id+'\')">本場獎項</button>');  /* 英雄卡一定顯示,未設定→骨架「待當日公布」 */
   var row2=btns.length?'<div class="hrow2">'+btns.join('')+'</div>':'';
   return '<div class="hero"><span class="htag">'+pi('hourglass')+' 下一場 · '+when+'</span>'+
@@ -1391,7 +1474,7 @@ function renderSess(){
     if(att) kv+='<span class="k">出席</span><span class="v" style="font-weight:600">'+att+' 人(已登錄)</span>';
     kv+='</div>';
     var hasHole=(s.holeAwards&&s.holeAwards.length===18);
-    var act=ro?'':'<div class="sdt-act"><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:#5AA17F;border-color:#5AA17F" data-at="'+s.id+'">✅ 出席登記</button><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:var(--pri);border-color:var(--pri)" data-sc="'+s.id+'">📝 成績登錄</button>'+(att&&hasHole?'<button class="ghost" style="padding:6px 12px;font-size:13px" data-tc="'+s.id+'">🎯 技術獎</button>':'')+(att?'<button class="ghost" style="padding:6px 12px;font-size:13px;color:#8a6a20;background:#FBF0DA;border-color:#E8DAB0" data-jd="'+s.id+'">🏆 本場成績</button>':'')+'</div>';
+    var act=ro?'':'<div class="sdt-act"><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:#5AA17F;border-color:#5AA17F" data-at="'+s.id+'">✅ 出席登記</button><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:#6B8FB5;border-color:#6B8FB5" data-gp="'+s.id+'">👥 分組</button><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:var(--pri);border-color:var(--pri)" data-sc="'+s.id+'">📝 成績登錄</button>'+(att&&hasHole?'<button class="ghost" style="padding:6px 12px;font-size:13px" data-tc="'+s.id+'">🎯 技術獎</button>':'')+(att?'<button class="ghost" style="padding:6px 12px;font-size:13px;color:#8a6a20;background:#FBF0DA;border-color:#E8DAB0" data-jd="'+s.id+'">🏆 本場成績</button>':'')+'</div>';
     h+='<tr class="sdt-row hide" data-sd="'+s.id+'"><td colspan="3"><div class="sdt">'+kv+act+'</div></td></tr>';
   });
   h+='</tbody></table></div>';
@@ -1408,6 +1491,7 @@ function renderSess(){
   if(!ro){ el.querySelectorAll('button[data-es]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openSess(this.getAttribute('data-es')); }; });
     el.querySelectorAll('button[data-hc]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openHoleConfig(this.getAttribute('data-hc')); }; });
     el.querySelectorAll('button[data-at]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openAtt(this.getAttribute('data-at')); }; });
+    el.querySelectorAll('button[data-gp]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openGroups(this.getAttribute('data-gp')); }; });
     el.querySelectorAll('button[data-sc]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openScore(this.getAttribute('data-sc')); }; });
     el.querySelectorAll('button[data-tc]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openTech(this.getAttribute('data-tc')); }; });
     el.querySelectorAll('button[data-jd]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openJudge(this.getAttribute('data-jd')); }; }); }
