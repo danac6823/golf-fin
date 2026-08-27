@@ -742,7 +742,7 @@ function openScore(sid){
   var ms=DATA.members.slice().sort(function(a,b){ return (cohortRank(a.cohort)-cohortRank(b.cohort))||(a.id<b.id?-1:1); });
   var h='';
   ms.forEach(function(m){
-    var ex=existing[m.id], on=!!ex, hc=(m.hcpCur||m.hcpCur===0)?m.hcpCur:'';
+    var ex=existing[m.id], on=!!ex, _sh=hcpForSession(m.id, scoreSid), hc=(_sh||_sh===0)?_sh:'';
     h+='<div class="scrow'+(on?'':' off')+'" data-mid="'+m.id+'" data-hc="'+hc+'">'+
       '<input type="checkbox" class="chk"'+(on?' checked':'')+'>'+
       '<div class="nm"'+(m.sex==='女'?' style="color:#C2185B"':'')+'>'+esc(m.name)+'<span class="hc">'+(hc===''?'差點?':'差'+hc)+'</span></div>'+
@@ -1072,12 +1072,35 @@ function hcpAdjust(award,hcp,net){
 }
 function playedGames(mid, date){ var ids=DATA.sessions.filter(function(s){return String(s.date)<=String(date);}).map(function(s){return s.id;});
   return DATA.scores.filter(function(x){return x.mid===mid && ids.indexOf(x.sid)>=0 && x.gross!==''&&x.gross!=null;}).length; }
+/* 某場「凍結差點」= 選手打那一場時的當期差點(不受賽後調整回頭影響,避免重新落底抓到已更新的差點)
+   ① 該場自己的差點歷史 before = 當場實際所用(最準)
+   ② 否則:日期早於本場的最後一筆調整的 after(=進入本場前的差點)
+   ③ 否則:期初差點(年初鎖定) ④ 再否則:當期差點 */
+function histSessDate(x){ var hs=DATA.sessions.find(function(z){return z.id===x.sid;}); return hs?String(hs.date):''; }
+function hcpForSession(mid, sid){
+  var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return null;
+  var m=memById(mid); if(!m) return null;
+  var hh=DATA.hcpHist||[];
+  var own=hh.find(function(x){return x.mid===mid && x.sid===sid && x.before!=='' && (x.before||x.before===0);});
+  if(own) return Number(own.before);
+  var prior=hh.filter(function(x){ return x.mid===mid && (x.after!=='' && (x.after||x.after===0)) && histSessDate(x)<String(s.date); })
+    .sort(function(a,b){ return histSessDate(a)<histSessDate(b)?-1:1; });
+  if(prior.length) return Number(prior[prior.length-1].after);
+  if(m.hcpInit||m.hcpInit===0) return Number(m.hcpInit);
+  return (m.hcpCur||m.hcpCur===0)?Number(m.hcpCur):null;
+}
+/* 有效當期差點 = 差點歷史最後一筆 after(有調整過就以歷史為準;沒有才用 hcpCur)
+   → 即使會員名冊的「當期差點」那格沒被同步更新,顯示仍正確 */
+function effHcp(m){ if(!m) return null;
+  var hs=(DATA.hcpHist||[]).filter(function(x){return x.mid===m.id && (x.after!=='' && (x.after||x.after===0));}).sort(function(a,b){return histSessDate(a)<histSessDate(b)?-1:1;});
+  if(hs.length) return Number(hs[hs.length-1].after);
+  return (m.hcpCur||m.hcpCur===0)?Number(m.hcpCur):null; }
 function classifyScores(sid){
   var s=DATA.sessions.find(function(x){return x.id===sid;}), out=[];
   DATA.scores.filter(function(x){return x.sid===sid;}).forEach(function(x){
     if(x.guest){ out.push({guest:true,name:x.name||'來賓',gross:x.gross,rank:false,tag:'來賓·不排名'}); return; }
     var m=memById(x.mid); if(!m) return;
-    var r={mid:x.mid,name:m.name,sex:m.sex,birth:m.birthYear?Number(m.birthYear):null,gross:x.gross,hcp:(m.hcpCur||m.hcpCur===0)?Number(m.hcpCur):null};
+    var r={mid:x.mid,name:m.name,sex:m.sex,birth:m.birthYear?Number(m.birthYear):null,gross:x.gross,hcp:hcpForSession(x.mid, sid)};
     if(x.gross===''||x.gross==null){ r.rank=false; r.tag='未完賽(DNF)'; out.push(r); return; }
     if(m.tenure==='新會員'){ var n=playedGames(x.mid,s.date); if(n<=2){ r.rank=false; r.tag='新會員第'+n+'場';
       if(n===2){ var gs=DATA.sessions.filter(function(z){return String(z.date)<=String(s.date);}).sort(function(a,b){return String(a.date)<String(b.date)?-1:1;})
@@ -1253,12 +1276,14 @@ function giftPayoutHtml(rows){
       '<b style="color:var(--pri);white-space:nowrap">共'+w.total+'條</b></div>'; });
   return h+'</div>';
 }
+/* 逐項明細收合(原生 details;點開才看完整每人每獎每洞列) */
+function detailFold(inner){ return '<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--pri);font-weight:600;font-size:13px;padding:7px 2px">📋 點開看更多明細(逐項紀錄)</summary>'+inner+'</details>'; }
 function awardLogPanel(sid){
   var landed=DATA.awardLog.filter(function(x){return x.sid===sid;}), preview=buildAwardLog(sid), ro=(user!=='凌華'), h='';
   if(landed.length){
     h+='<div class="card" style="border-color:#BFE3C6;background:#F1FAF3">'+
       '<div class="sub" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="color:#1B7A34;font-weight:600">📒 獎項紀錄 · 已落底 '+landed.length+' 筆</span>'+(ro?'':'<button class="ghost" style="padding:3px 11px;font-size:12px" onclick="landAwards(\''+sid+'\')">↻ 重新落底</button>')+'</div>'+
-      awardTotalsHtml(awardTotals(landed))+giftPayoutHtml(landed)+awardRowsHtml(landed);
+      awardTotalsHtml(awardTotals(landed))+detailFold(awardRowsHtml(landed))+giftPayoutHtml(landed);
     if(preview.length!==landed.length&&!ro) h+='<div class="sub" style="color:#A32D2D;margin-top:6px">⚠️ 判定結果已變動(現算 '+preview.length+' 筆),請「重新落底」更新紀錄。</div>';
     h+='<p class="sub" style="margin:6px 2px 0">現金/送球拋轉 golf-fin(依池分球會/LINA)＋年度累計 下一輪做。個人贊助直付，不入小計、不拋轉。</p></div>';
   } else {
@@ -1602,7 +1627,7 @@ function renderMember(){
     var statusTag=(payPend && user==='凌華')?' <span class="pill st-rain" style="font-size:11px">'+esc(m.status)+'</span>':'';
     var tier=golfTier(m.golfLife), tierTag=tier?' <span class="tier '+tier.c+'">'+tier.t+'</span>':'';
     var tenTag=m.tenure==='新會員'?' <span class="tier" style="background:#E0F2F1;color:#00695C">新會員</span>':'';
-    var hc=(m.hcpCur||m.hcpCur===0)?m.hcpCur:'';
+    var _eh=effHcp(m), hc=(_eh||_eh===0)?_eh:'';
     h+='<tr class="srow" data-mr="'+m.id+'"><td><b'+(m.sex==='女'?' class="mname-f"':'')+'>'+esc(m.name)+'</b>'+roleTag+tenTag+tierTag+statusTag+'</td>'+
       '<td style="text-align:right;white-space:nowrap"><span class="hcpchip'+(hc===''?' none':'')+'" style="margin-right:0">差'+(hc===''?'待建':hc)+'</span><span class="cv">▸</span></td></tr>';
     var kv='<div class="kv"><span class="k">編號</span><span class="v mono">'+esc(m.id)+'</span>';
@@ -1624,11 +1649,14 @@ function renderMember(){
     if(user==='凌華'){  /* 出生年+差點明細:僅總幹事;來賓在列上已見當期差點 */
     kv+='<span class="k">出生年</span><span class="v" style="'+wc+'">'+(m.birthYear||'待補')+'</span>';
     kv+='<span class="k">期初差點</span><span class="v" style="'+wc+'">'+((m.hcpInit||m.hcpInit===0)?m.hcpInit:'待補')+' <span class="sub" style="font-weight:400">(年初鎖定)</span></span>';
-    kv+='<span class="k">當期差點</span><span class="v" style="'+wc+'">'+((m.hcpCur||m.hcpCur===0)?m.hcpCur:'待補')+' <span class="sub" style="font-weight:400">(最新)</span></span>';
-    var hist=DATA.hcpHist.filter(function(x){return x.mid===m.id;}).sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
+    var hist=DATA.hcpHist.filter(function(x){return x.mid===m.id;}).sort(function(a,b){return histSessDate(a)<histSessDate(b)?-1:1;});
+    var _hcpChg=hist.length>0 || ((m.hcpCur||m.hcpCur===0)&&(m.hcpInit||m.hcpInit===0)&&Number(m.hcpCur)!==Number(m.hcpInit));
+    var _newBadge=_hcpChg?' <span style="font-size:10px;padding:1px 6px;border-radius:5px;background:var(--gold);color:#fff;font-weight:700;margin-left:4px">NEW</span>':'';
+    var _effc=effHcp(m);
+    kv+='<span class="k">當期差點</span><span class="v" style="'+wc+'">'+((_effc||_effc===0)?_effc:'待補')+' <span class="sub" style="font-weight:400">(最新)</span>'+_newBadge+'</span>';
     kv+='<span class="k">差點歷史</span><span class="v">';
     if(!hist.length) kv+='<span class="sub">尚無調整(=期初)</span>';
-    else kv+=((m.hcpInit||m.hcpInit===0)?m.hcpInit:'?')+hist.map(function(x){return ' → <b>'+x.after+'</b><span class="sub">('+fmtMD(x.date)+(x.note?'·'+esc(x.note):'')+')</span>';}).join('');
+    else kv+=((m.hcpInit||m.hcpInit===0)?m.hcpInit:'?')+hist.map(function(x){return ' → <b>'+x.after+'</b><span class="sub">('+fmtMD(histSessDate(x))+(x.note?'·'+esc(x.note):'')+')</span>';}).join('');
     kv+='</span>';
     }
     kv+='</div>';
