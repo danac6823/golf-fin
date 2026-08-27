@@ -692,12 +692,14 @@ function showSessAwards(sid){
   document.getElementById('awShowTitle').textContent='🏆 '+esc((s.tripName?s.tripName+'・':'')+s.name)+'　'+fmtMD(s.date);
   var hasCfg=(s.holeAwards&&s.holeAwards.length===18), bw=[];
   if(hasCfg) s.holeAwards.forEach(function(v,i){ if(v==='bwcut') bw.push(i+1); });
+  var _mz=sessMultiZone(s);
   var front=bw.filter(function(h){return h<=9;}), back=bw.filter(function(h){return h>9;});
-  var fmtHoles=function(a){ return a.length?a.map(function(x){return '第'+x+'洞';}).join('、'):'無'; };
+  var fmtHoles=function(a,bk){ return a.length?a.map(function(x){ var loc=(_mz&&bk)?x-9:x; return '第'+loc+'洞'; }).join('、'):'無'; };
+  var lblF=_mz?zoneNm(s,s.zoneOut):'前九', lblB=_mz?zoneNm(s,s.zoneIn):'後九';
   var h='<div class="card"><div class="sub" style="margin-bottom:4px">🔪 黑白切獎洞 <span style="color:var(--sub)">(其餘各洞皆為 PAR ON獎)</span></div>';
-  if(hasCfg) h+='<div style="font-size:16px;font-weight:600;line-height:1.8">前九　'+fmtHoles(front)+'<br>後九　'+fmtHoles(back)+'</div>';
+  if(hasCfg) h+='<div style="font-size:16px;font-weight:600;line-height:1.8">'+lblF+'　'+fmtHoles(front,false)+'<br>'+lblB+'　'+fmtHoles(back,true)+'</div>';
   else { var ph='第？洞、第？洞、第？洞 <span class="sub" style="font-weight:400;font-size:13px;margin-left:4px">待當日公布</span>';
-    h+='<div style="font-size:16px;font-weight:600;line-height:1.8;color:#B08A5A">前九　'+ph+'<br>後九　'+ph+'</div>'; }
+    h+='<div style="font-size:16px;font-weight:600;line-height:1.8;color:#B08A5A">'+lblF+'　'+ph+'<br>'+lblB+'　'+ph+'</div>'; }
   h+='</div>';
   h+='<div class="card"><div class="sub" style="margin-bottom:4px">💑 親密獎基準幹部</div><div style="font-size:16px;font-weight:600">'+(s.base?esc(s.base):'<span style="color:#B08A5A">？？？ <span class="sub" style="font-weight:400;font-size:13px">待當日公布</span></span>')+'</div></div>';
   if(s.cup) h+='<div class="card"><div class="sub" style="margin-bottom:4px">🏅 盃賽</div><div style="font-size:16px;font-weight:600">'+esc(s.cup)+'</div></div>';
@@ -872,6 +874,14 @@ function sessionPars(s){
   if((!zo||!zi)&&c.zones.length===2){ zo=c.zones[0]; zi=c.zones[1]; }
   if(!zo||!zi) return null; return zo.pars.concat(zi.pars);
 }
+/* 分區球場(27/36洞，區數>2):每區各自 1-9 洞、顯示區名;一般 2 區(OUT/IN)維持連續 1-18 */
+function sessCourse(s){ return DATA.courses.find(function(x){return x.id===s.courseId;}); }
+function sessMultiZone(s){ var c=sessCourse(s); return !!(c&&c.zones&&c.zones.length>2); }
+function zoneNm(s,code){ var c=sessCourse(s); if(!c) return code||''; var z=(c.zones||[]).find(function(zz){return zz.code===code;}); return z?(z.name||z.code):(code||''); }
+function holeLabel(s,hole){ hole=+hole; if(!hole||hole<1||hole>18) return '';
+  if(!sessMultiZone(s)) return '第'+hole+'洞';
+  var back=hole>9, code=back?s.zoneIn:s.zoneOut, local=back?hole-9:hole;
+  var zn=zoneNm(s,code); return (zn?zn+' ':'')+'第'+local+'洞'; }
 function techAttendees(sid){ return DATA.scores.filter(function(x){return x.sid===sid && !x.guest;}).map(function(x){return memById(x.mid);}).filter(Boolean); }
 function openTech(sid){
   var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
@@ -887,9 +897,9 @@ function openTech(sid){
   for(var i=0;i<18;i++){ var v=s.holeAwards[i]; if(v!=='paron'&&v!=='bwcut') continue; var isBw=(v==='bwcut'), hole=i+1, type=isBw?'bwcut':'paron';
     var sel=byHole[type+'-'+hole]||[];
     h+='<div class="tblk '+(isBw?'bw':'paron')+'" data-hole="'+hole+'" data-type="'+type+'">'+
-      '<div class="tblk-hd"><span>第 '+hole+' 洞 · Par'+pars[i]+' · '+(isBw?'🔪 黑白切獎':'🟢 PAR ON獎')+'</span></div>'+
+      '<div class="tblk-hd"><span>'+holeLabel(s,hole)+' · Par'+pars[i]+' · '+(isBw?'🔪 黑白切獎':('🟢 PAR ON・'+(pars[i]===3?'三':pars[i]===5?'五':'四')+'桿洞'))+'</span></div>'+
       '<div class="tsel">'+sel.map(function(mid){ var m=memById(mid); return m?techChipHtml(m,isBw):''; }).join('')+'</div>'+
-      '<input class="tinput" list="techDL" placeholder="＋ 得獎者(每洞1人，限出席者)"></div>';
+      '<input class="tinput" list="techDL" placeholder="'+(isBw?'＋ 得獎者(最接近洞口，1人)':'＋ 得獎者(可多人，限出席者)')+'"></div>';
   }
   var el=document.getElementById('techBody'); el.innerHTML=h;
   el.querySelectorAll('.tblk').forEach(function(bl){
@@ -899,9 +909,11 @@ function openTech(sid){
     inp.onchange=function(){ var nm=this.value.trim(); this.value=''; if(!nm) return;
       var m=atts.find(function(x){return x.name===nm;});
       if(!m){ toast('非當天出席者:'+nm); return; }
-      var tsel=bl.querySelector('.tsel'); tsel.innerHTML=''; /* 每洞只1人:新選取代舊的 */
+      var tsel=bl.querySelector('.tsel');
+      if(isBw){ tsel.innerHTML=''; }  /* 黑白切:最接近洞口者僅1人，新選取代 */
+      else if(tsel.querySelector('.tchip[data-mid="'+m.id+'"]')){ toast('此洞已加過 '+nm); return; }  /* PAR ON:可多人，防同人重複 */
       tsel.insertAdjacentHTML('beforeend', techChipHtml(m,isBw));
-      bindTechRemove(tsel.querySelector('.tchip'));
+      bindTechRemove(tsel.querySelector('.tchip:last-child'));
       updateTechTally(); };
   });
   renderTechB(sid, atts);
@@ -909,7 +921,8 @@ function openTech(sid){
 }
 var BTYPES=[['onputt','⛳ 直入獎',2],['birdie','🐦 BIRDIE 獎',2],['eagle','🦅 EAGLE 獎',0],['hio','🕳️ 一桿進洞獎',0]];
 function renderTechB(sid, atts){
-  var holeOpts=''; for(var hh=1;hh<=18;hh++) holeOpts+='<option value="'+hh+'">'+hh+'</option>';
+  var s=DATA.sessions.find(function(x){return x.id===sid;});
+  var holeOpts=''; for(var hh=1;hh<=18;hh++) holeOpts+='<option value="'+hh+'">'+(sessMultiZone(s)?holeLabel(s,hh):hh)+'</option>';
   var by={}; DATA.tech.filter(function(x){return x.sid===sid;}).forEach(function(r){ (by[r.type]=by[r.type]||[]).push(r); });
   var h=BTYPES.map(function(bt){ var key=bt[0], sel=(by[key]||[]);
     return '<div class="bblk" data-btype="'+key+'"><div class="bblk-hd">'+bt[1]+(bt[2]?' <span class="sub" style="font-weight:400">每人≤'+bt[2]+'</span>':' <span class="sub" style="font-weight:400">不限</span>')+'</div>'+
@@ -923,16 +936,19 @@ function renderTechB(sid, atts){
       var nm=bl.querySelector('.bname').value.trim(), ho=bl.querySelector('.bhole').value.trim();
       var m=atts.find(function(x){return x.name===nm;});
       if(!m){ toast('請選當天出席者'); return; }
-      if(!ho||+ho<1||+ho>18){ toast('請填洞號 1–18'); return; }
-      if(bl.querySelector('.bsel .tchip[data-mid="'+m.id+'"][data-hole="'+(+ho)+'"]')){ toast('已登錄'); return; }
-      bl.querySelector('.bsel').insertAdjacentHTML('beforeend', bChipHtml(m,+ho));
+      var btype=bl.getAttribute('data-btype'), holeOpt=(btype==='onputt'||btype==='birdie');  /* 直入/BIRDIE:洞號可留白 */
+      if(ho&&(+ho<1||+ho>18)){ toast('洞號需 1–18'); return; }
+      if(!ho&&!holeOpt){ toast('請填洞號 1–18'); return; }
+      var hv=ho?+ho:'';
+      if(bl.querySelector('.bsel .tchip[data-mid="'+m.id+'"][data-hole="'+hv+'"]')){ toast('已登錄'); return; }
+      bl.querySelector('.bsel').insertAdjacentHTML('beforeend', bChipHtml(m,hv));
       bindTechRemove(bl.querySelector('.bsel .tchip:last-child'));
       bl.querySelector('.bname').value=''; bl.querySelector('.bhole').value='';
       updateTechTally();
     };
   });
 }
-function bChipHtml(m,hole){ return '<span class="tchip on" data-mid="'+m.id+'" data-hole="'+hole+'" title="點擊移除">'+esc(m.name)+'·第'+hole+'洞 ✕</span>'; }
+function bChipHtml(m,hole){ var hv=(hole&&+hole>=1&&+hole<=18)?+hole:''; var s=DATA.sessions.find(function(x){return x.id===techSid;}); var hl=hv?(s?holeLabel(s,hv):'第'+hv+'洞'):''; return '<span class="tchip on" data-mid="'+m.id+'" data-hole="'+hv+'" title="點擊移除">'+esc(m.name)+(hl?'·'+hl:'')+' ✕</span>'; }
 function techChipHtml(m,isBw){ return '<span class="tchip on'+(isBw?' bwc':'')+'" data-mid="'+m.id+'" title="點擊移除">'+esc(m.name)+' ✕</span>'; }
 function bindTechRemove(ch){ ch.onclick=function(){ this.remove(); updateTechTally(); }; }
 function techCounts(){ var pc={},bc={};
@@ -957,7 +973,7 @@ function saveTech(){
   document.querySelectorAll('#techBody .tblk').forEach(function(bl){ var type=bl.getAttribute('data-type'), hole=Number(bl.getAttribute('data-hole'));
     bl.querySelectorAll('.tchip.on').forEach(function(ch){ rows.push({sid:techSid, mid:ch.getAttribute('data-mid'), type:type, hole:hole}); }); });
   document.querySelectorAll('#techBodyB .bblk').forEach(function(bl){ var type=bl.getAttribute('data-btype');
-    bl.querySelectorAll('.bsel .tchip').forEach(function(ch){ rows.push({sid:techSid, mid:ch.getAttribute('data-mid'), type:type, hole:Number(ch.getAttribute('data-hole'))}); }); });
+    bl.querySelectorAll('.bsel .tchip').forEach(function(ch){ var hh=ch.getAttribute('data-hole'); rows.push({sid:techSid, mid:ch.getAttribute('data-mid'), type:type, hole:hh?Number(hh):''}); }); });
   api('techSave',{sid:techSid, rows:rows}).then(function(){ closeOv('techOv'); toast('✓ 已存技術獎 '+rows.length+' 筆'); return refresh(); }).catch(function(e){ toast(e.message); });
 }
 /* ===== 判定引擎(照交接說明 D 區) ===== */
@@ -1052,10 +1068,14 @@ function buildAwardLog(sid){
   Object.keys(J.awards).forEach(function(mid){ var m=memById(mid); var nm=m?m.name:mid;
     J.awards[mid].forEach(function(aw){ var key=rankKeyOf(aw); if(!key) return; emitByKey(mid,nm,'排名',aw,key); }); });
   /* 2. 技術獎(每洞；PAR ON/黑白切/直入/BIRDIE/EAGLE/一桿進洞) */
-  DATA.tech.filter(function(t){return t.sid===sid;}).sort(function(a,b){return a.hole-b.hole;}).forEach(function(t){
-    var m=memById(t.mid); if(!m) return; var key=TECH_KEY[t.type]; if(!key) return;
+  var _bpars=sessionPars(s);
+  DATA.tech.filter(function(t){return t.sid===sid;}).sort(function(a,b){return (a.hole||99)-(b.hole||99);}).forEach(function(t){
+    var m=memById(t.mid); if(!m) return; var key=TECH_KEY[t.type], anm=(TECH_NM[t.type]||t.type);
+    if(t.type==='paron'){ var par=_bpars?_bpars[t.hole-1]:null; key='paron'+(par===3?3:par===5?5:4); anm='PAR ON・'+(par===3?'三':par===5?'五':'四')+'桿洞'; }
+    if(!key) return;
     var cat=(t.type==='paron'||t.type==='bwcut')?'技術':'最佳技術';
-    emitByKey(t.mid,m.name,cat,(TECH_NM[t.type]||t.type)+' 第'+t.hole+'洞',key); });
+    var _hd=(t.hole&&+t.hole>=1&&+t.hole<=18)?' '+holeLabel(s,t.hole):'';
+    emitByKey(t.mid,m.name,cat,anm+_hd,key); });
   /* 3. 本場特殊獎(自由填，不吃主檔) */
   DATA.sessAward.filter(function(x){return x.sid===sid;}).forEach(function(x){
     emit('',x.winner||'','本場特殊',x.name||'特殊獎',{type:x.type,val:x.val,pool:x.pool,sponsor:(x.pool==='個人'?(x.sponsor||''):'')}); });
@@ -1110,7 +1130,7 @@ function groupSubtotal(o,items){
 /* 組內同獎項聚在一起(順序照獎項辦法群組；同獎項再依洞號升冪) */
 var AW_ORDER=['總桿冠軍','淨桿冠軍','淨桿亞軍','淨桿季軍','淨桿殿軍','第12名','幸運7','跳獎','親密獎','BB獎','PAR ON','黑白切','直入獎','BIRDIE 獎','EAGLE 獎','一桿進洞獎','來賓參加獎'];
 function baseAward(nm){ return String(nm).replace(/\s*第\d+洞$/,'').replace(/\s*\(\d+\)$/,''); }
-function awRank(nm){ var i=AW_ORDER.indexOf(baseAward(nm)); return i<0?99:i; }
+function awRank(nm){ var b=baseAward(nm); for(var i=0;i<AW_ORDER.length;i++){ if(b===AW_ORDER[i]||b.indexOf(AW_ORDER[i])===0) return i; } return 99; }
 function holeOf(nm){ var m=String(nm).match(/第(\d+)洞/); return m?Number(m[1]):0; }
 function awardRowsHtml(rows){
   var rs=rows.map(function(r,i){return {r:r,g:payGroup(r),i:i};})
@@ -1205,12 +1225,14 @@ function openJudge(sid){
   });
   h+='</tbody></table></div>';
   var tech=DATA.tech.filter(function(x){return x.sid===sid;});
-  if(tech.length){ var g={};
-    tech.forEach(function(t){ var nm=(memById(t.mid)||{}).name||t.mid; (g[t.type]=g[t.type]||[]).push({name:nm,hole:t.hole}); });
-    var LBL={paron:'🟢 PAR ON獎',bwcut:'🔪 黑白切',onputt:'⛳ 直入獎',birdie:'🐦 BIRDIE',eagle:'🦅 EAGLE',hio:'🕳️ 一桿進洞'};
-    var tline=function(type){ var arr=g[type]; if(!arr||!arr.length) return ''; arr.sort(function(a,b){return a.hole-b.hole;});
-      return '<div class="techln"><b class="lb">'+LBL[type]+'</b><span class="nm">'+arr.map(function(e){return esc(e.name)+' <span class="sub">第'+e.hole+'洞</span>';}).join(' ｜ ')+'</span></div>'; };
-    h+='<div class="card"><div class="sub" style="margin-bottom:5px">🎯 技術獎</div>'+['paron','bwcut','onputt','birdie','eagle','hio'].map(tline).join('')+'</div>';
+  if(tech.length){ var g={}; var _jpars=sessionPars(s);
+    tech.forEach(function(t){ var nm=(memById(t.mid)||{}).name||t.mid; var type=t.type;
+      if(type==='paron'){ var par=_jpars?_jpars[t.hole-1]:null; type='paron'+(par===3?3:par===5?5:4); }
+      (g[type]=g[type]||[]).push({name:nm,hole:t.hole}); });
+    var LBL={paron3:'🟢 PAR ON・三桿洞',paron4:'🟢 PAR ON・四桿洞',paron5:'🟢 PAR ON・五桿洞',bwcut:'🔪 黑白切',onputt:'⛳ 直入獎',birdie:'🐦 BIRDIE',eagle:'🦅 EAGLE',hio:'🕳️ 一桿進洞'};
+    var tline=function(type){ var arr=g[type]; if(!arr||!arr.length) return ''; arr.sort(function(a,b){return (a.hole||99)-(b.hole||99);});
+      return '<div class="techln"><b class="lb">'+LBL[type]+'</b><span class="nm">'+arr.map(function(e){ var hv=(e.hole&&+e.hole>=1&&+e.hole<=18)?+e.hole:''; return esc(e.name)+(hv?' <span class="sub">'+holeLabel(s,hv)+'</span>':''); }).join(' ｜ ')+'</span></div>'; };
+    h+='<div class="card"><div class="sub" style="margin-bottom:5px">🎯 技術獎</div>'+['paron3','paron4','paron5','bwcut','onputt','birdie','eagle','hio'].map(tline).join('')+'</div>';
   }
   var sa=DATA.sessAward.filter(function(x){return x.sid===sid;});
   if(sa.length||user==='凌華'){
@@ -1813,11 +1835,13 @@ function openHoleConfig(sid){
   holeCfgSid=sid;
   document.getElementById('holeTitle').textContent='🚩 '+s.name+'・獎項洞設定';
   document.getElementById('holeSub').textContent=c.name+' ｜ 前九 '+zo.name+'、後九 '+zi.name+' ｜ PAR 來自球場，逐洞指定獎項';
+  var mz=c.zones.length>2;
   var pars=zo.pars.concat(zi.pars), aw=(s.holeAwards&&s.holeAwards.length===18)?s.holeAwards.slice():new Array(18).fill('');
   var h='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th style="width:32px">洞</th><th>區</th><th>PAR</th><th style="width:118px">獎項洞</th></tr></thead><tbody>';
   for(var i=0;i<18;i++){
-    if(i===9) h+='<tr><td colspan="4" class="sub" style="text-align:center;background:#FBF8F3;font-weight:600">— 後九 —</td></tr>';
-    h+='<tr><td class="mono"><b>'+(i+1)+'</b></td><td class="sub">'+esc(i<9?zo.name:zi.name)+'</td><td class="mono">Par'+pars[i]+'</td>'+
+    if(i===0 && mz) h+='<tr><td colspan="4" class="sub" style="text-align:center;background:#FBF8F3;font-weight:600">— '+esc(zo.name)+' —</td></tr>';
+    if(i===9) h+='<tr><td colspan="4" class="sub" style="text-align:center;background:#FBF8F3;font-weight:600">— '+(mz?esc(zi.name):'後九')+' —</td></tr>';
+    h+='<tr><td class="mono"><b>'+(mz?(i<9?i+1:i-8):(i+1))+'</b></td><td class="sub">'+esc(i<9?zo.name:zi.name)+'</td><td class="mono">Par'+pars[i]+'</td>'+
       '<td><select data-h="'+i+'" style="margin:0;padding:6px;font-size:14px">'+holeAwardOpts(aw[i])+'</select></td></tr>';
   }
   h+='</tbody></table></div><div id="holeCount" class="sub" style="margin:8px 2px;line-height:1.5"></div>';
@@ -1832,7 +1856,7 @@ function holeStats(){
   var pars=zo.pars.concat(zi.pars), sels=document.getElementById('holeBody').querySelectorAll('select[data-h]');
   function tally(a,b){ var t={p3:0,p4:0,p5:0,bw:0,un:0}; for(var i=a;i<b;i++){ var pr=pars[i], v=sels[i].value;
     if(v==='paron'){ pr===3?t.p3++:(pr===4?t.p4++:t.p5++); } else if(v==='bwcut') t.bw++; else t.un++; } return t; }
-  return {pars:pars, front:tally(0,9), back:tally(9,18)};
+  return {pars:pars, front:tally(0,9), back:tally(9,18), mz:c.zones.length>2, zoNm:zo.name, ziNm:zi.name};
 }
 function nineChips(t,label){
   var chip=function(l,cur,tgt){ var ok=(cur===tgt); return '<span style="display:inline-block;padding:2px 8px;border-radius:6px;margin:0 4px 4px 0;font-size:12px;font-weight:600;background:'+(ok?'#EAF3EC':'#FBE6EC')+';color:'+(ok?'#1F7A34':'#A32D2D')+'">'+l+' '+cur+'/'+tgt+(ok?'✓':'✗')+'</span>'; };
@@ -1847,7 +1871,7 @@ function paintHoleSel(sel){
 function updateHoleCount(){
   document.getElementById('holeBody').querySelectorAll('select[data-h]').forEach(paintHoleSel);
   var r=holeStats();
-  document.getElementById('holeCount').innerHTML=nineChips(r.front,'前九')+nineChips(r.back,'後九')+
+  document.getElementById('holeCount').innerHTML=nineChips(r.front,r.mz?r.zoNm:'前九')+nineChips(r.back,r.mz?r.ziNm:'後九')+
     '<div style="color:#8a5a00;margin-top:2px">每九:PAR ON 三/四/五桿各 2 洞・黑白切 3 洞</div>';
 }
 function autoFillHoles(){
@@ -1866,7 +1890,7 @@ function saveHoles(){
   var aw=[]; document.getElementById('holeBody').querySelectorAll('select[data-h]').forEach(function(sel){ aw.push(sel.value); });
   var r=holeStats(), probs=[];
   function chk(t,lb){ if(t.p3!==2)probs.push(lb+'三桿PARON '+t.p3+'(應2)'); if(t.p4!==2)probs.push(lb+'四桿PARON '+t.p4+'(應2)'); if(t.p5!==2)probs.push(lb+'五桿PARON '+t.p5+'(應2)'); if(t.bw!==3)probs.push(lb+'黑白切 '+t.bw+'(應3)'); if(t.un)probs.push(lb+'未指定 '+t.un+'洞'); }
-  chk(r.front,'前九:'); chk(r.back,'後九:');
+  chk(r.front,(r.mz?r.zoNm:'前九')+':'); chk(r.back,(r.mz?r.ziNm:'後九')+':');
   if(probs.length && !confirm('⚠️ 與辦法標準不符:\n\n'+probs.join('\n')+'\n\n仍要儲存嗎?')) return;
   api('sessUpsert',{id:holeCfgSid, holeAwards:aw}).then(function(){ closeOv('holeOv'); toast('✓ 已儲存獎項洞'); return refresh(); }).catch(function(e){ toast(e.message); });
 }
