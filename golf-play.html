@@ -715,7 +715,7 @@ function sessAwardConfigHtml(s){
   var front=bw.filter(function(h){return h<=9;}), back=bw.filter(function(h){return h>9;});
   var fmtHoles=function(a,bk){ return a.length?a.map(function(x){ var loc=(_mz&&bk)?x-9:x; return '第'+loc+'洞'; }).join('、'):'無'; };
   var lblF=_mz?zoneNm(s,s.zoneOut):'前九', lblB=_mz?zoneNm(s,s.zoneIn):'後九';
-  var h='<div class="card"><div class="sub" style="margin-bottom:4px">🔪 黑白切獎洞 <span style="color:var(--sub)">(其餘各洞皆為 PAR ON獎)</span></div>';
+  var h='<div class="card"><div class="sub" style="margin-bottom:4px">🚩 黑白切獎洞 <span style="color:var(--sub)">(其餘各洞皆為 PAR ON獎)</span></div>';
   if(hasCfg) h+='<div style="font-size:16px;font-weight:600;line-height:1.8">'+lblF+'　'+fmtHoles(front,false)+'<br>'+lblB+'　'+fmtHoles(back,true)+'</div>';
   else { var ph='第？洞、第？洞、第？洞 <span class="sub" style="font-weight:400;font-size:13px;margin-left:4px">待當日公布</span>';
     h+='<div style="font-size:16px;font-weight:600;line-height:1.8;color:#B08A5A">'+lblF+'　'+ph+'<br>'+lblB+'　'+ph+'</div>'; }
@@ -974,7 +974,7 @@ function openTech(sid){
   for(var i=0;i<18;i++){ var v=s.holeAwards[i]; if(v!=='paron'&&v!=='bwcut') continue; var isBw=(v==='bwcut'), hole=i+1, type=isBw?'bwcut':'paron';
     var sel=byHole[type+'-'+hole]||[];
     h+='<div class="tblk '+(isBw?'bw':'paron')+'" data-hole="'+hole+'" data-type="'+type+'">'+
-      '<div class="tblk-hd"><span>'+holeLabel(s,hole)+' · Par'+pars[i]+' · '+(isBw?'🔪 黑白切獎':('🟢 PAR ON・'+(pars[i]===3?'三':pars[i]===5?'五':'四')+'桿洞'))+'</span></div>'+
+      '<div class="tblk-hd"><span>'+holeLabel(s,hole)+' · Par'+pars[i]+' · '+(isBw?'🚩 黑白切獎':('🟢 PAR ON・'+(pars[i]===3?'三':pars[i]===5?'五':'四')+'桿洞'))+'</span></div>'+
       '<div class="tsel">'+sel.map(function(mid){ var m=memById(mid); return m?techChipHtml(m,isBw):''; }).join('')+'</div>'+
       '<input class="tinput" list="techDL" placeholder="'+(isBw?'＋ 得獎者(最接近洞口，1人)':'＋ 得獎者(可多人，限出席者)')+'"></div>';
   }
@@ -1399,7 +1399,8 @@ function openJudge(sid){
     tech.forEach(function(t){ var nm=(memById(t.mid)||{}).name||t.mid; var type=t.type;
       if(type==='paron'){ var par=_jpars?_jpars[t.hole-1]:null; type='paron'+(par===3?3:par===5?5:4); }
       (g[type]=g[type]||[]).push({name:nm,hole:t.hole}); });
-    var LBL={paron3:'🟢 PAR ON<br>三桿洞',paron4:'🟢 PAR ON<br>四桿洞',paron5:'🟢 PAR ON<br>五桿洞',bwcut:'🔪 黑白切',onputt:'⛳ 直入獎',birdie:'🐦 BIRDIE',eagle:'🦅 EAGLE',hio:'🕳️ 一桿進洞'};
+    var _pl=function(z){ return '🟢 <span style="display:inline-block;vertical-align:top">PAR ON<br>'+z+'</span>'; };
+    var LBL={paron3:_pl('三桿洞'),paron4:_pl('四桿洞'),paron5:_pl('五桿洞'),bwcut:'🚩 黑白切',onputt:'⛳ 直入獎',birdie:'🐦 BIRDIE',eagle:'🦅 EAGLE',hio:'🕳️ 一桿進洞'};
     var tline=function(type){ var arr=g[type]; if(!arr||!arr.length) return ''; arr.sort(function(a,b){return (a.hole||99)-(b.hole||99);});
       return '<div class="techln"><b class="lb">'+LBL[type]+'</b><span class="nm">'+arr.map(function(e){ var hv=(e.hole&&+e.hole>=1&&+e.hole<=18)?+e.hole:''; return esc(e.name)+(hv?' <span class="sub">'+holeLabel(s,hv)+'</span>':''); }).join(' ｜ ')+'</span></div>'; };
     h+='<div class="card"><div class="sub" style="margin-bottom:5px">🎯 技術獎</div>'+['paron3','paron4','paron5','bwcut','onputt','birdie','eagle','hio'].map(tline).join('')+'</div>';
