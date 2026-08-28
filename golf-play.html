@@ -693,7 +693,7 @@ function eventCardHtml(days,isNext){
     var rcup=r.cup?'<span class="cupbadge">'+pi('medal')+' '+esc(r.cup)+'</span>':'';
     var course=r.courseId?(pi('golf')+' '+esc(courseName(r.courseId))):'<span style="color:var(--warn)">'+pi('golf')+' 球場待定</span>';
     var awBtn='';  /* 本場獎項鈕只在下一場英雄卡顯示,列表列(未來場次/行程)不顯示 */
-    var rblkCls=r.cup?(' hascup '+(r.cup==='會長盃'?'cup-pres':'cup-vice')):(' '+(ST_CLS[r.status]||'st-plan').replace('st-','s-'));
+    var rblkCls=r.cup?(' hascup '+(r.cup==='會長盃'?'cup-pres':'cup-vice')):(' '+((daysUntil(r.date)<0 && r.status!=='雨取消')?'s-done':(ST_CLS[r.status]||'st-plan').replace('st-','s-')));
     var _attR=attList(r.id).length;
     return '<div class="rblk'+rblkCls+'"'+(r.cup?' data-cup="'+esc(r.cup)+'"':'')+'><div class="rday">'+day+sb+rcup+'</div>'+
       '<div style="margin-top:4px;font-size:14px;font-weight:500">'+course+'</div>'+t+(_attR?'<div class="calsub" style="margin-top:3px">👥 出席 '+_attR+' 人</div>':'')+awBtn+'</div>';
@@ -1217,7 +1217,7 @@ function awardTotalsHtml(t){
 function payGroup(r){
   if(r.pool==='個人') return {o:4,label:'🎁 個人贊助(不拋轉)'};
   if(r.type==='現金') return r.pool==='球會'?{o:0,label:'💰 現金·球會'}:{o:1,label:'💰 現金·LINA會長'};
-  if(r.type==='送球') return {o:2,label:'🏐 送球'};
+  if(r.type==='送球') return {o:2,label:'🎁 送球'};
   return {o:3,label:'🎖️ 其他(獎盃/獎狀/球券)'};
 }
 function groupSubtotal(o,items){
@@ -1267,7 +1267,7 @@ function giftPayoutHtml(rows){
     if(w.ser[s]===undefined){ w.ser[s]=0; w.sorder.push(s); }
     w.ser[s]+=t; w.total+=t; });
   order.sort(function(a,b){ return byW[b].total-byW[a].total; });
-  var h='<div class="card"><div class="sub" style="margin-bottom:5px">🏐 送球發放清單(依得主)</div>';
+  var h='<div class="card"><div class="sub" style="margin-bottom:5px">🎁 送球發放清單(依得主)</div>';
   order.forEach(function(k){ var w=byW[k];
     var parts=w.sorder.map(function(s){ return esc(s)+' ×'+w.ser[s]; }).join('・');
     var f=(w.mid&&(memById(w.mid)||{}).sex==='女');
@@ -1290,7 +1290,7 @@ function awardByWinnerHtml(rows){
   order.forEach(function(k){ var w=byW[k], f=(w.mid&&(memById(w.mid)||{}).sex==='女'), lines=[];
     w.cash.forEach(function(r){ lines.push(esc(r.awardName)+' <b style="color:#B26A00">現金'+esc(r.val)+'</b><span class="sub"> '+esc(r.pool||'')+'</span>'); });
     w.other.forEach(function(r){ lines.push(esc(r.awardName)+' <span class="sub">'+esc([r.type,r.val].filter(Boolean).join(' '))+(r.pool?'·'+esc(r.pool):'')+'</span>'); });
-    if(w.tiao){ lines.push('🏐 '+w.gorder.map(function(s){return esc(s)+'×'+w.gift[s];}).join('・')+' <b style="color:var(--pri)">共'+w.tiao+'條</b>'); }
+    if(w.tiao){ lines.push('🎁 '+w.gorder.map(function(s){return esc(s)+'×'+w.gift[s];}).join('・')+' <b style="color:var(--pri)">共'+w.tiao+'條</b>'); }
     h+='<tr><td style="vertical-align:top"><b'+(f?' style="color:#C2185B"':'')+'>'+esc(w.name)+'</b></td><td style="font-size:13px;line-height:1.95">'+(lines.join('<br>')||'—')+'</td></tr>';
   });
   return h+'</tbody></table></div>';
@@ -1367,6 +1367,14 @@ function saveSessAward(){
 }
 function openJudge(sid){
   var J=judgeSession(sid), s=J.s;
+  /* 未完賽(尚無任何總桿)→ 只顯示本場獎項公布,隱藏空的成績欄位/說明 */
+  var hasScore=(DATA.scores||[]).some(function(x){return x.sid===sid && x.gross!=='' && x.gross!=null;});
+  if(!hasScore){
+    document.getElementById('judgeTitle').textContent='🏆 '+((s.tripName?s.tripName+'・':'')+s.name)+'・本場獎項';
+    document.getElementById('judgeSub').textContent=fmtMD(s.date)+(s.courseId?' ｜ '+courseName(s.courseId):'')+(s.base?' ｜ 親密基準:'+esc(s.base):'');
+    document.getElementById('judgeBody').innerHTML=sessAwardConfigHtml(s)+'<p class="sub" style="margin:10px 2px 2px;text-align:center">🏁 本場尚未完賽,成績與獎項紀錄將於賽後顯示。</p>';
+    openOv('judgeOv'); return;
+  }
   document.getElementById('judgeTitle').textContent='🏆 '+((s.tripName?s.tripName+'・':'')+s.name)+'・本場成績';
   document.getElementById('judgeSub').textContent=fmtMD(s.date)+' ｜ 出席 '+J.attend+' 人 ｜ 淨桿排名 '+J.net.length+' 人'+(s.base?' ｜ 親密基準:'+esc(s.base):'');
   var champHcp='';
@@ -1447,7 +1455,10 @@ function oneEventHtml(s,isNext){
   if(s.meet||s.tee){ times='<div class="caltime">'+(s.meet?'<span class="t">'+pi('clock')+' 集合 '+esc(s.meet)+'</span>':'')+(s.tee?'<span class="t">'+pi('flag')+' 開球 '+esc(s.tee)+'</span>':'')+'</div>'; }
   else if(!away){ times='<div class="caltime"><span class="t wait">午球，時間待定</span></div>'; }
   var cup=s.cup?'<span class="cupbadge">'+pi('medal')+' '+esc(s.cup)+'</span>':'';
-  var cupCls=s.cup?(' hascup '+(s.cup==='會長盃'?'cup-pres':'cup-vice')):(' '+(ST_CLS[s.status]||'st-plan').replace('st-','s-')), cupData=s.cup?' data-cup="'+esc(s.cup)+'"':'';
+  var _past=(daysUntil(s.date)<0 && s.status!=='雨取消');  /* 日期已過=完賽(除非雨取消) */
+  var _stName=_past?'已完賽':s.status, _stPill=_past?'st-done':(ST_CLS[s.status]||'st-plan');
+  var _stcls=_past?'s-done':(ST_CLS[s.status]||'st-plan').replace('st-','s-');
+  var cupCls=s.cup?(' hascup '+(s.cup==='會長盃'?'cup-pres':'cup-vice')):(' '+_stcls), cupData=s.cup?' data-cup="'+esc(s.cup)+'"':'';
   var meta=[]; if(s.heads) meta.push('報名 '+s.heads+' 人'); if(s.groups) meta.push(esc(s.groups));
   var _att=attList(s.id).length; if(_att) meta.push('👥 出席 '+_att+' 人');
   var reg=s.regUrl?'<div style="margin-top:6px"><a class="linkbtn" href="'+esc(s.regUrl)+'" target="_blank" rel="noopener">🔗 前往報名</a></div>':'';
@@ -1455,7 +1466,7 @@ function oneEventHtml(s,isNext){
     '<div class="caldate"><div class="d mono">'+(String(s.date).slice(6,8)||'--')+'</div><div class="w">'+weekOf(s.date)+'</div></div>'+
     '<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:6px;align-items:baseline">'+
       '<div style="min-width:0">'+(isNext?nextBadgeHtml():'')+'<b style="font-size:16px">'+esc(s.name)+'</b>'+tb+cup+courseInline+'</div>'+
-      '<span class="pill '+(ST_CLS[s.status]||'st-plan')+'">'+esc(s.status)+'</span></div>'+
+      '<span class="pill '+_stPill+'">'+esc(_stName)+'</span></div>'+
       times+
       (meta.length?'<div class="calsub">'+meta.join(' · ')+'</div>':'')+
       (s.note?'<div class="calsub">📝 '+esc(s.note)+'</div>':'')+reg+
@@ -1467,8 +1478,9 @@ function daysUntil(ymd){ ymd=String(ymd); var t=String(todayYmd());
   return Math.round((b-a)/86400000); }
 /* 下一場英雄卡(當下最想看:何時/何地/幾點/報名) */
 function heroHtml(it){
-  var s=it.trip?it.days[0]:it.s, d=daysUntil(it.start);
-  var when=d>0?'還有 '+d+' 天':(d===0?'就是今天':'進行中');
+  var s=it.trip?it.days[0]:it.s;
+  var dStart=daysUntil(it.start), dEnd=daysUntil(it.end||it.start), done=dEnd<0;
+  var when=done?((dEnd===-1)?'昨天打完':(-dEnd)+' 天前打完'):(dStart>0?'還有 '+dStart+' 天':(dStart===0?'就是今天':'進行中'));
   var course=s.courseId?courseName(s.courseId):(it.trip?'球場待定':'球場未定');
   var head=fmtMD(it.start)+'（'+weekOf(it.start).replace('週','')+'） '+esc(course);
   var meta=esc(it.trip?(s.tripName||s.name):s.name)+(s.cup?' · '+esc(s.cup):'');
@@ -1476,11 +1488,13 @@ function heroHtml(it){
     ? '<div class="htimes"><div class="tcap"><div class="l">'+pi('clock')+' 集合</div><div class="v">'+esc(s.meet||'—')+'</div></div><div class="tcap"><div class="l">'+pi('flag')+' 開球</div><div class="v">'+esc(s.tee||'—')+'</div></div></div>'
     : '<div class="htimes"><div class="tcap wait"><div class="v" style="font-size:15px;color:var(--sub)">午球，時間待定</div></div></div>';
   var btns=[];
-  if(s.regUrl) btns.push('<a class="btn gd" style="flex:1;text-align:center;text-decoration:none" href="'+esc(s.regUrl)+'" target="_blank" rel="noopener">前往報名</a>');
+  var awBtn='<button class="btn '+(done?'gd':'sec')+'" style="flex:1" onclick="openJudge(\''+s.id+'\')">獎項・成績</button>';  /* 剛打完→金色主鈕優先看成績 */
+  if(done) btns.push(awBtn);
+  if(!done && s.regUrl) btns.push('<a class="btn gd" style="flex:1;text-align:center;text-decoration:none" href="'+esc(s.regUrl)+'" target="_blank" rel="noopener">前往報名</a>');
   if(attList(s.id).length||(DATA.groups||[]).some(function(g){return g.sid===s.id;})) btns.push('<button class="btn sec" style="flex:1" onclick="showAttGroup(\''+s.id+'\')">出席・分組</button>');
-  btns.push('<button class="btn sec" style="flex:1" onclick="openJudge(\''+s.id+'\')">獎項・成績</button>');  /* 英雄卡一定顯示,未設定→骨架「待當日公布」 */
+  if(!done) btns.push(awBtn);  /* 未來場:成績鈕放後面(未設定→骨架「待當日公布」) */
   var row2=btns.length?'<div class="hrow2">'+btns.join('')+'</div>':'';
-  return '<div class="hero"><span class="htag">'+pi('hourglass')+' 下一場 · '+when+'</span>'+
+  return '<div class="hero"><span class="htag">'+(done?('🏆 剛打完 · '+when):(pi('hourglass')+' 下一場 · '+when))+'</span>'+
     '<div class="hcourse">'+head+'</div><div class="hmeta">'+meta+'</div>'+times+row2+'</div>';
 }
 function renderCal(){
@@ -1509,8 +1523,11 @@ function renderCal(){
     var todo=pastArr.filter(function(it){ return !it.trip && DATA.scores.some(function(x){return x.sid===it.s.id;}) && !DATA.awardLog.some(function(x){return x.sid===it.s.id;}); });
     if(todo.length) h+='<div class="todobar">'+pi('hourglass')+'<span><b>'+esc(todo[0].s.name)+'</b> 已完賽 → 待「落底獎項紀錄 / 拋轉」'+(todo.length>1?'(共 '+todo.length+' 場)':'')+'</span></div>';
   }
-  /* 下一場英雄卡:第一個「今天(含)之後」的場次(寬限期剛結束的不算下一場) */
-  var heroIdx=-1; for(var hi=0;hi<upArr.length;hi++){ if(daysUntil(upArr[hi].start)>=0){ heroIdx=hi; break; } }
+  /* 英雄卡:優先顯示「剛打完 HERO_GRACE 天內」的場次(讓大家看成績),否則顯示下一場 */
+  var HERO_GRACE=2;
+  var nextIdx=-1; for(var hi=0;hi<upArr.length;hi++){ if(daysUntil(upArr[hi].start)>=0){ nextIdx=hi; break; } }
+  var recentIdx=-1; for(var hj=0;hj<upArr.length;hj++){ var _du=daysUntil(upArr[hj].end||upArr[hj].start); if(_du<0 && _du>=-HERO_GRACE) recentIdx=hj; }  /* 取最後一個=最近剛打完(從結束日算) */
+  var heroIdx=(recentIdx>=0)?recentIdx:nextIdx;
   if(heroIdx>=0) h+=heroHtml(upArr[heroIdx]);
   /* 接下來(其餘未歸檔場次，含寬限期剛結束者，月份分組) */
   var rest=upArr.filter(function(it,i){return i!==heroIdx;});
