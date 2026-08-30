@@ -2893,19 +2893,29 @@ function renderSecBank(){
 }
 
 function addItemRow(name, amt){
+  var neg=(amt!=null && amt!=='' && Number(amt)<0), absAmt=(amt!=null&&amt!=='')?Math.abs(Number(amt)):amt;
   var row=document.createElement('div');
   row.style.cssText='display:flex;gap:6px;margin-bottom:6px';
+  if(neg) row.setAttribute('data-neg','1');
   row.innerHTML='<input type="text" list="secItemList" placeholder="項目(可下拉選或自打)" style="flex:2;margin:0;font-size:13px;padding:9px">'+
-    '<input type="number" placeholder="金額" inputmode="numeric" style="flex:1;margin:0;font-size:13px;padding:9px" oninput="itemTotal()">'+
-    '<button type="button" onclick="this.parentNode.remove();itemTotal()" style="width:36px;margin:0;padding:0;border:1px solid var(--line);border-radius:8px;background:#fff">✕</button>';
+    '<input type="number" placeholder="金額" inputmode="numeric" style="flex:1;margin:0;font-size:13px;padding:9px'+(neg?';color:#B00020':'')+'" oninput="itemTotal()">'+
+    '<button type="button" class="i-neg" title="切換扣抵(球秘代收來賓餐費等,計為負)" onclick="toggleNeg(this)" style="width:34px;margin:0;padding:0;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:700'+(neg?';color:#B00020':'')+'">'+(neg?'－':'＋')+'</button>'+
+    '<button type="button" onclick="this.parentNode.remove();itemTotal()" style="width:34px;margin:0;padding:0;border:1px solid var(--line);border-radius:8px;background:#fff">✕</button>';
   document.getElementById('rItemRows').appendChild(row);
   if(name) row.children[0].value=name;
-  if(amt) row.children[1].value=amt;
+  if(absAmt) row.children[1].value=absAmt;
+}
+function toggleNeg(btn){
+  var row=btn.parentNode, neg=row.getAttribute('data-neg')!=='1';
+  row.setAttribute('data-neg', neg?'1':'0');
+  btn.textContent=neg?'－':'＋'; btn.style.color=neg?'#B00020':'';
+  row.children[1].style.color=neg?'#B00020':'';
+  itemTotal();
 }
 
 function itemTotal(){
   var t=0;
-  document.querySelectorAll('#rItemRows input[type=number]').forEach(function(i){ t+=Number(i.value)||0; });
+  document.querySelectorAll('#rItemRows > div').forEach(function(row){ var a=Number(row.children[1].value)||0; if(row.getAttribute('data-neg')==='1') a=-a; t+=a; });
   document.getElementById('rItemTotal').textContent=money(t);
   document.getElementById('rAmt').value=t||'';
   return t;
@@ -2988,7 +2998,8 @@ function gatherItems(){
   var items=[];
   document.querySelectorAll('#rItemRows > div').forEach(function(row){
     var n=row.children[0].value.trim(), a=Number(row.children[1].value)||0;
-    if(n && a>0) items.push({n:n, amt:a});
+    if(row.getAttribute('data-neg')==='1') a=-a;   /* 扣抵列:計為負(球秘代收) */
+    if(n && a!==0) items.push({n:n, amt:a});
   });
   return items;
 }
