@@ -47,9 +47,9 @@ td{padding:9px 6px;border-top:1px solid var(--line);vertical-align:top}
 <div id="body"><p class="sub" style="text-align:center;padding:30px 0">載入中…</p></div>
 <p class="foot">本頁僅呈現球隊正式帳已發布之月結資料<br>第12屆</p>
 <script>
-var curView='rpt', msList=[], repCache={};
+var curView='rpt', msList=[], repCache={}, fetched={};   /* fetched:本回合已抓過最新的月份,切換不再打網路 */
 /* 本地快取(第二次開秒出;背景仍抓最新) */
-var LS='rep_cache_v1';
+var LS='rep_cache_v2';   /* v2:清掉可能含重複月份的舊快取(修累計翻倍)*/
 function lsGet(){ try{ return JSON.parse(localStorage.getItem(LS))||{}; }catch(e){ return {}; } }
 function lsSet(o){ try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(e){} }
 function setView(v){
@@ -66,12 +66,14 @@ function setView(v){
 }
 
 function fetchReport(ym){
-  if(repCache[ym]) return Promise.resolve(repCache[ym]);
+  if(fetched[ym] && repCache[ym]) return Promise.resolve(repCache[ym]);   /* 本回合抓過最新→直接給,秒回 */
   return fetch(GAS_URL+'?pub=report&ym='+ym).then(function(r){return r.json()}).then(function(j){
-    if(j.ok){ repCache[ym]=j.report; var c=lsGet(); c.reports=c.reports||{}; c.reports[ym]=j.report; lsSet(c); }
-    return j.report;
-  });
+    if(j.ok){ repCache[ym]=j.report; fetched[ym]=1; var c=lsGet(); c.reports=c.reports||{}; c.reports[ym]=j.report; lsSet(c); }
+    return j.report || repCache[ym];
+  }).catch(function(){ return repCache[ym]; });
 }
+/* 開頁背景抓齊所有月,之後切換秒開 */
+function prefetchAll(){ (msList||[]).forEach(function(ym){ fetchReport(ym); }); }
 
 function renderSummary(){
   var body=document.getElementById('body');
@@ -193,6 +195,7 @@ function honorRows(cashList, giftList){
 }
 
 function buildMonths(ms){
+  ms = (ms||[]).filter(function(m,i){ return m && ms.indexOf(m)===i; });  /* 去重:同月重複發布也只計一次,避免累計金額翻倍 */
   msList = ms;
   if(!ms.length){ document.getElementById('body').innerHTML='<div class="card"><p class="sub">尚未有已發布之月報</p></div>'; return; }
   if(!curYm || ms.indexOf(curYm)<0) curYm = ms[0];
@@ -212,20 +215,20 @@ function buildMonths(ms){
   var c=lsGet();
   if(c.months && c.months.length){ if(c.reports) for(var k in c.reports) repCache[k]=c.reports[k]; buildMonths(c.months); }
   fetch(GAS_URL+'?pub=months').then(function(r){return r.json()}).then(function(j){
-    var ms=j.months||[]; var cc=lsGet(); cc.months=ms; lsSet(cc); buildMonths(ms);
+    var ms=j.months||[]; var cc=lsGet(); cc.months=ms; lsSet(cc); buildMonths(ms); prefetchAll();
   }).catch(function(){ if(!(c.months&&c.months.length)) document.getElementById('body').innerHTML='<div class="card"><p class="sub">載入失敗,請稍後再試</p></div>'; });
 })();
 
 function render(){
-  var body=document.getElementById('body');
-  var cached=repCache[curYm]||((lsGet().reports||{})[curYm]);
-  if(cached){ repCache[curYm]=cached; drawReport(cached); }
+  var body=document.getElementById('body'), ym=curYm;
+  var cached=repCache[ym]||((lsGet().reports||{})[ym]);
+  if(cached){ repCache[ym]=cached; drawReport(cached); }
   else body.innerHTML='<p class="sub" style="text-align:center;padding:30px 0">載入中…</p>';
-  fetch(GAS_URL+'?pub=report&ym='+curYm).then(function(r){return r.json()}).then(function(j){
-    if(!j.ok){ if(!cached) document.getElementById('body').innerHTML='<div class="card"><p class="sub">'+esc(j.error||'讀取失敗')+'</p></div>'; return; }
-    repCache[curYm]=j.report; var c=lsGet(); c.reports=c.reports||{}; c.reports[curYm]=j.report; lsSet(c);
-    drawReport(j.report);
-  }).catch(function(){ if(!cached) document.getElementById('body').innerHTML='<div class="card"><p class="sub">載入失敗,請稍後再試</p></div>'; });
+  fetchReport(ym).then(function(rep){
+    if(ym!==curYm) return;          /* 已切到別的月→這次晚回的別蓋掉 */
+    if(rep) drawReport(rep);
+    else if(!cached) body.innerHTML='<div class="card"><p class="sub">讀取失敗,請稍後再試</p></div>';
+  });
 }
 function drawReport(d){
   var body=document.getElementById('body'), h='';
