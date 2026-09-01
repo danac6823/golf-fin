@@ -297,7 +297,7 @@ function drawReport(d){
     if(!expItems.length){ h+='<p class="sub" style="margin-top:6px">本月無球會支出</p>'; }
     else {
       var byAct={};
-      expItems.forEach(function(x){ var k=x.act||'一般支出'; (byAct[k]=byAct[k]||[]).push(x); });
+      expItems.forEach(function(x){ var k=x.act||x.cat||'一般支出'; (byAct[k]=byAct[k]||[]).push(x); });
       h+='<table style="margin-top:6px">';
       Object.keys(byAct).sort(function(a,b){
         var sa=byAct[a].reduce(function(s,x){return s+x.amt},0), sb=byAct[b].reduce(function(s,x){return s+x.amt},0);

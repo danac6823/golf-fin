@@ -2514,21 +2514,23 @@ function publishMonth(ym){
   api({action:'publishMonth',ym:ym}).then(function(j){
     var link=REPORT_URL+'?ym='+ym;
     var ym6=ym.replace('-','');
-    var tin=0,tout=0,incCat={},actSum={};
+    var tin=0,tout=0,incCat={},actSum={},coll=0,trans=0;
     (lastData.recent||[]).forEach(function(r){
       if(r.voided||r.pool!=='[主]會費池') return;
       if(String(r.date).slice(0,6)!==ym6) return;
       tin+=r.income; tout+=r.expense;
-      if(r.income>0) incCat[r.cat]=(incCat[r.cat]||0)+r.income;
-      if(r.expense>0){ var k=r.act||'一般支出'; actSum[k]=(actSum[k]||0)+r.expense; }
+      if(r.income>0){ if(r.cat==='代收款') coll+=r.income; else incCat[r.cat]=(incCat[r.cat]||0)+r.income; }
+      if(r.expense>0){ if(r.cat==='代收轉付') trans+=r.expense; else { var k=r.act||r.cat||'一般支出'; actSum[k]=(actSum[k]||0)+r.expense; } }
     });
     var opening=j.closing-tin+tout;
+    var gin=tin-coll, gout=tout-trans, pnet=coll-trans;
     var msg='⛳ 政大EMBA創業主班 高爾夫球聯誼會\n'+
       '第12屆 '+ym.replace('-','年')+'月財務月報\n'+
       '──────────\n'+
       '期初結餘 '+money(opening)+'\n'+
-      '本月收入 +'+money(tin)+'\n'+
-      '本月支出 −'+money(tout)+'\n'+
+      '本月收入 +'+money(gin)+'\n'+
+      '本月支出 −'+money(gout)+'\n'+
+      ((coll||trans)?'🔁 代收代付淨額 '+money(pnet)+'\n':'')+
       '期末結餘 '+money(j.closing)+'\n';
     var incKeys=Object.keys(incCat);
     if(incKeys.length){
@@ -2543,6 +2545,12 @@ function publishMonth(ym){
         var rest=0; actKeys.slice(5).forEach(function(k){rest+=actSum[k]});
         msg+='・其他 '+money(rest)+'\n';
       }
+    }
+    if(coll||trans){
+      msg+='──────────\n🔁 代收代付(過手・不入球會帳):\n';
+      if(coll)  msg+='・代收款 '+money(coll)+'\n';
+      if(trans) msg+='・代收轉付 '+money(trans)+'\n';
+      msg+='・在管淨額 '+money(pnet)+'\n';
     }
     msg+='──────────\n'+
       (j.reconOk?'✓ 財務已完成銀行對帳\n':'')+
