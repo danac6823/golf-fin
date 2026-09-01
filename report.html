@@ -100,8 +100,11 @@ function renderSummary(){
     h+='<b style="font-size:17px">第12屆 累計總表</b>';
     h+='<p class="sub" style="margin:2px 0 8px">彙總已發布月報:'+first.ym.replace('-','/')+' ~ '+last.ym.replace('-','/')+'</p>';
     h+='<div class="stat"><span>期初</span><b>'+money(first.opening)+'</b></div>';
-    h+='<div class="stat" style="background:#EAF3DE;border-left-color:#27500A"><span style="color:#27500A">累計收入</span><b>+'+money(tin)+'</b></div>';
-    h+='<div class="stat" style="background:#FCEBEB;border-left-color:#791F1F"><span style="color:#791F1F">累計支出</span><b>−'+money(tout)+'</b></div>';
+    var _pcoll=byCat['代收款']||0, _ptrans=passItems.reduce(function(s,x){return s+(x.amt||0);},0);
+    var _pgin=tin-_pcoll, _pgout=tout-_ptrans, _ppnet=_pcoll-_ptrans;
+    h+='<div class="stat" style="background:#EAF3DE;border-left-color:#27500A"><span style="color:#27500A">累計收入'+((_pcoll||_ptrans)?' <span class="sub" style="font-weight:400">球會</span>':'')+'</span><b>+'+money(_pgin)+'</b></div>';
+    h+='<div class="stat" style="background:#FCEBEB;border-left-color:#791F1F"><span style="color:#791F1F">累計支出'+((_pcoll||_ptrans)?' <span class="sub" style="font-weight:400">球會</span>':'')+'</span><b>−'+money(_pgout)+'</b></div>';
+    if(_pcoll||_ptrans) h+='<div class="stat" style="background:#F5F2FB;border-left-color:#8B7AB0"><span style="color:#6B5B95">🔁 代收代付淨額 <span class="sub" style="font-weight:400">過手</span></span><b>'+money(_ppnet)+'</b></div>';
     h+='<div class="stat"><span>目前結餘</span><b>'+money(last.closing)+'</b></div>';
     h+='</div>';
     h+='<div class="card"><b style="font-size:15px">累計收入摘要</b><table style="margin-top:6px"><tbody>';
@@ -257,9 +260,13 @@ function drawReport(d){
     h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'+
        '<b style="font-size:17px">'+d.ym.replace('-','年')+'月 月結</b>'+
        (d.reconOk?'<span class="badge">✓ 財務已完成銀行對帳</span>':'')+'</div>';
+    var _coll=d.income.byCat['代收款']||0;
+    var _trans=(d.expense.items||[]).filter(function(x){return x.cat==='代收轉付';}).reduce(function(s,x){return s+(x.amt||0);},0);
+    var _gin=d.income.total-_coll, _gout=d.expense.total-_trans, _pnet=_coll-_trans;
     h+='<div class="stat"><span>期初結餘</span><b>'+money(d.opening)+'</b></div>';
-    h+='<div class="stat" style="background:#EAF3DE;border-left-color:#27500A"><span style="color:#27500A">本月收入</span><b>+'+money(d.income.total)+'</b></div>';
-    h+='<div class="stat" style="background:#FCEBEB;border-left-color:#791F1F"><span style="color:#791F1F">本月支出</span><b>−'+money(d.expense.total)+'</b></div>';
+    h+='<div class="stat" style="background:#EAF3DE;border-left-color:#27500A"><span style="color:#27500A">本月收入'+((_coll||_trans)?' <span class="sub" style="font-weight:400">球會</span>':'')+'</span><b>+'+money(_gin)+'</b></div>';
+    h+='<div class="stat" style="background:#FCEBEB;border-left-color:#791F1F"><span style="color:#791F1F">本月支出'+((_coll||_trans)?' <span class="sub" style="font-weight:400">球會</span>':'')+'</span><b>−'+money(_gout)+'</b></div>';
+    if(_coll||_trans) h+='<div class="stat" style="background:#F5F2FB;border-left-color:#8B7AB0"><span style="color:#6B5B95">🔁 代收代付淨額 <span class="sub" style="font-weight:400">過手</span></span><b>'+money(_pnet)+'</b></div>';
     h+='<div class="stat"><span>期末結餘</span><b>'+money(d.closing)+'</b></div>';
     h+='</div>';
 
