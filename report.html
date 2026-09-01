@@ -82,9 +82,10 @@ function renderSummary(){
   Promise.all(msList.map(fetchReport)).then(function(reps){
     reps = reps.filter(Boolean).sort(function(a,b){ return a.ym<b.ym?-1:1; });
     var first=reps[0], last=reps[reps.length-1];
-    var tin=0,tout=0,byCat={},feeM=0,feeF=0,sponsors=[],giftSponsors=[],byAct={},byXCat={},passItems=[];
+    var tin=0,tout=0,byCat={},feeM=0,feeF=0,sponsors=[],giftSponsors=[],byAct={},byXCat={},passItems=[],collItemsAll=[];
     reps.forEach(function(d){
       tin+=d.income.total; tout+=d.expense.total;
+      (d.income.collItems||[]).forEach(function(c){ collItemsAll.push(c); });
       Object.keys(d.income.byCat).forEach(function(c){ byCat[c]=(byCat[c]||0)+d.income.byCat[c]; });
       feeM+=d.income.feeM||0; feeF+=d.income.feeF||0;
       (d.income.sponsors||[]).forEach(function(s){ sponsors.push(s); });
@@ -127,7 +128,7 @@ function renderSummary(){
     });
     h+='<tr style="border-top:2px solid var(--line)"><td><b>合計</b></td><td class="r"><b>'+money(_pgout)+'</b></td></tr>';
     h+='</tbody></table></div>';
-    h+=passthruCard(byCat['代收款']||0, passItems);
+    h+=passthruCard(byCat['代收款']||0, passItems, collItemsAll);
     h+='<p class="sub" style="text-align:center">總表隨月報發布自動累計</p>';
     body.innerHTML=h;
   }).catch(function(){ body.innerHTML='<div class="card"><p class="sub">彙總失敗,請稍後再試</p></div>'; });
@@ -238,21 +239,37 @@ function render(){
     else if(!cached) body.innerHTML='<div class="card"><p class="sub">讀取失敗,請稍後再試</p></div>';
   });
 }
-/* 代收代付專區(過手款,不計入球會損益):代收款總額 + 代收轉付明細 + 在管淨額 */
-function passthruCard(collected, transferItems){
+/* 代收款明細:同人合併,取 desc 括號內姓名 */
+function collByPerson(items){
+  var by={}, order=[];
+  (items||[]).forEach(function(x){
+    var m=String(x.desc||'').match(/[(（]([^)）]+)[)）]/);
+    var name=m?m[1].split(/[,，]/)[0].trim():(String(x.desc||'').trim()||'代收');
+    if(by[name]===undefined){ by[name]=0; order.push(name); }
+    by[name]+=(x.amt||0);
+  });
+  return order.map(function(n){ return {name:n, amt:by[n]}; });
+}
+/* 代收代付專區(過手款,不計入球會損益):代收款(含明細) + 代收轉付明細 + 在管淨額 */
+function passthruCard(collected, transferItems, collItems){
   collected=collected||0; transferItems=transferItems||[];
   var tt=transferItems.reduce(function(s,x){return s+(x.amt||0);},0);
   if(!collected && !tt) return '';
-  var net=collected-tt;
+  var net=collected-tt, cd=collByPerson(collItems);
+  var collLine='';
+  if(cd.length){ var _p=cd.map(function(e){return esc(e.name)+' '+money(e.amt);}), _l=[]; for(var _i=0;_i<_p.length;_i+=3){ _l.push(_p.slice(_i,_i+3).join(' / ')); } collLine=_l.join(' /<br>'); }
   var h='<div class="card" style="background:#F5F2FB;border:1px solid #DAD0EE">'+
     '<b style="font-size:15px">🔁 代收代付</b> <span class="sub">過手款・不入球會帳</span>'+
     '<table style="margin-top:6px"><tbody>'+
-    '<tr><td>代收款 <span class="sub">向會員收</span></td><td class="r" style="color:#27500A">+'+money(collected)+'</td></tr>'+
-    '<tr><td>代收轉付 <span class="sub">轉付出去</span></td><td class="r" style="color:#791F1F">−'+money(tt)+'</td></tr>';
+    '<tr><td>代收款</td><td class="r" style="color:#27500A">+'+money(collected)+'</td></tr>'+
+    (cd.length?'<tr><td colspan="2" class="sub" style="padding-left:16px;font-size:12.5px;line-height:1.9">'+collLine+'</td></tr>':'')+
+    '<tr><td>代收轉付</td><td class="r" style="color:#791F1F">−'+money(tt)+'</td></tr>';
   transferItems.forEach(function(x){
-    h+='<tr><td style="padding-left:16px" class="sub">・'+esc(x.act||x.desc||'代收轉付')+'</td><td class="r sub">'+money(x.amt)+'</td></tr>';
+    window.__exps=window.__exps||[]; var exi=window.__exps.push(x)-1;
+    var rc=((x.rcps&&x.rcps.length)||x.rcp)?'<span style="color:#37866A;text-decoration:underline">憑證✓</span>':'<span style="color:#8a4a00">⚠缺憑</span>';
+    h+='<tr onclick="showExp('+exi+')" style="cursor:pointer"><td style="padding-left:16px" class="sub"><span style="color:var(--sub)">'+fmtD(x.d)+'</span> '+esc(x.act||x.desc||'代收轉付')+' <span style="font-size:12px">'+rc+'・<span style="color:#37866A">詳情 ›</span></span></td><td class="r sub">'+money(x.amt)+'</td></tr>';
   });
-  h+='<tr style="border-top:1px solid #DAD0EE"><td><b>在管淨額</b> <span class="sub">尚未轉付</span></td><td class="r"><b>'+money(net)+'</b></td></tr>'+
+  h+='<tr style="border-top:1px solid #DAD0EE"><td><b>在管淨額</b></td><td class="r"><b>'+money(net)+'</b></td></tr>'+
     '</tbody></table></div>';
   return h;
 }
@@ -319,7 +336,7 @@ function drawReport(d){
       h+='</table>';
     }
     h+='</div>';
-    h+=passthruCard(d.income.byCat['代收款']||0, passItems);
+    h+=passthruCard(d.income.byCat['代收款']||0, passItems, d.income.collItems||[]);
     h+='<p class="sub" style="text-align:center">發布:'+esc(d.publishedBy)+'・'+esc(d.publishedAt)+'</p>';
   body.innerHTML=h;
 }
