@@ -82,7 +82,7 @@ function renderSummary(){
   Promise.all(msList.map(fetchReport)).then(function(reps){
     reps = reps.filter(Boolean).sort(function(a,b){ return a.ym<b.ym?-1:1; });
     var first=reps[0], last=reps[reps.length-1];
-    var tin=0,tout=0,byCat={},feeM=0,feeF=0,sponsors=[],giftSponsors=[],byAct={},byXCat={};
+    var tin=0,tout=0,byCat={},feeM=0,feeF=0,sponsors=[],giftSponsors=[],byAct={},byXCat={},passItems=[];
     reps.forEach(function(d){
       tin+=d.income.total; tout+=d.expense.total;
       Object.keys(d.income.byCat).forEach(function(c){ byCat[c]=(byCat[c]||0)+d.income.byCat[c]; });
@@ -90,6 +90,7 @@ function renderSummary(){
       (d.income.sponsors||[]).forEach(function(s){ sponsors.push(s); });
       (d.income.giftSponsors||[]).forEach(function(g){ giftSponsors.push(g); });
       d.expense.items.forEach(function(x){
+        if(x.cat==='代收轉付'){ passItems.push(x); return; }   /* 代收轉付移到代收代付專區 */
         var k=x.act||'一般支出';
         byAct[k]=(byAct[k]||0)+x.amt;
         byXCat[x.cat]=(byXCat[x.cat]||0)+x.amt;
@@ -105,6 +106,7 @@ function renderSummary(){
     h+='</div>';
     h+='<div class="card"><b style="font-size:15px">累計收入摘要</b><table style="margin-top:6px"><tbody>';
     Object.keys(byCat).forEach(function(c){
+      if(c==='代收款') return;   /* 代收款移到代收代付專區 */
       var note = (c==='會費收入'&&(feeM||feeF)) ? ' <span class="sub">(累計 '+feeM+'男・'+feeF+'女)</span>':'';
       h+='<tr><td>'+esc(c)+note+'</td><td class="r">+'+money(byCat[c])+'</td></tr>';
     });
@@ -120,6 +122,7 @@ function renderSummary(){
       h+='<tr><td>'+esc(k)+'</td><td class="r">'+money(byXCat[k])+'</td></tr>';
     });
     h+='</tbody></table></div>';
+    h+=passthruCard(byCat['代收款']||0, passItems);
     h+='<p class="sub" style="text-align:center">總表隨月報發布自動累計</p>';
     body.innerHTML=h;
   }).catch(function(){ body.innerHTML='<div class="card"><p class="sub">彙總失敗,請稍後再試</p></div>'; });
@@ -230,6 +233,24 @@ function render(){
     else if(!cached) body.innerHTML='<div class="card"><p class="sub">讀取失敗,請稍後再試</p></div>';
   });
 }
+/* 代收代付專區(過手款,不計入球會損益):代收款總額 + 代收轉付明細 + 在管淨額 */
+function passthruCard(collected, transferItems){
+  collected=collected||0; transferItems=transferItems||[];
+  var tt=transferItems.reduce(function(s,x){return s+(x.amt||0);},0);
+  if(!collected && !tt) return '';
+  var net=collected-tt;
+  var h='<div class="card" style="background:#F5F2FB;border:1px solid #DAD0EE">'+
+    '<b style="font-size:15px">🔁 代收代付</b> <span class="sub">過手款・已含在本月收支,不是球會的錢</span>'+
+    '<table style="margin-top:6px"><tbody>'+
+    '<tr><td>代收款 <span class="sub">向會員收</span></td><td class="r" style="color:#27500A">+'+money(collected)+'</td></tr>'+
+    '<tr><td>代收轉付 <span class="sub">轉付出去</span></td><td class="r" style="color:#791F1F">−'+money(tt)+'</td></tr>';
+  transferItems.forEach(function(x){
+    h+='<tr><td style="padding-left:16px" class="sub">・'+esc(x.act||x.desc||'代收轉付')+'</td><td class="r sub">'+money(x.amt)+'</td></tr>';
+  });
+  h+='<tr style="border-top:1px solid #DAD0EE"><td><b>在管淨額</b> <span class="sub">尚未轉付</span></td><td class="r"><b>'+money(net)+'</b></td></tr>'+
+    '</tbody></table></div>';
+  return h;
+}
 function drawReport(d){
   var body=document.getElementById('body'), h='';
     h+='<div class="card">';
@@ -244,6 +265,7 @@ function drawReport(d){
 
     h+='<div class="card"><b style="font-size:15px">收入摘要</b><table style="margin-top:6px"><tbody>';
     Object.keys(d.income.byCat).forEach(function(c){
+      if(c==='代收款') return;   /* 代收款移到下方代收代付專區 */
       var note = '';
       if(c==='會費收入'){
         note = (d.income.feeM||d.income.feeF)
@@ -260,11 +282,13 @@ function drawReport(d){
     }
     h+='</div>';
 
+    var passItems=d.expense.items.filter(function(x){return x.cat==='代收轉付';});
+    var expItems=d.expense.items.filter(function(x){return x.cat!=='代收轉付';});
     h+='<div class="card"><b style="font-size:15px">支出明細</b>';
-    if(!d.expense.items.length){ h+='<p class="sub" style="margin-top:6px">本月無支出</p>'; }
+    if(!expItems.length){ h+='<p class="sub" style="margin-top:6px">本月無球會支出</p>'; }
     else {
       var byAct={};
-      d.expense.items.forEach(function(x){ var k=x.act||'一般支出'; (byAct[k]=byAct[k]||[]).push(x); });
+      expItems.forEach(function(x){ var k=x.act||'一般支出'; (byAct[k]=byAct[k]||[]).push(x); });
       h+='<table style="margin-top:6px">';
       Object.keys(byAct).sort(function(a,b){
         var sa=byAct[a].reduce(function(s,x){return s+x.amt},0), sb=byAct[b].reduce(function(s,x){return s+x.amt},0);
@@ -286,6 +310,7 @@ function drawReport(d){
       h+='</table>';
     }
     h+='</div>';
+    h+=passthruCard(d.income.byCat['代收款']||0, passItems);
     h+='<p class="sub" style="text-align:center">發布:'+esc(d.publishedBy)+'・'+esc(d.publishedAt)+'</p>';
   body.innerHTML=h;
 }
