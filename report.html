@@ -107,12 +107,13 @@ function renderSummary(){
     if(_pcoll||_ptrans) h+='<div class="stat" style="background:#F5F2FB;border-left-color:#8B7AB0"><span style="color:#6B5B95">🔁 代收代付淨額 <span class="sub" style="font-weight:400">過手</span></span><b>'+money(_ppnet)+'</b></div>';
     h+='<div class="stat"><span>目前結餘</span><b>'+money(last.closing)+'</b></div>';
     h+='</div>';
-    h+='<div class="card"><b style="font-size:15px">累計收入摘要</b><table style="margin-top:6px"><tbody>';
+    h+='<div class="card"><b style="font-size:15px">累計收入</b><table style="margin-top:6px"><tbody>';
     Object.keys(byCat).forEach(function(c){
       if(c==='代收款') return;   /* 代收款移到代收代付專區 */
       var note = (c==='會費收入'&&(feeM||feeF)) ? ' <span class="sub">(累計 '+feeM+'男・'+feeF+'女)</span>':'';
       h+='<tr><td>'+esc(c)+note+'</td><td class="r">+'+money(byCat[c])+'</td></tr>';
     });
+    h+='<tr style="border-top:2px solid var(--line)"><td><b>合計</b></td><td class="r"><b>+'+money(_pgin)+'</b></td></tr>';
     h+='</tbody></table>';
     var hrS=honorRows(sponsors, giftSponsors);
     if(hrS.has){
@@ -120,10 +121,11 @@ function renderSummary(){
     }
     h+='</div>';
     /* 累計支出|依活動:已隱藏(2026/08 Hana) */
-    h+='<div class="card"><b style="font-size:15px">累計支出|依類別</b><table style="margin-top:6px"><tbody>';
+    h+='<div class="card"><b style="font-size:15px">累計支出</b><table style="margin-top:6px"><tbody>';
     Object.keys(byXCat).sort(function(a,b){return byXCat[b]-byXCat[a]}).forEach(function(k){
       h+='<tr><td>'+esc(k)+'</td><td class="r">'+money(byXCat[k])+'</td></tr>';
     });
+    h+='<tr style="border-top:2px solid var(--line)"><td><b>合計</b></td><td class="r"><b>'+money(_pgout)+'</b></td></tr>';
     h+='</tbody></table></div>';
     h+=passthruCard(byCat['代收款']||0, passItems);
     h+='<p class="sub" style="text-align:center">總表隨月報發布自動累計</p>';
@@ -195,7 +197,7 @@ function honorRows(cashList, giftList){
   var arr=mergeHonor(cashList, giftList), h='';
   arr.forEach(function(s){
     h+='<tr><td>'+esc(s.name)+(s.items?' <span class="sub">'+esc(s.items)+'</span>':'')+'</td>'+
-       '<td class="r">'+(s.amt?'+'+money(s.amt):'<span class="sub">非現金</span>')+'</td></tr>';
+       '<td class="r">'+(s.amt?money(s.amt):'<span class="sub">非現金</span>')+'</td></tr>';
   });
   return { has:arr.length>0, html:h };
 }
@@ -243,7 +245,7 @@ function passthruCard(collected, transferItems){
   if(!collected && !tt) return '';
   var net=collected-tt;
   var h='<div class="card" style="background:#F5F2FB;border:1px solid #DAD0EE">'+
-    '<b style="font-size:15px">🔁 代收代付</b> <span class="sub">過手款・已含在本月收支,不是球會的錢</span>'+
+    '<b style="font-size:15px">🔁 代收代付</b> <span class="sub">過手款・不入球會帳</span>'+
     '<table style="margin-top:6px"><tbody>'+
     '<tr><td>代收款 <span class="sub">向會員收</span></td><td class="r" style="color:#27500A">+'+money(collected)+'</td></tr>'+
     '<tr><td>代收轉付 <span class="sub">轉付出去</span></td><td class="r" style="color:#791F1F">−'+money(tt)+'</td></tr>';
