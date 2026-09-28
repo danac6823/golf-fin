@@ -522,7 +522,7 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
   <div class="head" style="margin-top:0"><b id="techTitle">🎯 技術獎登錄</b><button class="ghost" onclick="closeOv('techOv')">✕</button></div>
   <p class="sub" id="techSub" style="margin:0 0 8px">每洞點選簽到者(限當天出席);上限:PAR ON每人≤2洞、黑白切每人≤2洞(超過不能存)。</p>
   <div id="techBody"></div>
-  <div style="font-weight:600;color:var(--pri);margin:14px 2px 6px;border-top:1px solid var(--line);padding-top:12px">🏅 最佳技術獎 <span class="sub" style="font-weight:400">(選球員＋洞號；直入/BIRDIE每人≤2、EAGLE/一桿進洞不限)</span></div>
+  <div style="font-weight:600;color:var(--pri);margin:14px 2px 6px;border-top:1px solid var(--line);padding-top:12px">🏅 最佳技術獎 <span class="sub" style="font-weight:400">(選球員＋洞號；直入/BIRDIE可不填洞號、同一人重複加入=記次數，每人≤2；EAGLE/一桿進洞不限)</span></div>
   <div id="techBodyB"></div>
   <div id="techTally" class="sub" style="margin:6px 2px;line-height:1.6"></div>
   <button class="btn" onclick="saveTech()">儲存技術獎</button>
@@ -1019,7 +1019,8 @@ function renderTechB(sid, atts){
       if(ho&&(+ho<1||+ho>18)){ toast('洞號需 1–18'); return; }
       if(!ho&&!holeOpt){ toast('請填洞號 1–18'); return; }
       var hv=ho?+ho:'';
-      if(bl.querySelector('.bsel .tchip[data-mid="'+m.id+'"][data-hole="'+hv+'"]')){ toast('已登錄'); return; }
+      /* 免洞號的直入/BIRDIE 允許同一人重複加入=記次數;有洞號才擋重複 */
+      if(!(holeOpt&&hv==='') && bl.querySelector('.bsel .tchip[data-mid="'+m.id+'"][data-hole="'+hv+'"]')){ toast('已登錄'); return; }
       bl.querySelector('.bsel').insertAdjacentHTML('beforeend', bChipHtml(m,hv));
       bindTechRemove(bl.querySelector('.bsel .tchip:last-child'));
       bl.querySelector('.bname').value=''; bl.querySelector('.bhole').value='';
@@ -1435,7 +1436,12 @@ function openJudge(sid){
     var _pl=function(z){ return '🟢 <span style="display:inline-block;vertical-align:top">PAR ON<br>'+z+'</span>'; };
     var LBL={paron3:_pl('三桿洞'),paron4:_pl('四桿洞'),paron5:_pl('五桿洞'),bwcut:'🚩 黑白切',onputt:'⛳ 直入獎',birdie:'🐦 BIRDIE',eagle:'🦅 EAGLE',hio:'🕳️ 一桿進洞'};
     var tline=function(type){ var arr=g[type]; if(!arr||!arr.length) return ''; arr.sort(function(a,b){return (a.hole||99)-(b.hole||99);});
-      return '<div class="techln"><b class="lb">'+LBL[type]+'</b><span class="nm">'+arr.map(function(e){ var hv=(e.hole&&+e.hole>=1&&+e.hole<=18)?+e.hole:''; return esc(e.name)+(hv?' <span class="sub">'+holeLabel(s,hv)+'</span>':''); }).join(' ｜ ')+'</span></div>'; };
+      var parts=[], noHole={};   /* 免洞號同一人多筆 → 合併成「姓名 ×N」 */
+      arr.forEach(function(e){ var hv=(e.hole&&+e.hole>=1&&+e.hole<=18)?+e.hole:'';
+        if(hv) parts.push(esc(e.name)+' <span class="sub">'+holeLabel(s,hv)+'</span>');
+        else if(noHole[e.name]==null){ noHole[e.name]=parts.length; parts.push({nm:e.name,n:1}); }
+        else parts[noHole[e.name]].n++; });
+      return '<div class="techln"><b class="lb">'+LBL[type]+'</b><span class="nm">'+parts.map(function(p){ return (typeof p==='string')?p:(esc(p.nm)+(p.n>1?' <span class="sub">×'+p.n+'</span>':'')); }).join(' ｜ ')+'</span></div>'; };
     h+='<div class="card"><div class="sub" style="margin-bottom:5px">🎯 技術獎</div>'+['paron3','paron4','paron5','bwcut','onputt','birdie','eagle','hio'].map(tline).join('')+'</div>';
   }
   var sa=DATA.sessAward.filter(function(x){return x.sid===sid;});
