@@ -1147,19 +1147,29 @@ function judgeSession(sid){
   });
   var intimacy=[];
   if(s.base){
-    /* 親密獎基準序列:2026/9 起改「總桿」(同總桿→差點少者優先,缺差點排後;再同→年長優先→女士優先)。
-       序列池與總桿冠軍相同(grossPool):新會員前2場/缺差點者亦列入。8月(含)以前維持淨桿舊制 → 舊場次重新落底也不會被新規則追溯。 */
-    var seq;
     if(String(s.date)>='20260901'){
-      seq = grossPool(s.date, all).slice()
-        .sort(function(a,b){ if(a.gross!==b.gross) return a.gross-b.gross;
-          var ah=(a.hcp==null?999:a.hcp), bh=(b.hcp==null?999:b.hcp); if(ah!==bh) return ah-bh;
-          if((a.birth||9999)!==(b.birth||9999)) return (a.birth||9999)-(b.birth||9999);
-          if(a.sex!==b.sex) return a.sex==='女'?-1:1; return 0; });
-    } else seq = net;
-    var bi=-1; seq.forEach(function(r,i){ if(r.name===s.base) bi=i; });
-    if(bi>=0){ for(var d=bi-1;d>=0;d--){ if(!(awards[seq[d].mid]||[]).length){ give(seq[d],'親密獎'); intimacy.push(seq[d].name); break; } }
-      for(var u=bi+1;u<seq.length;u++){ if(!(awards[seq[u].mid]||[]).length){ give(seq[u],'親密獎'); intimacy.push(seq[u].name); break; } } }
+      /* 2026/9 起:總桿「差距」制 — 與基準完全同分者(差0)優先;其餘比較往前、往後之總桿差距,差距小者得獎,共2名
+         (同差距→差點少者優先,缺差點排後→年長→女士)。已領排名獎者跳過、依差距遞補。
+         池與總桿冠軍相同(grossPool):新會員前2場/缺差點者亦列入。 */
+      var pool2=grossPool(s.date, all), bs=null;
+      pool2.forEach(function(r){ if(r.name===s.base) bs=r; });
+      if(bs){
+        var cands=pool2.filter(function(r){return r!==bs;})
+          .sort(function(a,b){ var da=Math.abs(a.gross-bs.gross), db=Math.abs(b.gross-bs.gross); if(da!==db) return da-db;
+            var ah=(a.hcp==null?999:a.hcp), bh=(b.hcp==null?999:b.hcp); if(ah!==bh) return ah-bh;
+            if((a.birth||9999)!==(b.birth||9999)) return (a.birth||9999)-(b.birth||9999);
+            if(a.sex!==b.sex) return a.sex==='女'?-1:1; return 0; });
+        for(var ci=0; ci<cands.length && intimacy.length<2; ci++){
+          if((awards[cands[ci].mid]||[]).length) continue;
+          give(cands[ci],'親密獎'); intimacy.push(cands[ci].name);
+        }
+      }
+    } else {
+      /* 8月(含)以前:淨桿舊制(前後各1名,同方向遞補)→ 舊場次重新落底不追溯 */
+      var seq=net, bi=-1; seq.forEach(function(r,i){ if(r.name===s.base) bi=i; });
+      if(bi>=0){ for(var d=bi-1;d>=0;d--){ if(!(awards[seq[d].mid]||[]).length){ give(seq[d],'親密獎'); intimacy.push(seq[d].name); break; } }
+        for(var u=bi+1;u<seq.length;u++){ if(!(awards[seq[u].mid]||[]).length){ give(seq[u],'親密獎'); intimacy.push(seq[u].name); break; } } }
+    }
   }
   /* D4 賽後差點調整:僅總桿冠軍+淨桿冠亞季殿 */
   if(champ){ var cnet=(champ.hcp!=null)?(champ.gross-champ.hcp):null; var ca=hcpAdjust('總桿冠軍',champ.hcp,cnet); if(ca){ champ.adj=ca; champ.hcpNew=ca.newHcp; } }
@@ -1401,12 +1411,12 @@ function openJudge(sid){
   /* 親密獎獨立卡:總桿制後得主可能不在淨桿排名表(如新會員),需自己的顯示位 */
   if(s.base){
     var _im=(J.intimacy||[]).map(function(n){ var m=DATA.members.find(function(x){return x.name===n;}); return '<span'+((m&&m.sex==='女')?' style="color:#C2185B"':'')+'>'+esc(n)+'</span>'; }).join('、');
-    h+='<div class="card"><div class="sub" style="margin-bottom:2px">💑 親密獎 <span style="font-weight:400">基準:'+esc(s.base)+'・總桿相鄰</span></div><div style="font-size:17px;font-weight:700">'+(_im||'<span class="sub" style="font-weight:400">—(無符合者)</span>')+'</div></div>';
+    h+='<div class="card"><div class="sub" style="margin-bottom:2px">💑 親密獎 <span style="font-weight:400">基準:'+esc(s.base)+'・總桿差距最近</span></div><div style="font-size:17px;font-weight:700">'+(_im||'<span class="sub" style="font-weight:400">—(無符合者)</span>')+'</div></div>';
   }
   if(J.noHcp.length) h+='<div class="card" style="background:#FBE6EC;border-color:#F0CAD6"><div class="sub" style="color:#791F1F">⚠️ 有成績但缺當期差點，無法進淨桿排名:'+J.noHcp.map(function(r){return esc(r.name);}).join('、')+'</div></div>';
   h+='<div class="card" style="padding:0;overflow:hidden"><table class="jtab"><colgroup><col style="width:9%"><col style="width:20%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:20%"><col style="width:12%"></colgroup><thead><tr><th>名次</th><th>姓名</th><th style="text-align:right">總桿</th><th style="text-align:right">差點</th><th style="text-align:right">淨桿</th><th>獎項</th><th style="text-align:right">新差</th></tr></thead><tbody>';
   if(!J.net.length) h+='<tr><td colspan="7" class="sub" style="text-align:center;padding:14px">尚無可排名淨桿成績(需總桿+當期差點)</td></tr>';
-  J.net.forEach(function(r){ var aw=(J.awards[r.mid]||[]).filter(function(a){return a!=='總桿冠軍';});
+  J.net.forEach(function(r){ var aw=(J.awards[r.mid]||[]).filter(function(a){return a!=='總桿冠軍'&&a!=='親密獎';});
     h+='<tr><td class="mono"><b>'+r.pos+'</b></td><td'+(r.sex==='女'?' style="color:#C2185B"':'')+'><b>'+esc(r.name)+'</b></td>'+
       '<td class="mono" style="text-align:right">'+r.gross+'</td>'+
       '<td class="mono" style="text-align:right;color:var(--sub)">'+r.hcp+'</td>'+
@@ -1827,7 +1837,7 @@ var AWARD_RULE={
  no12:'淨桿第12名。',
  lucky7:'淨桿第7名。',
  jump5:'淨桿第5、10、15、20…名(逢五),依當日出賽人數計至最末逢五名次。',
- close:'以會長賽前指定之幹部<b>總桿</b>成績為基準，成績相同者優先(同總桿以差點少者優先)，否則由其前、後各1名得獎；<b>已領其他排名獎項者不得重複領取</b>,沿同方向依序遞補，共2名。<b>新會員(前2場)與差點未建者亦列入排序</b>。(2026年9月起適用；8月以前依淨桿舊制)',
+ close:'以會長賽前指定之幹部<b>總桿</b>成績為基準，與基準<b>完全同分者優先得獎</b>；其餘比較<b>往前、往後之總桿差距，差距小者得獎</b>，共2名(同差距以差點少者優先)；<b>已領其他排名獎項者不得重複領取</b>,依差距依序遞補。<b>新會員(前2場)與差點未建者亦列入排序</b>。(2026年9月起適用；8月以前依淨桿舊制)',
  bb:'淨桿倒數第二名。',
  paron3:'三桿洞第1桿上果嶺、距洞口一支旗桿內即可簽名。<b>PAR ON系列合計，每場每人最多領取2洞</b>。',
  paron4:'四桿洞第2桿上果嶺、距洞口一支旗桿內即可簽名。<b>PAR ON系列合計，每場每人最多領取2洞</b>。',
