@@ -1148,10 +1148,10 @@ function judgeSession(sid){
   var intimacy=[];
   if(s.base){
     /* 親密獎基準序列:2026/9 起改「總桿」(同總桿→差點少者優先,缺差點排後;再同→年長優先→女士優先)。
-       8月(含)以前維持淨桿舊制 → 舊場次重新落底也不會被新規則追溯。 */
+       序列池與總桿冠軍相同(grossPool):新會員前2場/缺差點者亦列入。8月(含)以前維持淨桿舊制 → 舊場次重新落底也不會被新規則追溯。 */
     var seq;
     if(String(s.date)>='20260901'){
-      seq = ranked.filter(function(r){ return r.gross!=='' && r.gross!=null; }).slice()
+      seq = grossPool(s.date, all).slice()
         .sort(function(a,b){ if(a.gross!==b.gross) return a.gross-b.gross;
           var ah=(a.hcp==null?999:a.hcp), bh=(b.hcp==null?999:b.hcp); if(ah!==bh) return ah-bh;
           if((a.birth||9999)!==(b.birth||9999)) return (a.birth||9999)-(b.birth||9999);
@@ -1822,7 +1822,7 @@ var AWARD_RULE={
  no12:'淨桿第12名。',
  lucky7:'淨桿第7名。',
  jump5:'淨桿第5、10、15、20…名(逢五),依當日出賽人數計至最末逢五名次。',
- close:'以會長賽前指定之幹部<b>總桿</b>成績為基準，成績相同者優先(同總桿以差點少者優先)，否則由其前、後各1名得獎；<b>已領其他排名獎項者不得重複領取</b>,沿同方向依序遞補，共2名。(2026年9月起適用；8月以前依淨桿舊制)',
+ close:'以會長賽前指定之幹部<b>總桿</b>成績為基準，成績相同者優先(同總桿以差點少者優先)，否則由其前、後各1名得獎；<b>已領其他排名獎項者不得重複領取</b>,沿同方向依序遞補，共2名。<b>新會員(前2場)與差點未建者亦列入排序</b>。(2026年9月起適用；8月以前依淨桿舊制)',
  bb:'淨桿倒數第二名。',
  paron3:'三桿洞第1桿上果嶺、距洞口一支旗桿內即可簽名。<b>PAR ON系列合計，每場每人最多領取2洞</b>。',
  paron4:'四桿洞第2桿上果嶺、距洞口一支旗桿內即可簽名。<b>PAR ON系列合計，每場每人最多領取2洞</b>。',
