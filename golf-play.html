@@ -1211,7 +1211,16 @@ function buildAwardLog(sid){
   /* 4. 來賓參加獎:限有留餐(繳餐費)之來賓 */
   DATA.scores.filter(function(x){return x.sid===sid && x.guest && x.meal;}).forEach(function(g){
     emitByKey('',g.name||'來賓','來賓','來賓參加獎','guest'); });
-  return rows;
+  /* 5. 同人同獎的送球逐筆(如免洞號 BIRDIE ×2)合併成一列,數量累計(1條+1條→2條) */
+  var merged=[], _mi={};
+  rows.forEach(function(r){
+    var mv=(r.type==='送球')?String(r.val).trim().match(/^(\d+)(條|盒)$/):null;
+    if(!mv){ merged.push(r); return; }
+    var k=[r.mid,r.name,r.cat,String(r.awardName).trim(),mv[2],r.pool,r.sponsor].join('|');
+    if(_mi[k]==null){ _mi[k]=merged.length; merged.push(r); }
+    else { var t=merged[_mi[k]]; t.val=(Number(String(t.val).match(/^\s*(\d+)/)[1])+Number(mv[1]))+mv[2]; }
+  });
+  return merged;
 }
 /* 由獎項紀錄列算結算小計(個人贊助不入球會/LINA、不拋轉) */
 var BOX_TIAO=4; /* 送球換算:1盒=4條(依獎項辦法A區) */
