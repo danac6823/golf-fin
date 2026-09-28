@@ -708,7 +708,7 @@ function eventCardHtml(days,isNext){
 /* 有設定才顯示「本場獎項」:獎項洞已配置 / 盃賽 / 親密獎幹部 任一 */
 function hasAwards(s){ return (s.holeAwards&&s.holeAwards.length===18)||!!s.cup||!!s.base; }
 /* 本場獎項公布:只講該場會變動的兩件—黑白切洞(其餘皆PAR ON)+親密獎幹部(+盃賽) */
-function sessAwardConfigHtml(s){
+function sessAwardConfigHtml(s, skipBase){   /* skipBase:完賽視圖已有親密獎得主卡,不重複顯示基準卡 */
   var hasCfg=(s.holeAwards&&s.holeAwards.length===18), bw=[];
   if(hasCfg) s.holeAwards.forEach(function(v,i){ if(v==='bwcut') bw.push(i+1); });
   var _mz=sessMultiZone(s);
@@ -720,7 +720,7 @@ function sessAwardConfigHtml(s){
   else { var ph='第？洞、第？洞、第？洞 <span class="sub" style="font-weight:400;font-size:13px;margin-left:4px">待當日公布</span>';
     h+='<div style="font-size:16px;font-weight:600;line-height:1.8;color:#B08A5A">'+lblF+'　'+ph+'<br>'+lblB+'　'+ph+'</div>'; }
   h+='</div>';
-  h+='<div class="card"><div class="sub" style="margin-bottom:4px">💑 親密獎基準幹部</div><div style="font-size:16px;font-weight:600">'+(s.base?esc(s.base):'<span style="color:#B08A5A">？？？ <span class="sub" style="font-weight:400;font-size:13px">待當日公布</span></span>')+'</div></div>';
+  if(!skipBase) h+='<div class="card"><div class="sub" style="margin-bottom:4px">💑 親密獎基準幹部</div><div style="font-size:16px;font-weight:600">'+(s.base?esc(s.base):'<span style="color:#B08A5A">？？？ <span class="sub" style="font-weight:400;font-size:13px">待當日公布</span></span>')+'</div></div>';
   if(s.cup) h+='<div class="card"><div class="sub" style="margin-bottom:4px">🏅 盃賽</div><div style="font-size:16px;font-weight:600">'+esc(s.cup)+'</div></div>';
   return h;
 }
@@ -1397,7 +1397,12 @@ function openJudge(sid){
   if(J.champ&&(J.champ.hcp||J.champ.hcp===0)){ champHcp=' <span class="sub" style="font-weight:400">｜差點 '+J.champ.hcp;
     if((J.champ.hcpNew||J.champ.hcpNew===0)&&J.champ.hcpNew!==J.champ.hcp) champHcp+=' → <b style="color:var(--warn)">'+J.champ.hcpNew+'</b>';
     champHcp+='</span>'; }
-  var h=sessAwardConfigHtml(s)+'<div class="card"><div class="sub" style="margin-bottom:2px">🥇 總桿冠軍</div><div style="font-size:17px;font-weight:700">'+(J.champ?esc(J.champ.name)+' <span class="sub" style="font-weight:400">總桿 '+J.champ.gross+'</span>'+champHcp:'<span class="sub" style="font-weight:400">—(無符合資格或無成績)</span>')+'</div></div>';
+  var h=sessAwardConfigHtml(s, true)+'<div class="card"><div class="sub" style="margin-bottom:2px">🥇 總桿冠軍</div><div style="font-size:17px;font-weight:700">'+(J.champ?esc(J.champ.name)+' <span class="sub" style="font-weight:400">總桿 '+J.champ.gross+'</span>'+champHcp:'<span class="sub" style="font-weight:400">—(無符合資格或無成績)</span>')+'</div></div>';
+  /* 親密獎獨立卡:總桿制後得主可能不在淨桿排名表(如新會員),需自己的顯示位 */
+  if(s.base){
+    var _im=(J.intimacy||[]).map(function(n){ var m=DATA.members.find(function(x){return x.name===n;}); return '<span'+((m&&m.sex==='女')?' style="color:#C2185B"':'')+'>'+esc(n)+'</span>'; }).join('、');
+    h+='<div class="card"><div class="sub" style="margin-bottom:2px">💑 親密獎 <span style="font-weight:400">基準:'+esc(s.base)+'・總桿相鄰</span></div><div style="font-size:17px;font-weight:700">'+(_im||'<span class="sub" style="font-weight:400">—(無符合者)</span>')+'</div></div>';
+  }
   if(J.noHcp.length) h+='<div class="card" style="background:#FBE6EC;border-color:#F0CAD6"><div class="sub" style="color:#791F1F">⚠️ 有成績但缺當期差點，無法進淨桿排名:'+J.noHcp.map(function(r){return esc(r.name);}).join('、')+'</div></div>';
   h+='<div class="card" style="padding:0;overflow:hidden"><table class="jtab"><colgroup><col style="width:9%"><col style="width:20%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:20%"><col style="width:12%"></colgroup><thead><tr><th>名次</th><th>姓名</th><th style="text-align:right">總桿</th><th style="text-align:right">差點</th><th style="text-align:right">淨桿</th><th>獎項</th><th style="text-align:right">新差</th></tr></thead><tbody>';
   if(!J.net.length) h+='<tr><td colspan="7" class="sub" style="text-align:center;padding:14px">尚無可排名淨桿成績(需總桿+當期差點)</td></tr>';
