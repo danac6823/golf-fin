@@ -760,6 +760,7 @@ function addGuestRow(g){
   div.innerHTML='<span style="flex:none;width:20px;text-align:center">👤</span>'+
     '<input type="text" class="gname" placeholder="來賓姓名" value="'+esc(g.name||'')+'" style="flex:1;margin:0;padding:7px 9px;font-size:15px">'+
     '<input type="number" class="gross" inputmode="numeric" placeholder="總桿" value="'+(g.gross!==''&&g.gross!=null?g.gross:'')+'">'+
+    '<label style="flex:none;display:flex;align-items:center;gap:2px;margin:0;font-size:14px;cursor:pointer" title="留餐(有繳餐費)才送球"><input type="checkbox" class="gmeal"'+(g.meal?' checked':'')+' style="width:17px;height:17px;margin:0">🍽</label>'+
     '<button type="button" class="ghost gdel" style="flex:none;padding:6px 9px;margin:0;border:none;color:#791F1F">✕</button>';
   div.querySelector('.gdel').onclick=function(){ div.remove(); updateScoreCount(); };
   div.querySelector('.gname').oninput=updateScoreCount;
@@ -784,7 +785,7 @@ function saveScore(){
   document.querySelectorAll('#scoreBody .scrow').forEach(function(r){ if(!r.querySelector('.chk').checked) return;
     var g=r.querySelector('.gross').value.trim(); rows.push({sid:scoreSid, mid:r.getAttribute('data-mid'), gross:g===''?'':Number(g)}); });
   document.querySelectorAll('#scoreGuests .scrow').forEach(function(r){ var nm=r.querySelector('.gname').value.trim(); if(!nm) return;
-    var g=r.querySelector('.gross').value.trim(); rows.push({sid:scoreSid, mid:'', guest:true, name:nm, gross:g===''?'':Number(g)}); });
+    var g=r.querySelector('.gross').value.trim(); rows.push({sid:scoreSid, mid:'', guest:true, name:nm, gross:g===''?'':Number(g), meal:r.querySelector('.gmeal').checked}); });
   api('scoreSave',{sid:scoreSid, rows:rows}).then(function(){ closeOv('scoreOv'); toast('✓ 已存成績 '+rows.length+' 筆'); return refresh(); }).catch(function(e){ toast(e.message); });
 }
 /* ===== 快速出席登記:只勾誰來了，儲存時保留既有桿數與來賓 ===== */
@@ -815,6 +816,7 @@ function addAttGuest(g){
   div.setAttribute('data-gross', (g.gross!==''&&g.gross!=null)?g.gross:'');   /* 保留成績登錄已填的桿數 */
   div.innerHTML='<span style="flex:none;width:20px;text-align:center">👤</span>'+
     '<input type="text" class="gname" placeholder="來賓姓名" value="'+esc(g.name||'')+'" style="flex:1;margin:0;padding:7px 9px;font-size:15px">'+
+    '<label style="flex:none;display:flex;align-items:center;gap:2px;margin:0;font-size:14px;cursor:pointer" title="留餐(有繳餐費)才送球"><input type="checkbox" class="gmeal"'+(g.meal?' checked':'')+' style="width:17px;height:17px;margin:0">🍽</label>'+
     '<button type="button" class="ghost gdel" style="flex:none;padding:6px 9px;margin:0;border:none;color:#791F1F">✕</button>';
   div.querySelector('.gdel').onclick=function(){ div.remove(); updateAttCount(); };
   div.querySelector('.gname').oninput=updateAttCount;
@@ -835,7 +837,7 @@ function saveAtt(){
   /* 來賓:從畫面讀(新增/既有),保留成績登錄已填的桿數 */
   document.querySelectorAll('#attGuests .scrow').forEach(function(r){ var nm=r.querySelector('.gname').value.trim(); if(!nm) return;
     var g=r.getAttribute('data-gross')||'';
-    rows.push({sid:attSid, mid:'', guest:true, name:nm, gross:g===''?'':Number(g)}); });
+    rows.push({sid:attSid, mid:'', guest:true, name:nm, gross:g===''?'':Number(g), meal:r.querySelector('.gmeal').checked}); });
   api('scoreSave',{sid:attSid, rows:rows}).then(function(){ closeOv('attOv'); toast('✓ 已存出席 '+rows.length+' 人'); return refresh(); }).catch(function(e){ toast(e.message); });
 }
 /* ===== 會員禮發放(總幹事;🏷️球標+酒 / 👕衣服分男女款 S~3XL)===== */
@@ -891,7 +893,7 @@ function saveGift(){
 /* ===== 今日分組(總幹事編輯;全員可見)===== */
 function attGroupList(sid){ var arr=[], seen={};
   (DATA.scores||[]).forEach(function(x){ if(x.sid!==sid) return;
-    if(x.guest){ if(x.name) arr.push({mid:'', name:x.name, sex:'', guest:true}); }
+    if(x.guest){ if(x.name) arr.push({mid:'', name:x.name, sex:'', guest:true, meal:!!x.meal}); }
     else if(x.mid && !seen[x.mid]){ seen[x.mid]=1; var m=memById(x.mid); if(m) arr.push({mid:m.id, name:m.name, sex:m.sex, guest:false}); } });
   return arr; }
 function attKey(a){ return a.guest?('g:'+a.name):('m:'+a.mid); }
@@ -938,7 +940,7 @@ function showAttGroup(sid){
       h+='<div style="font-size:15px;line-height:1.95;margin-bottom:2px"><b style="color:var(--pri)">第'+k+'組</b>　'+names+'</div>'; });
     h+='</div>';
   }
-  if(atts.length){ h+='<div class="card"><div class="sub" style="margin-bottom:4px">✅ 出席名單('+atts.length+' 人)</div><div style="font-size:15px;line-height:1.9">'+atts.map(function(a){ return (a.guest?'👤':'')+'<span'+(a.sex==='女'?' class="mname-f"':'')+'>'+esc(a.name)+'</span>'; }).join('、')+'</div></div>'; }
+  if(atts.length){ h+='<div class="card"><div class="sub" style="margin-bottom:4px">✅ 出席名單('+atts.length+' 人)</div><div style="font-size:15px;line-height:1.9">'+atts.map(function(a){ return (a.guest?'👤':'')+'<span'+(a.sex==='女'?' class="mname-f"':'')+'>'+esc(a.name)+'</span>'+(a.guest&&a.meal?'🍽':''); }).join('、')+'</div></div>'; }
   else h+='<div class="card"><span class="sub">尚無出席紀錄(等總幹事登錄出席)</span></div>';
   if(gs.length===0 && atts.length) h+='<p class="sub" style="margin:2px 2px 0">尚未分組。</p>';
   document.getElementById('agBody').innerHTML=h; openOv('agOv');
@@ -1205,8 +1207,8 @@ function buildAwardLog(sid){
   /* 3. 本場特殊獎(自由填，不吃主檔) */
   DATA.sessAward.filter(function(x){return x.sid===sid;}).forEach(function(x){
     emit('',x.winner||'','本場特殊',x.name||'特殊獎',{type:x.type,val:x.val,pool:x.pool,sponsor:(x.pool==='個人'?(x.sponsor||''):'')}); });
-  /* 4. 來賓參加獎 */
-  DATA.scores.filter(function(x){return x.sid===sid && x.guest;}).forEach(function(g){
+  /* 4. 來賓參加獎:限有留餐(繳餐費)之來賓 */
+  DATA.scores.filter(function(x){return x.sid===sid && x.guest && x.meal;}).forEach(function(g){
     emitByKey('',g.name||'來賓','來賓','來賓參加獎','guest'); });
   return rows;
 }
@@ -1847,7 +1849,7 @@ var AWARD_RULE={
  birdie:'任一洞低於標準桿1桿(以記分卡為準);<b>每場每人最多領取2洞</b>。',
  eagle:'任一洞低於標準桿2桿(以記分卡為準),不限領取次數。',
  hio:'三桿洞開球直接進洞，須同組全員見證簽名確認。現金1萬+獎盃(球會)＋現金3萬(LINA會長)。',
- guest:'會員邀請之來賓，屬<b>直系眷屬免收餐費；非直系眷屬酌收餐費500元</b>。來賓不列入正式排名及各獎項競逐。直系眷屬有意入會，會長樂意邀請。',
+ guest:'會員邀請之來賓，屬<b>直系眷屬免收餐費；非直系眷屬酌收餐費500元</b>。來賓不列入正式排名及各獎項競逐。<b>有留餐(繳交餐費)之來賓</b>致贈來賓參加獎(送球1條)。直系眷屬有意入會，會長樂意邀請。',
  break100:'期初差點33~36者，例賽總桿低於100即達標；期初差點以第12屆年度新差點為準，年初公告後全年不變，新入會無差點者以入會後前2場例賽成績核算；<b>每人每年限領一次</b>。',
  perfect:'本年度所有正式例賽均出賽者(因雨取消場次不計),於年終頒獎。',
  backer:'已繳交本年度會費，且<b>全年度正式例賽均未出賽者</b>;於年終頒獎，以茲感謝對球會之支持。'
