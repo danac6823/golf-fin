@@ -50,8 +50,23 @@ td{padding:9px 6px;border-top:1px solid var(--line);vertical-align:top}
 var curView='rpt', msList=[], repCache={}, fetched={};   /* fetched:本回合已抓過最新的月份,切換不再打網路 */
 /* 本地快取(第二次開秒出;背景仍抓最新) */
 var LS='rep_cache_v2';   /* v2:清掉可能含重複月份的舊快取(修累計翻倍)*/
-function lsGet(){ try{ return JSON.parse(localStorage.getItem(LS))||{}; }catch(e){ return {}; } }
+function lsGet(){ try{ var c=JSON.parse(localStorage.getItem(LS))||{};
+  /* 清掉形狀不對的月報快取(殘缺回應毒化防線) */
+  if(c.reports) for(var k in c.reports){ if(!validReport(c.reports[k])) delete c.reports[k]; }
+  return c; }catch(e){ return {}; } }
 function lsSet(o){ try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(e){} }
+/* 回應形狀驗證+讀取自動重試(GAS 冷啟動/瞬斷/殘缺回應時隔 1.8s、4s 各再試一次) */
+function validReport(rep){ return !!(rep && rep.income && rep.expense); }
+function fetchJsonRetry(url, check, tries, waitMs){
+  if(tries==null) tries=2;
+  return fetch(url).then(function(r){ return r.json(); }).then(function(j){
+    if(check && !check(j)) throw new Error('回應格式不符');
+    return j;
+  }).catch(function(e){
+    if(tries>0) return new Promise(function(res){ setTimeout(res, waitMs||1800); }).then(function(){ return fetchJsonRetry(url, check, tries-1, 4000); });
+    throw e;
+  });
+}
 function setView(v){
   curView=v;
   Array.prototype.forEach.call(document.getElementById('tabBar').children,function(b){
@@ -67,9 +82,9 @@ function setView(v){
 
 function fetchReport(ym){
   if(fetched[ym] && repCache[ym]) return Promise.resolve(repCache[ym]);   /* 本回合抓過最新→直接給,秒回 */
-  return fetch(GAS_URL+'?pub=report&ym='+ym).then(function(r){return r.json()}).then(function(j){
-    if(j.ok){ repCache[ym]=j.report; fetched[ym]=1; var c=lsGet(); c.reports=c.reports||{}; c.reports[ym]=j.report; lsSet(c); }
-    return j.report || repCache[ym];
+  return fetchJsonRetry(GAS_URL+'?pub=report&ym='+ym, function(j){ return !!(j && j.ok && validReport(j.report)); }).then(function(j){
+    repCache[ym]=j.report; fetched[ym]=1; var c=lsGet(); c.reports=c.reports||{}; c.reports[ym]=j.report; lsSet(c);
+    return j.report;
   }).catch(function(){ return repCache[ym]; });
 }
 /* 開頁背景抓齊所有月,之後切換秒開 */
@@ -139,7 +154,7 @@ function renderRoster(){
   var body=document.getElementById('body');
   if(rosterCache){ drawRoster(rosterCache); return; }
   body.innerHTML='<p class="sub" style="text-align:center;padding:30px 0">載入中…</p>';
-  fetch(GAS_URL+'?pub=roster').then(function(r){return r.json()}).then(function(j){
+  fetchJsonRetry(GAS_URL+'?pub=roster', function(j){ return !!(j && j.members); }).then(function(j){
     rosterCache=j; drawRoster(j);
   }).catch(function(){ body.innerHTML='<div class="card"><p class="sub">載入失敗,請稍後再試</p></div>'; });
 }
@@ -223,7 +238,7 @@ function buildMonths(ms){
 (function boot(){
   var c=lsGet();
   if(c.months && c.months.length){ if(c.reports) for(var k in c.reports) repCache[k]=c.reports[k]; buildMonths(c.months); }
-  fetch(GAS_URL+'?pub=months').then(function(r){return r.json()}).then(function(j){
+  fetchJsonRetry(GAS_URL+'?pub=months', function(j){ return !!(j && Array.isArray(j.months)); }).then(function(j){
     var ms=j.months||[]; var cc=lsGet(); cc.months=ms; lsSet(cc); buildMonths(ms); prefetchAll();
   }).catch(function(){ if(!(c.months&&c.months.length)) document.getElementById('body').innerHTML='<div class="card"><p class="sub">載入失敗,請稍後再試</p></div>'; });
 })();

@@ -661,9 +661,20 @@ function applyRole(r){ user=r;
 }
 function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
-function loadCache(){ try{ var s=localStorage.getItem(CACHE_KEY); return s?JSON.parse(s):null; }catch(e){ return null; } }
-function saveCache(j){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(j)); }catch(e){} }
-function refresh(){ return api('playSummary').then(function(j){
+/* 快取/回應必須是 playSummary 完整形狀;Google 偶發把 POST 轉成 GET 會回 {ok,service} 之類的殘缺回應,不擋掉會毒化快取 */
+function validSummary(j){ return !!(j && j.ok && Array.isArray(j.sessions) && Array.isArray(j.members)); }
+function loadCache(){ try{ var s=localStorage.getItem(CACHE_KEY); var c=s?JSON.parse(s):null;
+  if(c && !validSummary(c)){ localStorage.removeItem(CACHE_KEY); return null; }  /* 自動清掉壞快取 */
+  return c; }catch(e){ try{localStorage.removeItem(CACHE_KEY);}catch(_){} return null; } }
+function saveCache(j){ if(!validSummary(j)) return; try{ localStorage.setItem(CACHE_KEY, JSON.stringify(j)); }catch(e){} }
+/* 讀取自動重試:GAS 冷啟動/瞬斷/殘缺回應時隔 1.8s、4s 各再試一次(只用於讀,寫入不自動重試)
+   check:回應形狀驗證,不符也視為失敗觸發重試 */
+function apiRetry(action,p,tries,waitMs,check){ return api(action,p).then(function(j){
+    if(check && !check(j)) throw new Error('回應格式不符(Google 轉址異常),請再試一次'); return j;
+  }).catch(function(e){
+  if(tries>0) return new Promise(function(res){ setTimeout(res, waitMs||1800); }).then(function(){ return apiRetry(action,p,tries-1,4000,check); });
+  throw e; }); }
+function refresh(){ return apiRetry('playSummary',null,2,null,validSummary).then(function(j){
     /* 球場/獎項:後端沒送(來賓)就用網頁內建;有送(總幹事)用最新 */
     if(!j.courses||!j.courses.length) j.courses=PLAY_STATIC.courses;
     if(!j.awards||!j.awards.length) j.awards=PLAY_STATIC.awards;
@@ -672,7 +683,7 @@ function refresh(){ return api('playSummary').then(function(j){
     if(!same) showTab(curTab);
   }).catch(function(e){ toast('⚠️ 資料載入失敗:'+(e&&e.message||e)); console.error('playSummary 失敗',e); }); }
 /* 秒開:先用上次快取立即渲染,再背景抓最新(有變才重繪) */
-function refreshCached(){ if(!PREVIEW){ var c=loadCache(); if(c){ DATA=c; showTab(curTab); } } return refresh(); }
+function refreshCached(){ if(!PREVIEW){ var c=loadCache(); if(c){ DATA=c; try{ showTab(curTab); }catch(e){ console.error('快取渲染失敗',e); } } } return refresh(); }  /* 渲染出錯也不能擋住背景抓新資料 */
 
 function fmtMD(d){ d=String(d); return d.length===8?(+d.slice(4,6))+'/'+(+d.slice(6,8)):d; }
 /* 行程卡:同 tripId 的多天場次合成一塊(每天各自球場/時間/計分性質/盃賽) */

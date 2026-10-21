@@ -428,6 +428,19 @@ function api(payload){
       throw e;
     });
 }
+/* 讀取自動重試:GAS 冷啟動/瞬斷/殘缺回應(Google 偶發把 POST 轉成 GET 回 {ok,service} 空殼)時,
+   隔 1.8s、4s 各再試一次。只用於讀(summary/whoami),寫入不自動重試。check:回應形狀驗證。 */
+function apiRetry(payload, tries, waitMs, check){
+  return api(JSON.parse(JSON.stringify(payload))).then(function(j){
+    if(check && !check(j)) throw new Error('回應格式不符(Google 轉址異常),請再試一次');
+    return j;
+  }).catch(function(e){
+    if(tries>0) return new Promise(function(res){ setTimeout(res, waitMs||1800); }).then(function(){ return apiRetry(payload, tries-1, 4000, check); });
+    throw e;
+  });
+}
+function validFinSummary(j){ return !!(j && j.ok && j.balances); }
+function apiSummary(){ return apiRetry({action:'summary'}, 2, null, validFinSummary); }
 window.onerror=function(msg,src,line){ try{ toast('⚠️ 程式錯誤:'+msg+' @'+line, 6000); }catch(e){} return false; };
 window.addEventListener('unhandledrejection',function(ev){ try{ toast('⚠️ 未處理錯誤:'+(ev.reason&&ev.reason.message||ev.reason), 6000); }catch(e){} });
 function toast(msg,ms){ var t=document.getElementById('toast'); t.textContent=msg; t.style.display='block';
@@ -1773,7 +1786,7 @@ function actmSave(){
     toast(j.mode==='add' ? '✓ 已建檔「'+name+'」'
       : ('✓ 已更新'+(moved?'・歸戶 帳列'+(rt.led||0)+'/請款'+(rt.req||0)+'/預算'+(rt.bud||0):'')));
     actmReset();
-    return api({action:'summary'});
+    return apiSummary();
   }).then(function(j){ lastData=j; renderActm(); })
   .catch(function(e){ toast('儲存失敗:'+e.message); });
 }
@@ -1783,7 +1796,7 @@ function actmDel(){
   api({action:'actDel', row:actmEditRow}).then(function(){
     toast('✓ 已刪除主檔列(標籤未動)');
     actmReset();
-    return api({action:'summary'});
+    return apiSummary();
   }).then(function(j){ lastData=j; renderActm(); })
   .catch(function(e){ toast('刪除失敗:'+e.message); });
 }
@@ -2059,7 +2072,7 @@ function budDelRun(hits, hideKey, hideVal, label){
   if(!confirm('刪除'+label+'將一併刪除其 '+hits.length+' 格已編預算(不影響任何帳列;其他格未儲存的輸入會保留)。確定?')) return;
   var s0=budSnapshot();
   api({action:'budgetBatch', ops:hits.map(function(b){ return {op:'del', row:b.row}; })}).then(function(){
-    return api({action:'summary'});
+    return apiSummary();
   }).then(function(j){ lastData=j; finish(); budRestore(s0); toast('✓ 已刪除'+label+'及其 '+hits.length+' 格預算'); })
   .catch(function(e){ toast('刪除失敗:'+e.message); });
 }
@@ -2092,7 +2105,7 @@ function budTableSave(){
   toast('儲存中…');
   api({action:'budgetBatch', ops:ops}).then(function(j){
     toast('✓ 更新'+(j.set||0)+'・新增'+(j.add||0)+'・刪除'+(j.del||0));
-    return api({action:'summary'});
+    return apiSummary();
   }).then(function(j){ lastData=j; renderBudget(); })
   .catch(function(e){ toast('儲存失敗:'+e.message); });
 }
@@ -2207,7 +2220,7 @@ function budSave(){
   api({action:'budgetSave', b:{row:budEditRow, act:act, cat:cat, amt:amt, src:src, note:note}}).then(function(){
     toast(budEditRow?'✓ 預算列已更新':'✓ 已追加預算列');
     budResetForm();
-    return api({action:'summary'});
+    return apiSummary();
   }).then(function(j){ lastData=j; renderBudget(); })
   .catch(function(e){ toast('儲存失敗:'+e.message); });
 }
@@ -2217,7 +2230,7 @@ function budDel(){
   api({action:'budgetDel', row:budEditRow}).then(function(){
     toast('✓ 已刪除預算列');
     budResetForm();
-    return api({action:'summary'});
+    return apiSummary();
   }).then(function(j){ lastData=j; renderBudget(); })
   .catch(function(e){ toast('刪除失敗:'+e.message); });
 }
@@ -3970,7 +3983,7 @@ function save(){
 }
 
 function refresh(){
-  api({action:'summary'}).then(function(j){
+  apiSummary().then(function(j){
     lastData=j;
     pendCount = (j.reqs||[]).filter(function(r){
       return (user==='允甄'&&r.status==='待匯款')||(user==='凌華'&&r.status==='已匯款');
@@ -4006,7 +4019,9 @@ function refresh(){
 }
 
 if(localStorage.getItem('gf_token')){
-  api({action:'whoami'}).then(function(j){ user=j.name; enter(); })
+  /* whoami 也走重試:GAS 慢/瞬斷不再把人踢登出,重試全失敗才清 token */
+  apiRetry({action:'whoami'}, 2, null, function(j){ return !!(j&&j.ok&&j.name); })
+    .then(function(j){ user=j.name; enter(); })
     .catch(function(){ localStorage.removeItem('gf_token'); });
 }
 </script>
