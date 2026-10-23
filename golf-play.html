@@ -529,6 +529,13 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 </div></div>
 
 <!-- 本場特殊獎(總幹事；單場臨時獎:名稱+得主+備註) -->
+<div class="overlay" id="ovrOv" style="z-index:90"><div class="sheet">
+  <div class="head" style="margin-top:0"><b id="ovrTitle">⚖️ 現場改派</b><button class="ghost" onclick="closeOv('ovrOv')">✕</button></div>
+  <p class="sub" style="margin:0 0 8px">現場頒發與自動判定不同時,在此指定得主(覆蓋判定;限不動差點的獎)。遞補不會自動連動,相關的獎請逐一指定;親密獎 2 名就填 2 筆。</p>
+  <div id="ovrBody"></div>
+  <button type="button" class="ghost" onclick="addOvrItem()" style="width:100%;border-style:dashed;color:var(--pri);margin:4px 0 8px;padding:9px">＋ 加一筆改派</button>
+  <button class="btn" onclick="saveOvr()">儲存改派</button>
+</div></div>
 <div class="overlay" id="saOv" style="z-index:90"><div class="sheet">
   <div class="head" style="margin-top:0"><b id="saTitle">🎖️ 本場特殊獎</b><button class="ghost" onclick="closeOv('saOv')">✕</button></div>
   <p class="sub" style="margin:0 0 8px">單場臨時獎(遠距獎/贊助商獎…);不列入年度預設。</p>
@@ -611,7 +618,7 @@ function boot(){ var tok=localStorage.getItem('gp_token');
 
 /* ===== 前端 ===== */
 var PLAY_STATIC={"courses":[{"id":"jiaoxi","name":"礁溪高爾夫俱樂部","alias":"","note":"宜蘭縣","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,3,4,4,5,5,3,4]},{"code":"u1b2","name":"IN","pars":[4,5,3,4,4,3,5,4,4]}]},{"id":"bali","name":"八里國際高爾夫球場","alias":"","note":"新北市","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,4,4,3,5,5,3,4]},{"code":"u1b2","name":"IN","pars":[4,4,3,5,4,4,3,4,5]}]},{"id":"datun","name":"大屯高爾夫球場","alias":"","note":"新北市","zones":[{"code":"u1b1","name":"OUT","pars":[4,3,4,3,3,5,5,4,5]},{"code":"u1b2","name":"IN","pars":[4,3,4,4,5,4,4,3,5]}]},{"id":"donghua","name":"東華高爾夫俱樂部","alias":"","note":"新北市","zones":[{"code":"u1b1","name":"OUT","pars":[5,4,3,4,4,3,4,5,4]},{"code":"u1b2","name":"IN","pars":[4,4,5,3,4,4,3,5,4]}]},{"id":"emerald","name":"翡翠高爾夫球場","alias":"","note":"新北市","zones":[{"code":"u1b1","name":"OUT","pars":[5,4,4,3,5,4,4,3,4]},{"code":"u1b2","name":"IN","pars":[4,3,5,4,4,4,4,3,5]}]},{"id":"goldcoast","name":"黃金海岸高爾夫球場","alias":"","note":"新北市","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,3,4,5,3,4,5,4]},{"code":"u1b2","name":"IN","pars":[5,3,4,4,4,3,4,4,5]}]},{"id":"hsinyi","name":"幸福高爾夫俱樂部","alias":"27洞","note":"新北市","zones":[{"code":"u1b1","name":"東區","pars":[4,3,5,4,3,4,4,5,5]},{"code":"u2b1","name":"西區","pars":[4,5,4,3,4,3,4,4,5]},{"code":"u3b1","name":"北區","pars":[4,5,3,4,5,3,4,4,4]}]},{"id":"kuohua","name":"北投國華高爾夫俱樂部","alias":"","note":"新北市","zones":[{"code":"out","name":"OUT (前九洞)","pars":[4,4,3,5,3,4,4,5,4]},{"code":"in","name":"IN (後九洞)","pars":[4,3,5,4,4,3,5,4,4]}]},{"id":"linkou","name":"林口高爾夫球場","alias":"27洞","note":"新北市","zones":[{"code":"u1b1","name":"東區","pars":[3,4,5,4,4,3,4,4,5]},{"code":"u2b1","name":"南區","pars":[5,4,4,5,3,4,4,3,4]},{"code":"u3b1","name":"西區","pars":[5,3,4,4,4,4,4,3,5]}]},{"id":"miramar","name":"美麗華高爾夫鄉村俱樂部","alias":"36洞","note":"新北市","zones":[{"code":"u1b1","name":"A球場 OUT","pars":[4,3,5,4,4,3,4,4,5]},{"code":"u1b2","name":"A球場 IN","pars":[4,5,3,4,4,5,3,4,4]},{"code":"u2b2","name":"B球場 IN","pars":[4,4,5,4,3,4,4,3,5]}]},{"id":"oceanview","name":"濱海高爾夫球場","alias":"","note":"新北市","zones":[{"code":"u1b1","name":"OUT","pars":[5,3,4,4,4,4,3,5,4]},{"code":"u1b2","name":"IN","pars":[4,3,5,4,3,4,4,5,4]}]},{"id":"baoshan","name":"寶山高爾夫球場","alias":"","note":"新竹縣","zones":[{"code":"u1b1","name":"OUT","pars":[5,4,4,4,3,5,4,3,4]},{"code":"u1b2","name":"IN","pars":[4,5,4,3,4,5,4,3,4]}]},{"id":"hgcc","name":"新豐高爾夫球場","alias":"27洞","note":"新竹縣","zones":[{"code":"u1b1","name":"西區","pars":[4,4,3,4,5,3,4,4,5]},{"code":"u2b1","name":"東區","pars":[4,3,4,4,5,4,4,3,5]},{"code":"u3b1","name":"中區","pars":[5,4,4,3,4,4,5,3,4]}]},{"id":"lily","name":"立益高爾夫球場","alias":"","note":"新竹縣","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,4,4,4,3,5,3,4]},{"code":"u1b2","name":"IN","pars":[4,5,4,3,5,3,5,4,4]}]},{"id":"royalkuanhsi","name":"老爺關西高爾夫球場","alias":"","note":"新竹縣","zones":[{"code":"out","name":"OUT (前九洞)","pars":[4,4,3,5,4,4,3,5,4]},{"code":"in","name":"IN (後九洞)","pars":[4,5,3,4,4,4,4,3,5]}]},{"id":"suncity","name":"山溪地高爾夫俱樂部","alias":"","note":"新竹縣","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,4,3,4,5,4,3,5]},{"code":"u1b2","name":"IN","pars":[4,4,3,4,3,4,5,4,5]}]},{"id":"thezaixing","name":"再興高爾夫俱樂部","alias":"","note":"新竹縣","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,3,5,4,4,4,3,5]},{"code":"u1b2","name":"IN","pars":[4,5,4,3,4,4,3,5,4]}]},{"id":"xuyang","name":"旭陽高爾夫球場","alias":"","note":"新竹縣","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,4,3,4,5,4,3,5]},{"code":"u1b2","name":"IN","pars":[5,3,4,4,5,4,3,4,4]}]},{"id":"cggc","name":"長庚高爾夫俱樂部","alias":"27洞","note":"桃園市","zones":[{"code":"north","name":"北區","pars":[3,4,5,4,4,4,5,3,4]},{"code":"middle","name":"中區","pars":[4,4,5,3,5,4,4,3,4]},{"code":"south","name":"南區","pars":[5,5,4,3,4,4,3,4,4]}]},{"id":"commander","name":"統帥高爾夫球場","alias":"","note":"桃園市","zones":[{"code":"u1b1","name":"OUT","pars":[5,4,4,4,4,3,4,3,5]},{"code":"u1b2","name":"IN","pars":[4,4,5,3,4,4,5,3,4]}]},{"id":"lanying","name":"藍鷹高爾夫俱樂部","alias":"","note":"桃園市","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,3,4,3,5,5,4,3]},{"code":"u1b2","name":"IN","pars":[4,4,4,5,3,4,5,3,5]}]},{"id":"lungtan","name":"龍潭高爾夫俱樂部","alias":"","note":"桃園市","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,3,5,4,4,3,5,4]},{"code":"u1b2","name":"IN","pars":[4,4,3,4,5,4,3,4,5]}]},{"id":"orient","name":"東方高爾夫俱樂部","alias":"","note":"桃園市","zones":[{"code":"u1b1","name":"OUT","pars":[5,3,4,4,5,4,3,4,4]},{"code":"u1b2","name":"IN","pars":[5,4,4,3,4,4,3,4,5]}]},{"id":"sunrise","name":"揚昇高爾夫鄉村俱樂部","alias":"","note":"桃園市","zones":[{"code":"u1b1","name":"OUT","pars":[4,3,4,3,4,5,4,4,5]},{"code":"u1b2","name":"IN","pars":[4,3,4,5,4,4,3,4,5]}]},{"id":"taipeigolf","name":"台北高爾夫俱樂部","alias":"45洞","note":"桃園市","zones":[{"code":"u1b1","name":"A區","pars":[5,5,4,3,4,3,4,4,4]},{"code":"u2b1","name":"B區","pars":[5,3,4,4,4,4,3,5,4]},{"code":"u3b1","name":"C區","pars":[4,5,4,3,4,4,5,3,4]},{"code":"u4b1","name":"D區","pars":[4,3,4,4,4,5,5,4,3]}]},{"id":"taoyuan","name":"桃園高爾夫俱樂部","alias":"27洞","note":"桃園市","zones":[{"code":"east","name":"東區","pars":[6,4,3,4,4,5,3,4,4]},{"code":"south","name":"南區","pars":[3,4,4,4,5,5,3,4,4]},{"code":"west","name":"西區","pars":[4,3,5,4,4,4,5,4,3]}]},{"id":"tashee","name":"大溪高爾夫俱樂部","alias":"27洞","note":"桃園市","zones":[{"code":"u1b1","name":"東區","pars":[5,3,4,4,5,4,4,4,3]},{"code":"u2b1","name":"中區","pars":[4,4,5,4,3,5,3,4,4]},{"code":"u3b1","name":"西區","pars":[4,4,3,4,5,5,4,3,4]}]},{"id":"yonghan","name":"永漢高爾夫球場","alias":"","note":"桃園市","zones":[{"code":"u1b1","name":"OUT","pars":[5,4,3,4,4,5,3,4,4]},{"code":"u1b2","name":"IN","pars":[4,4,5,4,4,3,4,3,5]}]},{"id":"taifong","name":"台豐高爾夫俱樂部","alias":"","note":"彰化縣","zones":[{"code":"out","name":"OUT (前九洞)","pars":[4,3,5,4,5,4,4,3,4]},{"code":"in","name":"IN (後九洞)","pars":[4,4,3,4,4,3,4,5,5]}]},{"id":"hongxi_taiping","name":"鴻禧太平高爾夫球場","alias":"9洞","note":"臺中市","zones":[{"code":"u1b1","name":"OUT","pars":[4,5,4,5,4,3,4,4,3]}]},{"id":"ticc","name":"台中國際高爾夫俱樂部","alias":"27洞","note":"臺中市","zones":[{"code":"u1b1","name":"東區","pars":[4,4,3,5,4,4,3,5,4]},{"code":"u2b1","name":"中區","pars":[4,4,3,5,4,4,3,4,5]},{"code":"u3b1","name":"西區","pars":[5,4,3,4,4,3,4,5,4]}]},{"id":"wufeng","name":"霧峰高爾夫球場","alias":"","note":"臺中市","zones":[{"code":"u1b1","name":"OUT","pars":[4,3,5,3,4,4,4,4,5]},{"code":"u1b2","name":"IN","pars":[4,4,5,3,4,5,4,3,4]}]},{"id":"ngcc","name":"全國花園鄉村俱樂部","alias":"","note":"苗栗縣","zones":[{"code":"out","name":"OUT (前九洞)","pars":[4,4,5,4,3,4,5,3,4]},{"code":"in","name":"IN (後九洞)","pars":[4,3,4,5,3,4,5,4,4]}]},{"id":"royal_miaoli","name":"皇家高爾夫球場","alias":"","note":"苗栗縣","zones":[{"code":"u1b1","name":"OUT","pars":[4,5,3,4,4,4,5,3,4]},{"code":"u1b2","name":"IN","pars":[5,4,4,4,3,4,3,4,5]}]},{"id":"chunghsing","name":"中興新村高爾夫球場","alias":"9洞","note":"南投縣","zones":[{"code":"u1b1","name":"OUT","pars":[5,3,4,3,4,5,4,4,4]}]},{"id":"nanfeng","name":"南峰高爾夫球場","alias":"","note":"南投縣","zones":[{"code":"u1b1","name":"OUT","pars":[5,4,4,3,4,4,3,5,4]},{"code":"u1b2","name":"IN","pars":[5,3,4,4,3,4,5,4,4]}]},{"id":"changhua","name":"彰化高爾夫俱樂部","alias":"","note":"彰化縣","zones":[{"code":"u1b1","name":"OUT","pars":[5,3,4,4,4,5,4,4,3]},{"code":"u1b2","name":"IN","pars":[5,3,4,4,4,4,3,5,5]}]},{"id":"chingchuankang","name":"清泉崗高爾夫球場","alias":"","note":"臺中市","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,4,3,4,4,5,4,4]},{"code":"u1b2","name":"IN","pars":[4,3,4,5,4,4,5,3,4]}]},{"id":"tgcc","name":"台灣高爾夫俱樂部","alias":"","note":"新北市","zones":[{"code":"out","name":"OUT (前九洞)","pars":[4,3,4,4,4,5,5,3,4]},{"code":"in","name":"IN (後九洞)","pars":[3,4,4,5,4,5,4,3,4]}]},{"id":"formosa_first","name":"福爾摩莎第一高爾夫球場","alias":"36洞","note":"桃園市","zones":[{"code":"out","name":"藍天 OUT","pars":[3,5,5,3,4,4,5,3,4]},{"code":"in","name":"黃金 IN","pars":[4,4,3,5,4,3,5,4,4]}]},{"id":"formosa_yangmei","name":"福爾摩莎楊梅高爾夫球場","alias":"","note":"桃園市","zones":[{"code":"out","name":"OUT (前九洞)","pars":[4,3,4,5,4,3,5,4,4]},{"code":"in","name":"IN (後九洞)","pars":[4,3,5,5,4,3,4,4,4]}]},{"id":"sungbailing","name":"南投縣松柏嶺高爾夫球場","alias":"","note":"南投縣","zones":[]},{"id":"fengyuan","name":"豐原高爾夫俱樂部","alias":"","note":"臺中市","zones":[]},{"id":"taichung_sinon","name":"台中高爾夫球場","alias":"27洞","note":"臺中市","zones":[]}],"awards":[{"group":"淨桿排名獎(每場)","key":"gross","name":"總桿冠軍","note":"","items":[{"type":"現金","val":"1500","pool":"球會","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"net1","name":"淨桿冠軍","note":"","items":[{"type":"現金","val":"2000","pool":"球會","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"net2","name":"淨桿亞軍","note":"","items":[{"type":"現金","val":"1500","pool":"球會","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"net3","name":"淨桿季軍","note":"","items":[{"type":"現金","val":"1000","pool":"球會","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"net4","name":"淨桿殿軍","note":"","items":[{"type":"現金","val":"500","pool":"球會","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"no12","name":"第12名","note":"","items":[{"type":"現金","val":"300","pool":"球會","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"lucky7","name":"LUCKY 7","note":"","items":[{"type":"現金","val":"300","pool":"LINA會長","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"jump5","name":"跳獎","note":"","items":[{"type":"現金","val":"200","pool":"LINA會長","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"close","name":"親密獎","note":"每場指定幹部作為基準","items":[{"type":"現金","val":"300","pool":"LINA會長","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"bb","name":"BB 獎","note":"","items":[{"type":"送球","val":"2條","pool":"球會","sponsor":""},{"type":"其他","val":"益莊球券","pool":"個人","sponsor":"黃文華學長"}]},{"group":"技術獎(每洞・簽名制)","key":"paron3","name":"PAR ON・三桿洞","note":"共 4 洞","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"技術獎(每洞・簽名制)","key":"paron4","name":"PAR ON・四桿洞","note":"共 4 洞","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"技術獎(每洞・簽名制)","key":"paron5","name":"PAR ON・五桿洞","note":"共 4 洞","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"技術獎(每洞・簽名制)","key":"bwcut","name":"黑白切","note":"共 6 洞","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"最佳技術獎","key":"onputt","name":"直入獎","note":"","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"最佳技術獎","key":"birdie","name":"BIRDIE 獎","note":"","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"最佳技術獎","key":"eagle","name":"EAGLE 獎","note":"","items":[{"type":"送球","val":"1盒","pool":"球會","sponsor":""}]},{"group":"最佳技術獎","key":"hio","name":"一桿進洞獎","note":"","items":[{"type":"現金","val":"10000","pool":"球會","sponsor":""},{"type":"其他","val":"獎盃","pool":"球會","sponsor":""},{"type":"現金","val":"30000","pool":"LINA會長","sponsor":""}]},{"group":"來賓參加獎","key":"guest","name":"來賓參加獎","note":"","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"年度特別獎","key":"break100","name":"破百獎","note":"期初差點33~36且當場<100","items":[{"type":"送球","val":"1盒","pool":"球會","sponsor":""},{"type":"其他","val":"獎狀","pool":"球會","sponsor":""}]},{"group":"年度特別獎","key":"perfect","name":"年度全勤獎","note":"","items":[{"type":"其他","val":"精美禮品","pool":"球會","sponsor":""}]},{"group":"年度特別獎","key":"backer","name":"最強後盾獎","note":"","items":[{"type":"其他","val":"精美禮品","pool":"球會","sponsor":""}]}]};  /* 球場+獎項金額:內建靜態(來賓不讀試算表);改動需重生本檔 */
-var user='', DATA={courses:PLAY_STATIC.courses.slice(),sessions:[],awards:PLAY_STATIC.awards.slice(),members:[],scores:[],hcpHist:[],tech:[],sessAward:[],awardLog:[]}, curTab='cal';
+var user='', DATA={courses:PLAY_STATIC.courses.slice(),sessions:[],awards:PLAY_STATIC.awards.slice(),members:[],scores:[],hcpHist:[],tech:[],sessAward:[],awardLog:[],ovr:[]}, curTab='cal';
 var WEEK=['日','一','二','三','四','五','六'];
 var ST_LIST=['規劃中','尚未預訂','已預訂','報名中','已完賽','雨取消'];
 var ST_CLS={'規劃中':'st-plan','尚未預訂':'st-nobook','已預訂':'st-book','報名中':'st-reg','已完賽':'st-done','雨取消':'st-rain'};
@@ -1198,11 +1205,23 @@ function judgeSession(sid){
         for(var u=bi+1;u<seq.length;u++){ if(!(awards[seq[u].mid]||[]).length){ give(seq[u],'親密獎'); intimacy.push(seq[u].name); break; } } }
     }
   }
+  /* 現場改派:判定與現場頒發不同時,總幹事指定該獎改由誰領(覆蓋自動判定)。
+     只限不動差點的獎(第12名/幸運7/跳獎/親密獎/BB獎);遞補不自動連動,相關的獎要逐一指定 */
+  var OVR_OK=/^(第12名|幸運7|跳獎\(\d+\)|親密獎|BB獎)$/, ovrAw={};
+  (DATA.ovr||[]).filter(function(o){return o.sid===sid && OVR_OK.test(o.award);}).forEach(function(o){
+    var tgt=all.find(function(r){return !r.guest && r.mid===o.mid;}); if(!tgt) return;
+    (ovrAw[o.award]=ovrAw[o.award]||[]).push(tgt);
+  });
+  Object.keys(ovrAw).forEach(function(aw){
+    Object.keys(awards).forEach(function(mid){ var i=awards[mid].indexOf(aw); if(i>=0) awards[mid].splice(i,1); });
+    ovrAw[aw].forEach(function(t){ give(t,aw); });
+  });
+  if(ovrAw['親密獎']) intimacy=all.filter(function(r){return (awards[r.mid]||[]).indexOf('親密獎')>=0;}).map(function(r){return r.name;});
   /* D4 賽後差點調整:僅總桿冠軍+淨桿冠亞季殿 */
   if(champ){ var cnet=(champ.hcp!=null)?(champ.gross-champ.hcp):null; var ca=hcpAdjust('總桿冠軍',champ.hcp,cnet); if(ca){ champ.adj=ca; champ.hcpNew=ca.newHcp; } }
   var netAwardName=['淨桿冠軍','淨桿亞軍','淨桿季軍','淨桿殿軍'];
   net.forEach(function(r,i){ if(i<4){ var a=hcpAdjust(netAwardName[i], r.hcp, r.net); if(a){ r.adj=a; r.hcpNew=a.newHcp; } } });
-  return {s:s,all:all,ranked:ranked,champ:champ,net:net,awards:awards,attend:all.length,intimacy:intimacy,noHcp:ranked.filter(function(r){return r.hcp==null;})};
+  return {s:s,all:all,ranked:ranked,champ:champ,net:net,awards:awards,attend:all.length,intimacy:intimacy,ovr:ovrAw,noHcp:ranked.filter(function(r){return r.hcp==null;})};
 }
 /* ===== 獎項紀錄落底(判定=算，紀錄=存；每場×每人×每獎×每項目一列) ===== */
 var RANK_KEY={'總桿冠軍':'gross','淨桿冠軍':'net1','淨桿亞軍':'net2','淨桿季軍':'net3','淨桿殿軍':'net4','第12名':'no12','幸運7':'lucky7','BB獎':'bb','親密獎':'close'};
@@ -1400,6 +1419,45 @@ function applyHcp(sid){
   if(!confirm('套用本場差點調整?更新 '+changes.length+' 位當期差點並寫入差點歷史(不可逆)')) return;
   api('hcpApply',{sid:sid,changes:changes}).then(function(){ toast('✓ 已套用 '+changes.length+' 位差點'); return refresh(); }).then(function(){ openJudge(sid); }).catch(function(e){ toast(e.message); });
 }
+/* 現場改派(總幹事;覆蓋自動判定,限不動差點的獎) */
+var ovrSid=null, ovrOpts=[];
+function openOvr(sid){
+  ovrSid=sid; var s=DATA.sessions.find(function(x){return x.id===sid;});
+  document.getElementById('ovrTitle').textContent='⚖️ '+((s.tripName?s.tripName+'・':'')+s.name)+'・現場改派';
+  var atts=techAttendees(sid), J=judgeSession(sid);
+  var opts={'第12名':1,'幸運7':1,'親密獎':1,'BB獎':1};
+  Object.keys(J.awards).forEach(function(mid){ (J.awards[mid]||[]).forEach(function(a){ if(/^跳獎\(\d+\)$/.test(a)) opts[a]=1; }); });
+  var ex=(DATA.ovr||[]).filter(function(x){return x.sid===sid;});
+  ex.forEach(function(o){ if(o.award) opts[o.award]=1; });
+  ovrOpts=Object.keys(opts);
+  var el=document.getElementById('ovrBody');
+  el.innerHTML='<datalist id="ovrDL">'+atts.map(function(m){return '<option value="'+esc(m.name)+'">';}).join('')+'</datalist>';
+  if(ex.length) ex.forEach(function(o){ addOvrItem(o); }); else addOvrItem();
+  openOv('ovrOv');
+}
+function addOvrItem(it){ it=it||{};
+  var m=it.mid?memById(it.mid):null;
+  var div=document.createElement('div'); div.className='scrow';
+  div.innerHTML='<select class="oaw" style="flex:1;margin:0">'+ovrOpts.map(function(a){return '<option'+(a===it.award?' selected':'')+'>'+esc(a)+'</option>';}).join('')+'</select>'+
+    '<input type="text" class="onm" list="ovrDL" placeholder="改給誰" value="'+esc(m?m.name:'')+'" style="flex:1;margin:0;padding:7px 9px;font-size:15px">'+
+    '<button type="button" class="ghost odel" style="flex:none;padding:6px 9px;margin:0;border:none;color:#791F1F">✕</button>';
+  div.querySelector('.odel').onclick=function(){ div.remove(); };
+  document.getElementById('ovrBody').appendChild(div);
+}
+function saveOvr(){
+  var atts=techAttendees(ovrSid), rows=[], seen={}, bad=null;
+  document.querySelectorAll('#ovrBody .scrow').forEach(function(r){
+    var aw=r.querySelector('.oaw').value, nm=r.querySelector('.onm').value.trim();
+    if(!nm) return;
+    var m=atts.find(function(x){return x.name===nm;});
+    if(!m){ bad=nm; return; }
+    var k=aw+'|'+m.id; if(seen[k]) return; seen[k]=1;
+    rows.push({award:aw, mid:m.id, note:''});
+  });
+  if(bad){ toast('「'+bad+'」不在本場出席名單'); return; }
+  api('ovrSave',{sid:ovrSid, rows:rows}).then(function(){ closeOv('ovrOv'); toast('✓ 已存現場改派 '+rows.length+' 筆'); return refresh(); })
+    .then(function(){ openJudge(ovrSid); }).catch(function(e){ toast(e.message); });
+}
 /* 本場特殊獎(單場臨時) */
 var saSid=null;
 function openSessAward(sid){
@@ -1458,7 +1516,7 @@ function openJudge(sid){
       '<td class="mono" style="text-align:right">'+r.gross+'</td>'+
       '<td class="mono" style="text-align:right;color:var(--sub)">'+r.hcp+'</td>'+
       '<td class="mono" style="text-align:right;font-weight:700;color:var(--pri)">'+r.net+'</td>'+
-      '<td>'+aw.map(function(a){return '<span class="pill jaw">'+esc(a)+'</span>';}).join('')+'</td>'+
+      '<td>'+aw.map(function(a){return '<span class="pill jaw">'+esc(a)+((J.ovr&&J.ovr[a])?' ✎':'')+'</span>';}).join('')+'</td>'+
       '<td class="mono" style="text-align:right;color:var(--warn)">'+((r.hcpNew||r.hcpNew===0)&&r.hcpNew!==r.hcp?r.hcpNew:'—')+'</td></tr>';
   });
   h+='</tbody></table></div>';
@@ -1482,6 +1540,11 @@ function openJudge(sid){
   if(sa.length||user==='凌華'){
     h+='<div class="card"><div class="sub" style="margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">🎖️ 本場特殊獎'+(user==='凌華'?'<button class="ghost" style="padding:3px 11px;font-size:12px" onclick="openSessAward(\''+sid+'\')">✎ 管理</button>':'')+'</div>'+
       (sa.length?sa.map(function(a){var prize=[a.type,a.val].filter(Boolean).join(' '); return '<div style="font-size:14px;line-height:1.8"><b>'+esc(a.name)+'</b> '+esc(a.winner||'—')+(prize?' <span class="sub">'+esc(prize)+'</span>':'')+(a.pool?' <span class="pill st-plan" style="font-size:11px">💰'+esc(a.pool)+'</span>':'')+'</div>';}).join(''):'<span class="sub">尚無；點「管理」新增</span>')+'</div>';
+  }
+  var ov=(DATA.ovr||[]).filter(function(x){return x.sid===sid;});
+  if(ov.length||user==='凌華'){
+    h+='<div class="card"><div class="sub" style="margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">⚖️ 現場改派'+(user==='凌華'?'<button class="ghost" style="padding:3px 11px;font-size:12px" onclick="openOvr(\''+sid+'\')">✎ 管理</button>':'')+'</div>'+
+      (ov.length?ov.map(function(o){var m=memById(o.mid); return '<div style="font-size:14px;line-height:1.8"><b>'+esc(o.award)+'</b> → '+esc(m?m.name:o.mid)+(o.note?' <span class="sub">'+esc(o.note)+'</span>':'')+'</div>';}).join(''):'<span class="sub">尚無;現場頒發與自動判定不同時,點「管理」指定(限第12名/幸運7/跳獎/親密獎/BB獎)</span>')+'</div>';
   }
   var un=J.all.filter(function(r){return !r.rank && r!==J.champ;});   /* 新會員/缺差點者當選總桿冠軍時,不再重複列於未列排名 */
   if(un.length){ h+='<div class="card"><div class="sub" style="margin-bottom:3px">未列排名</div>'+un.map(function(r){return '<div style="font-size:14px;line-height:1.7">'+esc(r.name)+' <span class="sub">'+esc(r.tag||'')+((r.gross!==''&&r.gross!=null)?' · 總桿'+r.gross:'')+'</span>'+((r.establish!=null)?' <b style="color:var(--warn)">→ 建立差點 '+r.establish+'</b>':'')+'</div>';}).join('')+'</div>'; }
