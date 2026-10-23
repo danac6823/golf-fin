@@ -1109,6 +1109,11 @@ function effHcp(m){ if(!m) return null;
   var hs=(DATA.hcpHist||[]).filter(function(x){return x.mid===m.id && (x.after!=='' && (x.after||x.after===0));}).sort(function(a,b){return histSessDate(a)<histSessDate(b)?-1:1;});
   if(hs.length) return Number(hs[hs.length-1].after);
   return (m.hcpCur||m.hcpCur===0)?Number(m.hcpCur):null; }
+/* 新會員第2場規則切換(生效日期制):
+   - 場次日期 >= NEWBIE_RANK2_FROM:第2場打完「馬上建立差點、當場列入淨桿排名」(新制)
+   - 之前的場次:前2場不列入排名、第3場起列入(舊制,程式完整保留)
+   - 要改回舊制:把日期改成 '99999999' 即可,歷史場次永遠不受影響 */
+var NEWBIE_RANK2_FROM='20261001';
 function classifyScores(sid){
   var s=DATA.sessions.find(function(x){return x.id===sid;}), out=[];
   DATA.scores.filter(function(x){return x.sid===sid;}).forEach(function(x){
@@ -1116,10 +1121,18 @@ function classifyScores(sid){
     var m=memById(x.mid); if(!m) return;
     var r={mid:x.mid,name:m.name,sex:m.sex,birth:m.birthYear?Number(m.birthYear):null,gross:x.gross,hcp:hcpForSession(x.mid, sid)};
     if(x.gross===''||x.gross==null){ r.rank=false; r.tag='未完賽(DNF)'; out.push(r); return; }
-    if(m.tenure==='新會員'){ var n=playedGames(x.mid,s.date); if(n<=2){ r.rank=false; r.tag='新會員第'+n+'場';
+    if(m.tenure==='新會員'){ var n=playedGames(x.mid,s.date); if(n<=2){
+      var est=null;
       if(n===2){ var gs=DATA.sessions.filter(function(z){return String(z.date)<=String(s.date);}).sort(function(a,b){return String(a.date)<String(b.date)?-1:1;})
           .map(function(z){var sc=DATA.scores.find(function(rr){return rr.sid===z.id&&rr.mid===x.mid&&rr.gross!==''&&rr.gross!=null;});return sc?sc.gross:null;}).filter(function(v){return v!=null;});
-        if(gs.length>=2){ var avg=gs.reduce(function(a,b){return a+b;},0)/gs.length; r.establish=Math.min(36,Math.max(0,Math.round((avg-72)*0.9))); r.hcpNew=r.establish; r.tag+='·建立差點'; } }
+        if(gs.length>=2){ var avg=gs.reduce(function(a,b){return a+b;},0)/gs.length; est=Math.min(36,Math.max(0,Math.round((avg-72)*0.9))); } }
+      if(n===2 && est!=null && String(s.date)>=NEWBIE_RANK2_FROM){
+        /* 新制:第2場即建立差點並以此差點列入本場淨桿排名 */
+        r.establish=est; r.hcpNew=est; r.hcp=est; r.rank=true; r.tag='新會員第2場·建立差點並列入排名';
+        out.push(r); return;
+      }
+      r.rank=false; r.tag='新會員第'+n+'場';
+      if(est!=null){ r.establish=est; r.hcpNew=est; r.tag+='·建立差點'; }
       out.push(r); return; } }
     r.rank=true; out.push(r);
   });
@@ -1377,11 +1390,12 @@ function applyHcp(sid){
   if(DATA.hcpHist.some(function(x){return x.sid===sid;})){ toast('本場差點調整已套用過'); return; }
   var J=judgeSession(sid), s=J.s, changes=[];
   function push(r,award){ if(r&&(r.hcpNew||r.hcpNew===0)&&r.hcpNew!==r.hcp) changes.push({mid:r.mid,date:s.date,before:r.hcp,after:r.hcpNew,note:award}); }
+  /* 新會員第2場建立:必須排在得獎調整「之前」寫入——新制下同一人同場可能兩筆(建立→再因得獎調整),
+     歷史最後一筆才會是調整後差點 */
+  J.all.forEach(function(r){ if(r.establish!=null && r.mid) changes.push({mid:r.mid,date:s.date,before:'',after:r.establish,note:'新會員建立差點'}); });
   push(J.champ,'總桿冠軍調整');
   var nn=['淨桿冠軍調整','淨桿亞軍調整','淨桿季軍調整','淨桿殿軍調整'];
   J.net.forEach(function(r,i){ if(i<4) push(r,nn[i]); });
-  /* 新會員第2場建立 */
-  J.all.forEach(function(r){ if(r.establish!=null && r.mid) changes.push({mid:r.mid,date:s.date,before:'',after:r.establish,note:'新會員建立差點'}); });
   if(!changes.length){ toast('無差點變動可套用'); return; }
   if(!confirm('套用本場差點調整?更新 '+changes.length+' 位當期差點並寫入差點歷史(不可逆)')) return;
   api('hcpApply',{sid:sid,changes:changes}).then(function(){ toast('✓ 已套用 '+changes.length+' 位差點'); return refresh(); }).then(function(){ openJudge(sid); }).catch(function(e){ toast(e.message); });
@@ -1927,7 +1941,7 @@ function hcpTablesHtml(){
 }
 function awardRulesHtml(){
   var R=[
-   ['👥 參賽資格','1. 新會員第 1~2 場不列入排名，第3場起列入排名<br>2. 會員未完賽不列入排名<br>3. 來賓不列入排名及各獎項競逐'],
+   ['👥 參賽資格','1. 新會員第 1 場不列入排名；<b>第 2 場打完即建立差點並列入該場排名</b>(2026年10月起適用；9月以前:前2場不列入、第3場起列入)<br>2. 會員未完賽不列入排名<br>3. 來賓不列入排名及各獎項競逐'],
    ['⚖️ 平手認定','排名以淨桿決定名次，淨桿相同以差點少者勝，差點相同以年長者勝，又相同女士優先，仍相同由第18洞逐洞比起。'],
    ['🙋 來賓邀請','1. 會員邀請之來賓，屬直系眷屬免收餐費；非直系眷屬酌收餐費500元<br>2. 會員直系眷屬有意願加入球會者，會長樂意邀請入會'],
    ['🧮 差點計算','<b>年度新差點</b> =(年度平均總桿 − 72)× 0.9,四捨五入；再與本屆原差點平均、四捨五入，即為次屆期初差點。<b>差點上限 36</b>。新會員以入會後前 2 場例賽成績平均、依同式計算。'],
