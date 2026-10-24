@@ -1080,14 +1080,19 @@ function memById(id){ return DATA.members.find(function(m){return m.id===id;}); 
 function attList(sid){ var seen={}, arr=[]; (DATA.scores||[]).forEach(function(x){ if(x.sid===sid && !seen[x.mid]){ seen[x.mid]=1; var m=memById(x.mid); if(m) arr.push(m); } }); return arr; }
 function attNamesHtml(sid){ return attList(sid).map(function(m){ return '<span'+(m.sex==='女'?' class="mname-f"':'')+'>'+esc(m.name)+'</span>'; }).join('、'); }
 /* 賽後差點調整(D4;僅5位名次獎得主扣表一+表二) */
+/* 單場標準桿覆蓋(總幹事裁定):預設一律以 72 計,僅列出的場次用該值。
+   影響兩處:①表二「低於標準桿」判斷 ②新會員建立差點公式。其他場次固定 72 */
+var PAR_OVR={'M12-03':73};  /* 2026/10/22 桃園(東區組合 par 73) */
+function sessStdPar(sid){ return PAR_OVR[sid]||72; }
 var HCP_T1={'總桿冠軍':[0,1,2,3],'淨桿冠軍':[1,2,3,4],'淨桿亞軍':[0,1,2,3],'淨桿季軍':[0,0,1,2],'淨桿殿軍':[0,0,0,1]};
 function t1range(h){ return h<=9?0:h<=18?1:h<=27?2:3; }
 var HCP_T2=[[0,1,1,1,1,2,2,2,2,3],[0,1,1,1,2,2,2,3,3,3],[1,1,2,2,3,3,4,4,5,5],[1,2,2,3,4,4,5,6,6,7],[1,2,3,4,5,6,7,8,9,10]];
 function t2range(h){ return h<=9?0:h<=15?1:h<=20?2:h<=25?3:4; }
-function hcpAdjust(award,hcp,net){
+function hcpAdjust(award,hcp,net,par){
   if(hcp==null) return null;
+  par=par||72;
   var d1=(HCP_T1[award]||[0,0,0,0])[t1range(hcp)];
-  var under=(net!=null&&net<72)?Math.min(10,72-net):0;
+  var under=(net!=null&&net<par)?Math.min(10,par-net):0;
   var d2=under>0?HCP_T2[t2range(hcp)][under-1]:0;
   return {d1:d1,d2:d2,under:under,newHcp:Math.max(0,hcp-d1-d2)};
 }
@@ -1131,8 +1136,9 @@ function classifyScores(sid){
     if(m.tenure==='新會員'){ var n=playedGames(x.mid,s.date); if(n<=2){
       var est=null;
       if(n===2){ var gs=DATA.sessions.filter(function(z){return String(z.date)<=String(s.date);}).sort(function(a,b){return String(a.date)<String(b.date)?-1:1;})
-          .map(function(z){var sc=DATA.scores.find(function(rr){return rr.sid===z.id&&rr.mid===x.mid&&rr.gross!==''&&rr.gross!=null;});return sc?sc.gross:null;}).filter(function(v){return v!=null;});
-        if(gs.length>=2){ var avg=gs.reduce(function(a,b){return a+b;},0)/gs.length; est=Math.min(36,Math.max(0,Math.round((avg-72)*0.9))); } }
+          .map(function(z){var sc=DATA.scores.find(function(rr){return rr.sid===z.id&&rr.mid===x.mid&&rr.gross!==''&&rr.gross!=null;});return sc?(sc.gross-sessStdPar(z.id)):null;}).filter(function(v){return v!=null;});
+        /* gs=每場「總桿−該場標準桿」;一般場 par=72 時與 (平均總桿−72) 完全同式 */
+        if(gs.length>=2){ var avg=gs.reduce(function(a,b){return a+b;},0)/gs.length; est=Math.min(36,Math.max(0,Math.round(avg*0.9))); } }
       if(n===2 && est!=null && String(s.date)>=NEWBIE_RANK2_FROM){
         /* 新制:第2場即建立差點並以此差點列入本場淨桿排名 */
         r.establish=est; r.hcpNew=est; r.hcp=est; r.rank=true; r.tag='新會員第2場·建立差點並列入排名';
@@ -1179,6 +1185,19 @@ function judgeSession(sid){
     if(p===bbPos) sp='BB獎'; else if(p===7) sp='幸運7'; else if(p%5===0) sp='跳獎('+p+')'; else if(p===12) sp='第12名';
     if(nameByPos[p]) give(r,nameByPos[p]); else if(sp) give(r,sp);
   });
+  /* 現場改派(總幹事指定;限不動差點的獎)。分兩階段:
+     ①排名獎(第12名/幸運7/跳獎/BB獎)在親密獎判定「前」套用——讓親密獎的「已領獎跳過」看到改派後的真實狀態
+     ②親密獎本身的改派在判定後套用。遞補不自動連動,相關的獎要逐一指定 */
+  var OVR_OK=/^(第12名|幸運7|跳獎\(\d+\)|親密獎|BB獎)$/, ovrAw={};
+  (DATA.ovr||[]).filter(function(o){return o.sid===sid && OVR_OK.test(o.award);}).forEach(function(o){
+    var tgt=all.find(function(r){return !r.guest && r.mid===o.mid;}); if(!tgt) return;
+    (ovrAw[o.award]=ovrAw[o.award]||[]).push(tgt);
+  });
+  function applyOvr(awName){
+    Object.keys(awards).forEach(function(mid){ var i=awards[mid].indexOf(awName); if(i>=0) awards[mid].splice(i,1); });
+    ovrAw[awName].forEach(function(t){ give(t,awName); });
+  }
+  Object.keys(ovrAw).forEach(function(aw){ if(aw!=='親密獎') applyOvr(aw); });
   var intimacy=[];
   if(s.base){
     if(String(s.date)>='20260901'){
@@ -1205,22 +1224,16 @@ function judgeSession(sid){
         for(var u=bi+1;u<seq.length;u++){ if(!(awards[seq[u].mid]||[]).length){ give(seq[u],'親密獎'); intimacy.push(seq[u].name); break; } } }
     }
   }
-  /* 現場改派:判定與現場頒發不同時,總幹事指定該獎改由誰領(覆蓋自動判定)。
-     只限不動差點的獎(第12名/幸運7/跳獎/親密獎/BB獎);遞補不自動連動,相關的獎要逐一指定 */
-  var OVR_OK=/^(第12名|幸運7|跳獎\(\d+\)|親密獎|BB獎)$/, ovrAw={};
-  (DATA.ovr||[]).filter(function(o){return o.sid===sid && OVR_OK.test(o.award);}).forEach(function(o){
-    var tgt=all.find(function(r){return !r.guest && r.mid===o.mid;}); if(!tgt) return;
-    (ovrAw[o.award]=ovrAw[o.award]||[]).push(tgt);
-  });
-  Object.keys(ovrAw).forEach(function(aw){
-    Object.keys(awards).forEach(function(mid){ var i=awards[mid].indexOf(aw); if(i>=0) awards[mid].splice(i,1); });
-    ovrAw[aw].forEach(function(t){ give(t,aw); });
-  });
-  if(ovrAw['親密獎']) intimacy=all.filter(function(r){return (awards[r.mid]||[]).indexOf('親密獎')>=0;}).map(function(r){return r.name;});
+  /* 現場改派②:親密獎本身的改派(覆蓋上面的自動判定) */
+  if(ovrAw['親密獎']){
+    applyOvr('親密獎');
+    intimacy=all.filter(function(r){return (awards[r.mid]||[]).indexOf('親密獎')>=0;}).map(function(r){return r.name;});
+  }
   /* D4 賽後差點調整:僅總桿冠軍+淨桿冠亞季殿 */
-  if(champ){ var cnet=(champ.hcp!=null)?(champ.gross-champ.hcp):null; var ca=hcpAdjust('總桿冠軍',champ.hcp,cnet); if(ca){ champ.adj=ca; champ.hcpNew=ca.newHcp; } }
+  var spar=sessStdPar(sid);
+  if(champ){ var cnet=(champ.hcp!=null)?(champ.gross-champ.hcp):null; var ca=hcpAdjust('總桿冠軍',champ.hcp,cnet,spar); if(ca){ champ.adj=ca; champ.hcpNew=ca.newHcp; } }
   var netAwardName=['淨桿冠軍','淨桿亞軍','淨桿季軍','淨桿殿軍'];
-  net.forEach(function(r,i){ if(i<4){ var a=hcpAdjust(netAwardName[i], r.hcp, r.net); if(a){ r.adj=a; r.hcpNew=a.newHcp; } } });
+  net.forEach(function(r,i){ if(i<4){ var a=hcpAdjust(netAwardName[i], r.hcp, r.net, spar); if(a){ r.adj=a; r.hcpNew=a.newHcp; } } });
   return {s:s,all:all,ranked:ranked,champ:champ,net:net,awards:awards,attend:all.length,intimacy:intimacy,ovr:ovrAw,noHcp:ranked.filter(function(r){return r.hcp==null;})};
 }
 /* ===== 獎項紀錄落底(判定=算，紀錄=存；每場×每人×每獎×每項目一列) ===== */
