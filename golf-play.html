@@ -900,7 +900,7 @@ function saveAtt(){
   api('scoreSave',{sid:attSid, rows:rows}).then(function(){ closeOv('attOv'); toast('✓ 已存出席 '+rows.length+' 人'); return refresh(); }).catch(function(e){ toast(e.message); });
 }
 /* ===== 會員禮發放(總幹事;🏷️球標+酒 / 👕衣服分男女款 S~3XL)===== */
-var GIFT_SIZES=['S','M','L','XL','2XL','3XL'];
+var GIFT_SIZES=['S','M','L','XL','2XL','3XL','5XL'];
 var GIFT_SRCS=['套量','回覆','推測'];   /* 尺寸來源:套量/回覆=確定;推測或未標=建議多備 */
 var giftTab='A', giftFilter='all', giftModel={};
 function openGift(){
