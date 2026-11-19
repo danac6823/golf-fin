@@ -665,19 +665,24 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 </div></div>
 
 <!-- 本場特殊獎(總幹事；單場臨時獎:名稱+得主+備註) -->
-<div class="overlay" id="ovrOv" style="z-index:90"><div class="sheet">
-  <div class="head" style="margin-top:0"><b id="ovrTitle">⚖️ 現場改派</b><button class="ghost" onclick="closeOv('ovrOv')">✕</button></div>
-  <p class="sub" style="margin:0 0 8px">現場頒發與自動判定不同時,在此指定得主(覆蓋判定;限不動差點的獎)。遞補不會自動連動,相關的獎請逐一指定;親密獎 2 名就填 2 筆。</p>
+<div class="overlay full" id="ovrOv" style="z-index:90"><div class="sheet sheet-full">
+  <div class="gtop">
+    <div class="head"><b><span id="ovrTitle">⚖️ 現場改派</span><span id="ovrChip" class="gsave idle"></span></b><button class="ghost" onclick="closeOvr()">✕</button></div>
+    <p class="sub" id="ovrSub" style="margin:0 0 6px"></p>
+  </div>
+  <div id="ovrWarn"></div>
   <div id="ovrBody"></div>
-  <button type="button" class="ghost" onclick="addOvrItem()" style="width:100%;border-style:dashed;color:var(--pri);margin:4px 0 8px;padding:9px">＋ 加一筆改派</button>
-  <button class="btn" onclick="saveOvr()">儲存改派</button>
+  <p class="sub" style="margin:6px 2px 8px">現場頒發與自動判定不同時,點那個獎 → 點實際得主;再點一次已選的名字=取消改派、回到自動判定。只能改不動差點的獎。遞補不會自動連動,受影響的獎請各自指定;親密獎最多 2 名。</p>
 </div></div>
-<div class="overlay" id="saOv" style="z-index:90"><div class="sheet">
-  <div class="head" style="margin-top:0"><b id="saTitle">🎖️ 本場特殊獎</b><button class="ghost" onclick="closeOv('saOv')">✕</button></div>
-  <p class="sub" style="margin:0 0 8px">單場臨時獎(遠距獎/贊助商獎…);不列入年度預設。</p>
+<div class="overlay full" id="saOv" style="z-index:90"><div class="sheet sheet-full">
+  <div class="gtop">
+    <div class="head"><b><span id="saTitle">🎖️ 本場特殊獎</span><span id="saChip" class="gsave idle"></span></b><button class="ghost" onclick="closeSA()">✕</button></div>
+    <p class="sub" id="saSub" style="margin:0 0 6px"></p>
+  </div>
+  <div id="saQuick" class="gpills"></div>
   <div id="saBody"></div>
-  <button type="button" class="ghost" onclick="addSAItem()" style="width:100%;border-style:dashed;color:var(--pri);margin:4px 0 8px;padding:9px">＋ 加一項</button>
-  <button class="btn" onclick="saveSessAward()">儲存本場特殊獎</button>
+  <button type="button" class="ghost" onclick="saAdd()" style="width:100%;border-style:dashed;color:var(--pri);margin:2px 0 8px;padding:10px">＋ 加一項特殊獎</button>
+  <p class="sub" style="margin:2px 2px 8px">單場臨時獎(遠距獎、贊助商獎…),不列入年度預設。填了獎項名才會儲存;得主可點名單,也可直接打字(例如來賓或廠商)。</p>
 </div></div>
 
 <!-- 判定結果(總幹事；讀成績算總桿冠軍+淨桿排名+特殊獎) -->
@@ -809,7 +814,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.19e', EXPECT_GS='v2026.10.24';
+var GP_BUILD='v2026.11.19f', EXPECT_GS='v2026.10.24';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS){ el.classList.add('hide'); el.textContent=''; }
@@ -2139,72 +2144,163 @@ function applyHcp(sid){
   if(!confirm('套用本場差點調整?更新 '+changes.length+' 位當期差點並寫入差點歷史(不可逆)')) return;
   api('hcpApply',{sid:sid,changes:changes}).then(function(){ toast('✓ 已套用 '+changes.length+' 位差點'); return refresh(); }).then(function(){ openJudge(sid); }).catch(function(e){ toast(e.message); });
 }
-/* 現場改派(總幹事;覆蓋自動判定,限不動差點的獎) */
-var ovrSid=null, ovrOpts=[];
+/* ===== 現場改派(總幹事;覆蓋自動判定,限不動差點的獎)=====
+   一個獎一張卡:顯示「目前結果」與「自動判定原本給誰」,點開 → 點實際得主。變更自動儲存(ovrSave 整場覆寫)。
+   改派後若有人同時掛兩個獎(規則不得重複領取)會在最上面警示 */
+var ovrSid=null, ovrModel={}, ovrList=[], ovrOpenIdx=-1, ovrAtts=[], ovrAuto={}, ovrTouched=false;
+var ovrSaver=autoSaver({chip:'ovrChip', name:'現場改派', build:ovrPayload, send:function(p){ return api('ovrSave',p); }, done:ovrMirror});
+function ovrRows(){ var rows=[]; ovrList.forEach(function(a){ (ovrModel[a]||[]).forEach(function(mid){ rows.push({award:a, mid:mid, note:''}); }); }); return rows; }
+/* 用「指定的改派列」重跑本場判定(暫換 DATA.ovr,算完還原);傳 [] = 純自動判定 */
+function ovrJudgeWith(rows){
+  var keep=DATA.ovr, J;
+  DATA.ovr=(keep||[]).filter(function(o){return o.sid!==ovrSid;}).concat(rows.map(function(r){ return {sid:ovrSid, award:r.award, mid:r.mid, note:''}; }));
+  try{ J=judgeSession(ovrSid); } finally { DATA.ovr=keep; }
+  return J;
+}
+function ovrAwardMap(J){ var map={}; Object.keys(J.awards).forEach(function(mid){ (J.awards[mid]||[]).forEach(function(a){ (map[a]=map[a]||[]).push(mid); }); }); return map; }
+function ovrBuildModel(sid){
+  ovrSid=sid; ovrAtts=techAttendees(sid); ovrModel={};
+  (DATA.ovr||[]).filter(function(x){return x.sid===sid;}).forEach(function(o){ if(!o.award||!o.mid) return;
+    var l=(ovrModel[o.award]=ovrModel[o.award]||[]); if(l.indexOf(o.mid)<0) l.push(o.mid); });
+  ovrAuto=ovrAwardMap(ovrJudgeWith([]));
+  var jumps={}; Object.keys(ovrAuto).concat(Object.keys(ovrModel)).forEach(function(a){ if(/^跳獎\(\d+\)$/.test(a)) jumps[a]=1; });
+  ovrList=Object.keys(jumps).sort(function(a,b){ return (+a.replace(/\D/g,''))-(+b.replace(/\D/g,'')); }).concat(['幸運7','第12名','BB獎','親密獎']);
+  Object.keys(ovrModel).forEach(function(a){ if(ovrList.indexOf(a)<0) ovrList.push(a); });
+}
 function openOvr(sid){
-  ovrSid=sid; var s=DATA.sessions.find(function(x){return x.id===sid;});
-  document.getElementById('ovrTitle').textContent='⚖️ '+((s.tripName?s.tripName+'・':'')+s.name)+'・現場改派';
-  var atts=techAttendees(sid), J=judgeSession(sid);
-  var opts={'第12名':1,'幸運7':1,'親密獎':1,'BB獎':1};
-  Object.keys(J.awards).forEach(function(mid){ (J.awards[mid]||[]).forEach(function(a){ if(/^跳獎\(\d+\)$/.test(a)) opts[a]=1; }); });
-  var ex=(DATA.ovr||[]).filter(function(x){return x.sid===sid;});
-  ex.forEach(function(o){ if(o.award) opts[o.award]=1; });
-  ovrOpts=Object.keys(opts);
-  var el=document.getElementById('ovrBody');
-  el.innerHTML='<datalist id="ovrDL">'+atts.map(function(m){return '<option value="'+esc(m.name)+'">';}).join('')+'</datalist>';
-  if(ex.length) ex.forEach(function(o){ addOvrItem(o); }); else addOvrItem();
-  openOv('ovrOv');
+  var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
+  if(ovrSaver.busy() && ovrSid!==sid){ toast('上一場的改派還在儲存,請稍候幾秒再開'); return; }
+  if(!(ovrSaver.busy() && ovrSid===sid)){ ovrBuildModel(sid); ovrOpenIdx=-1; ovrTouched=false; ovrSaver.fresh(); }
+  document.getElementById('ovrTitle').textContent='⚖️ 現場改派・'+((s.tripName?s.tripName+'・':'')+s.name);
+  renderOvr(); openOv('ovrOv');
+  refresh().then(function(){ if(ovrSid===sid && !ovrTouched && !ovrSaver.busy() && ovOpen('ovrOv')){ ovrBuildModel(sid); renderOvr(); } });
 }
-function addOvrItem(it){ it=it||{};
-  var m=it.mid?memById(it.mid):null;
-  var div=document.createElement('div'); div.className='scrow';
-  div.innerHTML='<select class="oaw" style="flex:1;margin:0">'+ovrOpts.map(function(a){return '<option'+(a===it.award?' selected':'')+'>'+esc(a)+'</option>';}).join('')+'</select>'+
-    '<input type="text" class="onm" list="ovrDL" placeholder="改給誰" value="'+esc(m?m.name:'')+'" style="flex:1;margin:0;padding:7px 9px;font-size:15px">'+
-    '<button type="button" class="ghost odel" style="flex:none;padding:6px 9px;margin:0;border:none;color:#791F1F">✕</button>';
-  div.querySelector('.odel').onclick=function(){ div.remove(); };
-  document.getElementById('ovrBody').appendChild(div);
-}
-function saveOvr(){
-  var atts=techAttendees(ovrSid), rows=[], seen={}, bad=null;
-  document.querySelectorAll('#ovrBody .scrow').forEach(function(r){
-    var aw=r.querySelector('.oaw').value, nm=r.querySelector('.onm').value.trim();
-    if(!nm) return;
-    var m=atts.find(function(x){return x.name===nm;});
-    if(!m){ bad=nm; return; }
-    var k=aw+'|'+m.id; if(seen[k]) return; seen[k]=1;
-    rows.push({award:aw, mid:m.id, note:''});
+function closeOvr(){ var sid=ovrSid; closeOv('ovrOv'); ovrSaver.whenSaved(function(){ if(ovOpen('judgeOv')) openJudge(sid); refresh(); }); }
+function ovrNames(mids){ return (mids||[]).map(function(mid){ var m=memById(mid); return m?m.name:mid; }); }
+function renderOvr(){
+  var s=DATA.sessions.find(function(x){return x.id===ovrSid;})||{}, rows=ovrRows(), cur=ovrAwardMap(ovrJudgeWith(rows)), h='';
+  ovrList.forEach(function(a,i){
+    var sel=ovrModel[a]||[], open=(i===ovrOpenIdx), now=ovrNames(cur[a]), auto=ovrNames(ovrAuto[a]), max=(a==='親密獎')?2:1;
+    h+='<div class="tcard best'+(open?' open':'')+'"><div class="th" onclick="ovrToggle('+i+')"><b>'+esc(a)+'</b>'+
+      '<span>目前:'+(now.length?esc(now.join('、')):'無')+'</span>'+
+      '<span class="tn'+(sel.length?'':' z')+'">'+(sel.length?'✎ 已改派':'照自動判定')+'</span><span class="ta">'+(open?'▲':'▼')+'</span></div>'+
+      (sel.length?('<div class="sub" style="margin-top:3px">自動判定原本:'+(auto.length?esc(auto.join('、')):'無(人數不足或無符合者)')+'</div>'+
+        '<div class="gchips">'+sel.map(function(mid){ var m=memById(mid);
+          return '<button type="button" class="pchip in'+((m&&m.sex==='女')?' f':'')+'" onclick="event.stopPropagation();ovrRemove('+i+',\''+mid+'\')">'+esc(m?m.name:mid)+'</button>'; }).join('')+'</div>'):'')+
+      (open?('<div class="tpick"><div class="tph">點名字=這個獎改給他('+(max===2?'最多 2 名':'1 人,再選別人會取代')+')</div><div class="kgrid">'+
+        ovrAtts.map(function(m){ return '<button type="button" class="kchip'+(sel.indexOf(m.id)>=0?' on':'')+(m.sex==='女'?' f':'')+'" onclick="ovrPick(\''+m.id+'\')">'+esc(m.name)+'</button>'; }).join('')+'</div></div>'):'')+'</div>';
   });
-  if(bad){ toast('「'+bad+'」不在本場出席名單'); return; }
-  api('ovrSave',{sid:ovrSid, rows:rows}).then(function(){ closeOv('ovrOv'); toast('✓ 已存現場改派 '+rows.length+' 筆'); return refresh(); })
-    .then(function(){ openJudge(ovrSid); }).catch(function(e){ toast(e.message); });
+  document.getElementById('ovrBody').innerHTML=h;
+  document.getElementById('ovrSub').innerHTML=fmtMD(s.date)+' ｜ 出席 '+ovrAtts.length+' 人 ｜ <b style="color:var(--pri)">已改派 '+rows.length+' 筆</b>';
+  /* 重複領獎警示:改派後同一人掛 2 個以上排名獎 */
+  var J1=ovrJudgeWith(rows), dup=[];
+  Object.keys(J1.awards).forEach(function(mid){ var aw=J1.awards[mid]||[]; if(aw.length>1){ var m=memById(mid); dup.push((m?m.name:mid)+'('+aw.join('、')+')'); } });
+  document.getElementById('ovrWarn').innerHTML=dup.length?('<div class="card" style="background:var(--gold-soft);border-color:#EDD9A6;padding:9px 12px;margin:0 0 8px;font-size:13px;color:#8A6A1E"><b>提醒・同一人領了兩個獎:</b>'+esc(dup.join('、'))+'。辦法原則上不重複領取;若這就是現場實際頒發的結果,可以不用理會。</div>'):'';
 }
-/* 本場特殊獎(單場臨時) */
-var saSid=null;
+function ovrToggle(i){ ovrOpenIdx=(ovrOpenIdx===i)?-1:i; renderOvr(); }
+function ovrPick(mid){
+  var a=ovrList[ovrOpenIdx]; if(!a) return;
+  var l=(ovrModel[a]||[]).slice(), k=l.indexOf(mid);
+  if(k>=0) l.splice(k,1);
+  else if(a==='親密獎'){ if(l.length>=2){ toast('親密獎最多 2 名,先點掉一位再選'); return; } l.push(mid); }
+  else l=[mid];
+  if(l.length) ovrModel[a]=l; else delete ovrModel[a];
+  ovrTouched=true; renderOvr(); ovrSaver.touch();
+}
+function ovrRemove(i,mid){
+  var a=ovrList[i], l=(ovrModel[a]||[]).filter(function(x){return x!==mid;});
+  if(l.length) ovrModel[a]=l; else delete ovrModel[a];
+  ovrTouched=true; renderOvr(); ovrSaver.touch();
+}
+function ovrPayload(){ return {sid:ovrSid, rows:ovrRows()}; }
+function ovrMirror(p){
+  DATA.ovr=(DATA.ovr||[]).filter(function(o){return o.sid!==p.sid;}).concat(p.rows.map(function(r){ return {sid:p.sid, award:r.award, mid:r.mid, note:''}; }));
+  if(!PREVIEW) saveCache(DATA);
+  try{ showTab(curTab); }catch(e){}
+}
+/* ===== 本場特殊獎(總幹事;單場臨時獎)=====
+   一項一張卡:獎項名、得主(點名單或直接打字)、類型、金額/品名、出資。變更自動儲存(sessAwardSave 整場覆寫);
+   沒填獎項名的卡不會被存 */
+var SA_TYPES=['現金','獎品','其他'], SA_POOLS=['球會','LINA會長','個人'];
+var saSid=null, saModel=[], saOpenIdx=-1, saAtts=[], saTouched=false;
+var saSaver=autoSaver({chip:'saChip', name:'本場特殊獎', build:saPayload, send:function(p){ return api('sessAwardSave',p); }, done:saMirror});
+function saBuildModel(sid){
+  saSid=sid; saAtts=attGroupList(sid);
+  saModel=DATA.sessAward.filter(function(x){return x.sid===sid;}).map(function(a){
+    return {name:a.name||'', winner:a.winner||'', type:(SA_TYPES.indexOf(a.type)>=0?a.type:'現金'), val:(a.val==null?'':String(a.val)), pool:(SA_POOLS.indexOf(a.pool)>=0?a.pool:'球會')}; });
+}
 function openSessAward(sid){
-  saSid=sid; var s=DATA.sessions.find(function(x){return x.id===sid;});
-  document.getElementById('saTitle').textContent='🎖️ '+((s.tripName?s.tripName+'・':'')+s.name)+'・本場特殊獎';
-  var atts=techAttendees(sid);
-  var el=document.getElementById('saBody');
-  el.innerHTML='<datalist id="saDL">'+atts.map(function(m){return '<option value="'+esc(m.name)+'">';}).join('')+'</datalist>';
-  var ex=DATA.sessAward.filter(function(x){return x.sid===sid;});
-  if(ex.length) ex.forEach(addSAItem); else addSAItem();
-  openOv('saOv');
+  var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
+  if(saSaver.busy() && saSid!==sid){ toast('上一場的特殊獎還在儲存,請稍候幾秒再開'); return; }
+  if(!(saSaver.busy() && saSid===sid)){ saBuildModel(sid); saOpenIdx=-1; saTouched=false; saSaver.fresh(); }
+  document.getElementById('saTitle').textContent='🎖️ 特殊獎・'+((s.tripName?s.tripName+'・':'')+s.name);
+  renderSA(); openOv('saOv');
+  refresh().then(function(){ if(saSid===sid && !saTouched && !saSaver.busy() && ovOpen('saOv')){ saBuildModel(sid); renderSA(); } });
 }
-function addSAItem(it){ it=(it&&it.name!==undefined)?it:{};
-  var opt=function(list,cur){return list.map(function(p){return '<option'+(p===cur?' selected':'')+'>'+p+'</option>';}).join('');};
-  var div=document.createElement('div'); div.className='sarow'; div.style.cssText='border:1px solid var(--line);border-radius:9px;padding:9px;margin-bottom:7px;background:#FCFAF6';
-  div.innerHTML='<div class="row" style="gap:6px;margin-bottom:6px"><input class="sa-name" placeholder="獎項名(例:遠距獎)" value="'+esc(it.name||'')+'" style="flex:1;margin:0"><button type="button" class="ghost sa-del" style="padding:6px 10px;margin:0;border:none;color:#791F1F">✕</button></div>'+
-    '<input class="sa-winner" list="saDL" placeholder="得主" value="'+esc(it.winner||'')+'" style="margin:0 0 6px">'+
-    '<div class="row" style="gap:6px"><select class="sa-type" style="flex:0 0 78px;margin:0" title="類型">'+opt(['現金','獎品','其他'],it.type||'現金')+'</select>'+
-    '<input class="sa-val" placeholder="金額/品名" value="'+esc(it.val||'')+'" style="flex:1;margin:0"><select class="sa-pool" style="flex:0 0 104px;margin:0" title="資金池">'+opt(['球會','LINA會長','個人'],it.pool||'球會')+'</select></div>';
-  div.querySelector('.sa-del').onclick=function(){ div.remove(); };
-  document.getElementById('saBody').appendChild(div);
+function closeSA(){ var sid=saSid; closeOv('saOv'); saSaver.whenSaved(function(){ if(ovOpen('judgeOv')) openJudge(sid); refresh(); }); }
+function saChoiceHtml(i,key,list,cur){
+  return list.map(function(v,k){ return '<button type="button" class="mtog'+(v===cur?' on':'')+'" onclick="saChoice('+i+',\''+key+'\','+k+')">'+esc(v)+'</button>'; }).join('');
 }
-function saveSessAward(){
-  var rows=[];
-  document.querySelectorAll('#saBody .sarow').forEach(function(r){ var nm=r.querySelector('.sa-name').value.trim(); if(!nm) return;
-    rows.push({sid:saSid, name:nm, winner:r.querySelector('.sa-winner').value.trim(), type:r.querySelector('.sa-type').value, val:r.querySelector('.sa-val').value.trim(), pool:r.querySelector('.sa-pool').value}); });
-  api('sessAwardSave',{sid:saSid, rows:rows}).then(function(){ closeOv('saOv'); toast('✓ 已存本場特殊獎 '+rows.length+' 項'); return refresh(); }).then(function(){ openJudge(saSid); }).catch(function(e){ toast(e.message); });
+function renderSA(){
+  var s=DATA.sessions.find(function(x){return x.id===saSid;})||{}, h='';
+  saModel.forEach(function(a,i){
+    var open=(i===saOpenIdx), inList=saAtts.some(function(p){return p.name===a.winner;});
+    h+='<div class="tcard best'+(open?' open':'')+'">'+
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><input type="text" placeholder="獎項名(例:遠距獎)" value="'+esc(a.name)+'" oninput="saSet('+i+',\'name\',this.value)" style="flex:1;min-width:0;margin:0;padding:9px 10px;font-size:15px;font-weight:600">'+
+        '<button type="button" class="ghost" onclick="saDel('+i+')" style="flex:none;margin:0;padding:6px 9px;border:none;color:#791F1F">✕</button></div>'+
+      '<div class="th" onclick="saToggle('+i+')"><span>得主</span><b'+(a.winner?'':' style="color:var(--sub);font-weight:400"')+'>'+(a.winner?esc(a.winner):'點這裡選得主')+'</b><span class="ta" style="margin-left:auto">'+(open?'▲':'▼')+'</span></div>'+
+      (open?('<div class="tpick"><div class="kgrid">'+saAtts.map(function(p,k){
+          return '<button type="button" class="kchip'+(p.name===a.winner?' on':'')+(p.sex==='女'?' f':'')+'" onclick="saPick('+i+','+k+')">'+(p.guest?'👤':'')+esc(p.name)+'</button>'; }).join('')+'</div>'+
+        '<input type="text" placeholder="不在名單?直接打名字(來賓、廠商…)" value="'+(inList?'':esc(a.winner))+'" oninput="saSet('+i+',\'winner\',this.value)" style="margin:8px 0 0;padding:9px 10px;font-size:15px"></div>'):'')+
+      '<div style="display:flex;align-items:center;gap:6px;margin-top:9px;flex-wrap:wrap"><span class="sub" style="flex:none;width:28px">類型</span>'+saChoiceHtml(i,'type',SA_TYPES,a.type)+'</div>'+
+      '<input type="text"'+(a.type==='現金'?' inputmode="numeric"':'')+' placeholder="'+(a.type==='現金'?'金額(例:1000)':'品名')+'" value="'+esc(a.val)+'" oninput="saSet('+i+',\'val\',this.value)" style="margin:6px 0 0;padding:9px 10px;font-size:15px">'+
+      '<div style="display:flex;align-items:center;gap:6px;margin-top:7px;flex-wrap:wrap"><span class="sub" style="flex:none;width:28px">出資</span>'+saChoiceHtml(i,'pool',SA_POOLS,a.pool)+'</div>'+
+      (a.name.trim()?'':'<div class="sub" style="margin-top:6px;color:#A32D2D">還沒填獎項名,這一項不會被儲存。</div>')+'</div>';
+  });
+  document.getElementById('saBody').innerHTML=h||'<p class="sub" style="margin:6px 2px 10px">這一場還沒有特殊獎。</p>';
+  saRenderMeta();
+}
+/* 上方摘要+「以前用過的獎項」快速帶入(名稱/類型/金額/出資沿用最近一次) */
+function saRenderMeta(){
+  var s=DATA.sessions.find(function(x){return x.id===saSid;})||{};
+  var named=saModel.filter(function(a){return a.name.trim();}).length;
+  document.getElementById('saSub').innerHTML=fmtMD(s.date)+' ｜ <b style="color:var(--pri)">特殊獎 '+named+' 項</b>';
+  var have={}, past={}; saModel.forEach(function(a){ have[a.name.trim()]=1; });
+  (DATA.sessAward||[]).forEach(function(a){ if(a.name && !have[a.name]) past[a.name]=a; });
+  var names=Object.keys(past).slice(-6);
+  document.getElementById('saQuick').innerHTML=names.map(function(n){ return '<button type="button" class="ghost" data-n="'+esc(n)+'" onclick="saQuickAdd(this.getAttribute(\'data-n\'))">＋ '+esc(n)+'</button>'; }).join('');
+}
+function saSet(i,k,v){ var a=saModel[i]; if(!a) return; a[k]=v; saTouched=true; saSaver.touch();
+  if(k==='name') saRenderMeta();
+  if(k==='winner'){ var card=document.querySelectorAll('#saBody .tcard')[i]; if(card){ var b=card.querySelector('.th b'); b.textContent=v.trim()||'點這裡選得主';
+    card.querySelectorAll('.kchip').forEach(function(c,idx){ c.classList.toggle('on', !!saAtts[idx] && saAtts[idx].name===v.trim()); }); } } }
+function saToggle(i){ saOpenIdx=(saOpenIdx===i)?-1:i; renderSA(); }
+function saPick(i,k){ var a=saModel[i], p=saAtts[k]; if(!a||!p) return;
+  a.winner=(a.winner===p.name)?'':p.name; saOpenIdx=-1; saTouched=true; renderSA(); saSaver.touch(); }
+function saChoice(i,key,k){ var a=saModel[i]; if(!a) return; a[key]=(key==='type'?SA_TYPES:SA_POOLS)[k]; saTouched=true; renderSA(); saSaver.touch(); }
+function saAdd(){
+  saModel.push({name:'', winner:'', type:'現金', val:'', pool:'球會'}); saTouched=true; renderSA();
+  var cards=document.querySelectorAll('#saBody .tcard'); if(cards.length){ var inp=cards[cards.length-1].querySelector('input'); if(inp) inp.focus(); }
+}
+function saQuickAdd(name){
+  var last=null; (DATA.sessAward||[]).forEach(function(a){ if(a.name===name) last=a; });
+  saModel.push({name:name, winner:'', type:(last&&SA_TYPES.indexOf(last.type)>=0)?last.type:'現金', val:last?String(last.val||''):'', pool:(last&&SA_POOLS.indexOf(last.pool)>=0)?last.pool:'球會'});
+  saOpenIdx=saModel.length-1; saTouched=true; renderSA(); saSaver.touch();
+}
+function saDel(i){
+  var a=saModel[i]; if(!a) return;
+  if(a.name.trim() && !confirm('刪除特殊獎「'+a.name.trim()+'」'+(a.winner?'(得主 '+a.winner+')':'')+'?')) return;
+  saModel.splice(i,1); saOpenIdx=-1; saTouched=true; renderSA(); saSaver.touch();
+}
+function saPayload(){
+  var rows=[]; saModel.forEach(function(a){ var nm=a.name.trim(); if(!nm) return;
+    rows.push({sid:saSid, name:nm, winner:(a.winner||'').trim(), type:a.type, val:(a.val||'').trim(), pool:a.pool}); });
+  return {sid:saSid, rows:rows};
+}
+function saMirror(p){
+  DATA.sessAward=DATA.sessAward.filter(function(x){return x.sid!==p.sid;}).concat(p.rows.map(function(r){ return {sid:p.sid, name:r.name, winner:r.winner, type:r.type, val:r.val, pool:r.pool}; }));
+  if(!PREVIEW) saveCache(DATA);
+  try{ showTab(curTab); }catch(e){}
 }
 function openJudge(sid){
   var J=judgeSession(sid), s=J.s;
