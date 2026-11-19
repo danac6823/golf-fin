@@ -421,6 +421,8 @@ function api(payload){
     .then(function(j){
       if(mine && apiInflight===mine) apiInflight=null;
       if(!j.ok) throw new Error(j.error);
+      /* Google 偶發把 POST 轉成 GET → 回的是 doGet 空殼 {ok,service}:請求根本沒執行。寫入若當成成功會「以為存了其實沒存」 */
+      if(j.service) throw new Error('請求未送達(Google 轉址異常),請再試一次');
       return j;
     })
     .catch(function(e){
