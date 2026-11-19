@@ -295,6 +295,73 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .scrow .gross{width:66px;flex:none;margin:0;padding:7px 4px;text-align:center;font-size:15px}
 .scrow .net{width:58px;flex:none;text-align:right;font-size:13px;font-weight:700}
 .scrow.off{opacity:.4}
+/* 總幹事工具格(會員名單頂部) */
+.ctools{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 12px}
+.ctool{margin:0;padding:10px 4px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--txt);cursor:pointer;text-align:center;line-height:1.35}
+.ctool b{display:block;font-size:14px}
+.ctool small{display:block;font-size:11px;color:var(--sub);margin-top:2px}
+.ctool.gold{background:var(--gold-soft);border-color:#EDD9A6}
+.ctool.todo small{color:#A32D2D;font-weight:600}
+.ctool.alldone small{color:#27500A;font-weight:600}
+/* 會員禮:現場發放/尺寸登記 */
+.gtop{position:sticky;top:0;background:#fff;z-index:3;padding-top:calc(8px + env(safe-area-inset-top));padding-bottom:2px}
+.sheet-full .gtop .head{position:static;padding-top:0;margin-bottom:8px}
+.gtop .segbar{margin-bottom:8px}
+.gsave{font-size:12px;font-weight:600;margin-left:8px;padding:2px 9px;border-radius:999px;white-space:nowrap;vertical-align:2px}
+.gsave.idle{background:#EFEDEA;color:#8A8A94}
+.gsave.ok{background:#EAF3DE;color:#27500A}
+.gsave.ing{background:var(--gold-soft);color:#8A6A1E}
+.gsave.err{background:#FBE6EC;color:#791F1F;cursor:pointer}
+.gprog{display:flex;gap:8px;margin:0 0 8px}
+.gprog .gp{flex:1;border:1px solid var(--line);border-radius:12px;padding:8px 11px}
+.gprog .gp .t{font-size:12px;color:var(--sub)}
+.gprog .gp .n{font-size:19px;font-weight:700;color:var(--pri);line-height:1.3}
+.gprog .gp .n small{font-size:12px;font-weight:400;color:var(--sub)}
+.gprog .gp .bar{height:5px;border-radius:3px;background:#EFEDEA;margin-top:4px;overflow:hidden}
+.gprog .gp .bar i{display:block;height:100%;background:var(--pri2);border-radius:3px}
+.gpills{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
+.gpills button{flex:none;margin:0;padding:6px 12px;font-size:13px}
+.gpills button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.grow{display:flex;align-items:center;gap:6px;padding:8px 2px;border-top:1px solid var(--line)}
+.grow .nm{flex:1;min-width:0;font-weight:600;font-size:15px}
+.grow .nm .hc{font-size:11px;color:var(--sub);font-weight:400;margin-left:5px}
+.grow.done .nm{color:var(--sub)}
+.grow.warn{background:linear-gradient(90deg,#FFF6E5,rgba(255,246,229,0) 70%)}
+.grow select{flex:none;margin:0;padding:7px 3px;font-size:13px}
+.gtog{flex:none;width:96px;min-height:44px;margin:0;padding:4px 4px;border-radius:11px;border:1.5px solid var(--line);background:#fff;color:var(--txt);font-size:13px;font-weight:600;line-height:1.25;cursor:pointer;text-align:center}
+.gtog small{display:block;font-size:11px;font-weight:400;color:var(--sub)}
+.gtog.on{background:#EAF3DE;border-color:#B9D9A0;color:#27500A}
+.gtog.on small{color:#4B7A2B}
+.gtog.need{border-style:dashed;border-color:#E0B36A;background:var(--gold-soft);color:#8A6A1E}
+/* 出席登記:兩欄名字大按鈕(點一下=到場) */
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.agrid .ah{grid-column:1/-1;font-size:12px;font-weight:600;color:var(--sub);margin:7px 2px -1px}
+.achip{display:flex;align-items:center;gap:7px;min-width:0;min-height:44px;margin:0;padding:6px 9px;border:1.5px solid var(--line);border-radius:11px;background:#fff;color:var(--txt);font-size:15px;font-weight:600;cursor:pointer;text-align:left}
+.achip .mk{flex:none;width:20px;height:20px;border-radius:50%;border:1.5px solid #CFC8BD;font-size:12px;line-height:18px;text-align:center;color:transparent}
+.achip .an{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.achip .ag{flex:none;font-size:11px;font-weight:400;color:var(--sub)}
+.achip.f .an{color:#C2185B}
+.achip.on{background:#EAF3DE;border-color:#B9D9A0;color:#27500A}
+.achip.on .mk{background:#4B9A5A;border-color:#4B9A5A;color:#fff}
+.agst{display:flex;align-items:center;gap:6px;padding:6px 0 0;margin-top:6px;border-top:1px solid var(--line)}
+.agst input[type=text]{flex:1;min-width:0;margin:0;padding:8px 10px;font-size:15px}
+.mtog{flex:none;margin:0;padding:7px 9px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-size:13px;color:var(--sub);cursor:pointer;white-space:nowrap}
+.mtog.on{background:var(--gold-soft);border-color:#E0B36A;color:#8A6A1E;font-weight:600}
+/* 分組:上面未分組名單,下面各組卡(亮框的組=加入中) */
+.gchips{display:flex;flex-wrap:wrap;gap:6px}
+.pchip{margin:0;padding:8px 11px;min-height:40px;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--txt);font-size:15px;font-weight:600;cursor:pointer}
+.pchip.f{color:#C2185B}
+.pchip.in{background:#F3F8F4;border-color:#CBE6D2}
+.pchip.in::after{content:" ✕";font-size:11px;font-weight:400;color:var(--sub)}
+.gcard .pchip{padding:7px 8px;font-size:14px}
+.gcard{border:1.5px solid var(--line);border-radius:13px;padding:9px 11px;margin-bottom:8px;background:#fff;cursor:pointer}
+.gcard.act{border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-soft)}
+.gcard .gh{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:14px}
+.gcard .gh b{color:var(--pri)}
+.gcard .gh .cnt{font-size:12px;color:var(--sub)}
+.gcard .gh .cnt.over{color:#A32D2D;font-weight:600}
+.gcard .gh .tag{margin-left:auto;font-size:11px;font-weight:600;color:#fff;background:var(--pri);border-radius:999px;padding:2px 9px}
+.gcard .emp{font-size:13px;color:var(--sub)}
 .scrow.off .gross{visibility:hidden}
 /* 技術獎登錄 */
 .tblk{border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:8px}
@@ -385,9 +452,11 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
   <div id="memberSec" class="hide">
     <div class="head"><b><span class="hico" data-ic="users"></span>會員名單</b><input id="memSearch" type="text" placeholder="🔍 搜尋姓名/屆別" style="width:170px;margin:0;padding:8px 11px;font-size:14px" oninput="renderMember()"></div>
     <p id="memSrcNote" class="sub" style="margin:0 0 8px 2px">來源:共用「會員名冊」(同 golf-fin);點開看完整資料。<b style="color:var(--warn)">出生年/期初差點/幹部</b>等判定欄位待補。</p>
-    <button id="giftBtn" class="ghost hide" onclick="openGift()" style="width:100%;margin:0 0 10px;padding:10px;color:#fff;background:var(--gold);border-color:var(--gold);font-weight:600">🎁 會員禮發放管理</button>
-    <button id="rosterBtn" class="ghost hide" onclick="openRoster()" style="width:100%;margin:0 0 10px;padding:10px;font-weight:600">📋 會員名冊總表(含會員禮・可下載)</button>
-    <button id="yearBtn" class="ghost hide" onclick="openYear()" style="width:100%;margin:0 0 10px;padding:10px;font-weight:600">🧮 年度差點結算(試算・可下載)</button>
+    <div id="chiefTools" class="ctools hide">
+      <button type="button" id="ctGiftBtn" class="ctool gold" onclick="openGift()"><b>🎁 會員禮</b><small id="ctGift">發放・尺寸</small></button>
+      <button type="button" class="ctool" onclick="openRoster()"><b>📋 名冊總表</b><small>含會員禮・可下載</small></button>
+      <button type="button" class="ctool" onclick="openYear()"><b>🧮 差點結算</b><small>年度試算・可下載</small></button>
+    </div>
     <div id="memberBody"></div>
     <div class="sub" id="verLine" style="margin:10px 2px 0;text-align:center"></div>
   </div>
@@ -471,37 +540,33 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 
 <!-- 快速出席登記(總幹事；只打勾誰來了，不碰桿數) -->
 <div class="overlay full" id="attOv"><div class="sheet sheet-full">
-  <div class="head" style="margin-top:0"><b id="attTitle">✅ 出席登記</b><button class="ghost" onclick="closeOv('attOv')">✕</button></div>
-  <p class="sub" id="attSub" style="margin:0 0 8px"></p>
-  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-    <input id="attSearch" type="text" placeholder="🔍 搜尋姓名" style="flex:1;margin:0;padding:9px 11px;font-size:14px" oninput="filterAtt()">
-    <button type="button" class="ghost" onclick="attAll(true)" style="padding:8px 10px;font-size:13px;margin:0;white-space:nowrap">全勾</button>
-    <button type="button" class="ghost" onclick="attAll(false)" style="padding:8px 10px;font-size:13px;margin:0;white-space:nowrap">全清</button>
-    <span id="attCount" class="pill st-done" style="white-space:nowrap"></span>
+  <div class="gtop">
+    <div class="head"><b><span id="attTitle">✅ 出席登記</span><span id="attSave" class="gsave idle"></span></b><button class="ghost" onclick="closeAtt()">✕</button></div>
+    <p class="sub" id="attSub" style="margin:0 0 6px"></p>
+    <input id="attSearch" type="text" placeholder="🔍 搜尋姓名 / 屆別" style="margin:0 0 6px;padding:10px 12px;font-size:15px" oninput="applyAttFilter()">
   </div>
-  <div id="attBody"></div>
+  <div id="attPills" class="gpills"></div>
   <div id="attGuests"></div>
-  <button type="button" class="ghost" onclick="addAttGuest()" style="width:100%;border-style:dashed;color:var(--pri);margin:6px 0 4px;padding:9px">＋ 臨時來賓(記出席)</button>
-  <p class="sub" style="margin:6px 2px 8px">只記「誰來了」；桿數之後進「📝 成績登錄」再補，補桿不會清掉這裡的出席。</p>
-  <button class="btn" onclick="saveAtt()">儲存出席</button>
+  <div id="attBody" class="agrid"></div>
+  <div id="attEmpty" class="sub hide" style="text-align:center;padding:22px 0"></div>
+  <p class="sub" style="margin:4px 2px 8px">點名字=到場,再點一次取消。桿數之後到「📝 成績登錄」補,不會動到這裡的出席。</p>
+  <button class="btn" id="attNext" onclick="attToGroups()">下一步:👥 分組 →</button>
 </div></div>
 
-<!-- 會員禮發放管理(總幹事;球標+酒 / 衣服) -->
+<!-- 會員禮(總幹事):現場發放(一人一列:球標酒/衣服兩顆大按鈕)/ 尺寸登記;變更自動儲存 -->
 <div class="overlay full" id="giftOv"><div class="sheet sheet-full">
-  <div class="head" style="margin-top:0"><b>🎁 會員禮發放</b><button class="ghost" onclick="closeOv('giftOv')">✕</button></div>
-  <div style="display:flex;gap:6px;margin:0 0 8px">
-    <button type="button" id="gtabA" class="ghost" onclick="switchGiftTab('A')" style="flex:1;margin:0;padding:9px;font-weight:600">🏷️ 球標+酒</button>
-    <button type="button" id="gtabB" class="ghost" onclick="switchGiftTab('B')" style="flex:1;margin:0;padding:9px;font-weight:600">👕 衣服</button>
+  <div class="gtop">
+    <div class="head"><b>🎁 會員禮<span id="giftSave" class="gsave idle"></span></b><button class="ghost" onclick="closeGift()">✕</button></div>
+    <div class="segbar">
+      <button type="button" id="gtabA" class="seg" onclick="switchGiftTab('A')">🎁 現場發放</button>
+      <button type="button" id="gtabB" class="seg" onclick="switchGiftTab('B')">📐 尺寸登記</button>
+    </div>
+    <input id="giftSearch" type="text" placeholder="🔍 搜尋姓名" style="margin:0 0 6px;padding:10px 12px;font-size:15px" oninput="applyGiftFilter()">
   </div>
   <div id="giftStats"></div>
-  <div id="giftPills" style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px"></div>
-  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-    <input id="giftSearch" type="text" placeholder="🔍 搜尋姓名" style="flex:1;margin:0;padding:9px 11px;font-size:14px" oninput="filterGift()">
-    <span id="giftCount" class="pill st-done" style="white-space:nowrap"></span>
-  </div>
-  <div id="giftHint" class="sub" style="margin:0 0 6px 2px"></div>
+  <div id="giftPills" class="gpills"></div>
   <div id="giftBody"></div>
-  <button class="btn" onclick="saveGift()">儲存</button>
+  <div id="giftEmpty" class="sub hide" style="text-align:center;padding:24px 0"></div>
 </div></div>
 
 <!-- 會員名冊總表(總幹事;含會員禮欄位,可下載 CSV) -->
@@ -529,17 +594,18 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 
 <!-- 分組編輯(總幹事) -->
 <div class="overlay full" id="groupOv"><div class="sheet sheet-full">
-  <div class="head" style="margin-top:0"><b id="grpTitle">👥 分組</b><button class="ghost" onclick="closeOv('groupOv')">✕</button></div>
-  <p class="sub" id="grpSub" style="margin:0 0 8px"></p>
-  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-    <button type="button" class="ghost" onclick="grpAuto()" style="padding:8px 10px;font-size:13px;margin:0">⚡ 自動每4人一組</button>
-    <button type="button" class="ghost" onclick="grpAddOne()" style="padding:8px 10px;font-size:13px;margin:0">＋ 加一組</button>
-    <span id="grpNlbl" class="sub"></span>
-    <span id="grpCount" class="pill st-done" style="white-space:nowrap;margin-left:auto"></span>
+  <div class="gtop">
+    <div class="head"><b><span id="grpTitle">👥 分組</span><span id="grpSave" class="gsave idle"></span></b><button class="ghost" onclick="closeGroups()">✕</button></div>
+    <p class="sub" id="grpSub" style="margin:0 0 6px"></p>
+    <div class="gpills" style="margin-bottom:8px">
+      <button type="button" class="ghost" onclick="grpAuto()">⚡ 自動分組</button>
+      <button type="button" class="ghost" onclick="grpAddOne()">＋ 加一組</button>
+      <button type="button" class="ghost" onclick="grpCopy()">📋 複製分組</button>
+    </div>
   </div>
+  <div id="grpPool"></div>
   <div id="groupBody"></div>
-  <p class="sub" style="margin:6px 2px 8px">出席者才會出現在這;先做「✅ 出席登記」。可含臨時來賓。</p>
-  <button class="btn" onclick="saveGroups()">儲存分組</button>
+  <p class="sub" style="margin:6px 2px 8px">點某一組把它設成「加入中」,再點上面的名字就進那一組;滿 4 人自動跳下一組。點組內的名字=移出。名單來自「✅ 出席登記」(含來賓)。</p>
 </div></div>
 
 <!-- 出席・分組 檢視(全員) -->
@@ -630,7 +696,10 @@ var PREVIEW=false;
 var GAS_URL='https://script.google.com/macros/s/AKfycbxTK9_7dOFlML5gO-uHP7gAb2Vr0aF88li4s6t0FSWH-MnLuczZ0RIzVvFTvHGqvbeIwA/exec';  /* 同 golf-fin GAS 專案;若重新部署換版才需改此網址 */
 function gasPost(payload){ payload.token=localStorage.getItem('gp_token');
   return fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)})
-    .then(function(r){return r.json();}).then(function(j){ if(!j.ok) throw new Error(j.error||'後端錯誤'); return j; }); }
+    .then(function(r){return r.json();}).then(function(j){ if(!j.ok) throw new Error(j.error||'後端錯誤');
+      /* Google 偶發把 POST 轉成 GET → 回的是 doGet 空殼 {ok,service}:請求根本沒執行。寫入若當成成功會「以為存了其實沒存」 */
+      if(j.service) throw new Error('請求未送達(Google 轉址異常),請再試一次');
+      return j; }); }
 function api(action,p){ var payload=p?JSON.parse(JSON.stringify(p)):{}; payload.action=action; return gasPost(payload); }
 function login(){ var tok=document.getElementById('tokenInput').value.trim(); if(!tok){toast('請輸入代碼');return;}
   localStorage.setItem('gp_token',tok);
@@ -701,7 +770,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.10.24', EXPECT_GS='v2026.10.24';
+var GP_BUILD='v2026.11.19b', EXPECT_GS='v2026.10.24';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS){ el.classList.add('hide'); el.textContent=''; }
@@ -847,137 +916,278 @@ function saveScore(){
     var g=r.querySelector('.gross').value.trim(); rows.push({sid:scoreSid, mid:'', guest:true, name:nm, gross:g===''?'':Number(g), meal:r.querySelector('.gmeal').checked}); });
   api('scoreSave',{sid:scoreSid, rows:rows}).then(function(){ closeOv('scoreOv'); toast('✓ 已存成績 '+rows.length+' 筆'); return refresh(); }).catch(function(e){ toast(e.message); });
 }
-/* ===== 快速出席登記:只勾誰來了，儲存時保留既有桿數與來賓 ===== */
-var attSid=null;
+/* ===== 自動儲存器(出席/分組共用)=====
+   只能用在「整場覆寫、同一份狀態重送結果相同」的寫入。變更後 1.2 秒送出;失敗自動重試 2 次,
+   仍失敗則保留變更並亮紅燈讓使用者點重試。o={chip:狀態標籤id, name, build:()=>payload, send:(payload)=>Promise, done:(payload)=>void} */
+var AUTOSAVERS=[];
+function autoSaver(o){
+  var S={dirty:false,saving:false,err:false,saved:false,timer:null};
+  function paint(){ var el=document.getElementById(o.chip); if(!el) return; el.onclick=null;
+    if(S.err){ el.className='gsave err'; el.textContent='⚠️ 未儲存・點此重試'; el.onclick=function(){ S.err=false; S.dirty=true; flush(); }; }
+    else if(S.saving||S.dirty){ el.className='gsave ing'; el.textContent='儲存中…'; }
+    else if(S.saved){ el.className='gsave ok'; el.textContent='✓ 已儲存'; }
+    else { el.className='gsave idle'; el.textContent='自動儲存'; } }
+  function send(tries){
+    var p=o.build(); S.dirty=false;
+    o.send(p).then(function(j){
+      if(typeof j.n!=='number') throw new Error('儲存回應異常');
+      S.saving=false; S.err=false; S.saved=true; o.done(p);
+      if(S.dirty){ clearTimeout(S.timer); flush(); } else paint();
+    }).catch(function(e){
+      if(tries>0){ setTimeout(function(){ send(tries-1); },2500); return; }
+      S.saving=false; S.dirty=true; S.err=true; paint();
+      toast('⚠️ '+o.name+'儲存失敗:'+(e&&e.message||e)+'(變更還在,請點右上角重試)');
+    });
+  }
+  function flush(){ if(S.saving||!S.dirty) return; S.saving=true; paint(); send(2); }
+  S.touch=function(){ S.dirty=true; S.err=false; paint(); clearTimeout(S.timer); S.timer=setTimeout(flush,1200); };
+  S.flush=function(){ clearTimeout(S.timer); flush(); };
+  S.busy=function(){ return S.dirty||S.saving; };
+  S.fresh=function(){ S.saved=false; S.err=false; paint(); };
+  S.whenSaved=function(cb){ S.flush(); (function w(){ if(S.err) return; if(S.busy()){ setTimeout(w,200); return; } cb(); })(); };   /* 存完才做 cb;存失敗就不做 */
+  AUTOSAVERS.push(S); return S;
+}
+window.addEventListener('beforeunload',function(e){
+  var busy=false; AUTOSAVERS.forEach(function(S){ if(S.busy()){ busy=true; S.flush(); } });
+  if(busy){ e.preventDefault(); e.returnValue=''; }
+});
+function membersByCohort(){ return DATA.members.slice().sort(function(a,b){ return (cohortRank(a.cohort)-cohortRank(b.cohort))||(a.id<b.id?-1:1); }); }
+function ovOpen(id){ var o=document.getElementById(id); return !!o && o.style.display==='flex'; }
+/* ===== 出席登記(總幹事):兩欄名字大按鈕,點一下=到場;變更自動儲存 =====
+   寫入走 scoreSave(整場覆寫)。已登錄的桿數放在 attGross 一路帶著送回去,出席登記不會洗掉成績 */
+var attSid=null, attOn={}, attGross={}, attGuests=[], attFilter='all', attTouched=false;
+var attSaver=autoSaver({chip:'attSave', name:'出席', build:attPayload, send:function(p){ return api('scoreSave',p); }, done:attMirror});
+function attBuildModel(sid){
+  attOn={}; attGross={}; attGuests=[];
+  DATA.scores.filter(function(x){return x.sid===sid;}).forEach(function(r){
+    var has=(r.gross!==''&&r.gross!=null);
+    if(r.guest) attGuests.push({name:r.name||'', meal:!!r.meal, gross:has?r.gross:''});
+    else if(r.mid){ attOn[r.mid]=true; if(has) attGross[r.mid]=r.gross; }
+  });
+}
 function openAtt(sid){
   var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
-  attSid=sid;
-  document.getElementById('attTitle').textContent='✅ '+((s.tripName?s.tripName+'・':'')+s.name)+'・出席登記';
-  document.getElementById('attSub').textContent=fmtMD(s.date)+(s.courseId?' ｜ '+courseName(s.courseId):'')+' ｜ 勾選今天有到場的會員';
+  if(attSaver.busy() && attSid!==sid){ toast('上一場的出席還在儲存,請稍候幾秒再開'); return; }
+  if(!(attSaver.busy() && attSid===sid)){ attSid=sid; attBuildModel(sid); attTouched=false; attSaver.fresh(); }
+  attFilter='all';
+  document.getElementById('attTitle').textContent='✅ 出席・'+((s.tripName?s.tripName+'・':'')+s.name);
   document.getElementById('attSearch').value='';
-  var here={}; DATA.scores.filter(function(x){return x.sid===sid && !x.guest;}).forEach(function(r){ here[r.mid]=1; });
-  var ms=DATA.members.slice().sort(function(a,b){ return (cohortRank(a.cohort)-cohortRank(b.cohort))||(a.id<b.id?-1:1); });
-  var h='';
-  ms.forEach(function(m){
-    var on=!!here[m.id];
-    h+='<label class="scrow'+(on?'':' off')+'" data-mid="'+m.id+'" style="cursor:pointer">'+
-      '<input type="checkbox" class="chk"'+(on?' checked':'')+' onchange="this.closest(\'.scrow\').classList.toggle(\'off\',!this.checked);updateAttCount()">'+
-      '<div class="nm"'+(m.sex==='女'?' style="color:#C2185B"':'')+'>'+esc(m.name)+'<span class="hc">'+(m.cohort||'')+'</span></div></label>';
-  });
+  renderAtt(); openOv('attOv');
+  /* 背景抓最新:還沒動手前若後端資料較新(例如在另一台裝置登錄過),換成最新的,避免拿舊資料整場覆寫 */
+  refresh().then(function(){ if(attSid===sid && !attTouched && !attSaver.busy() && ovOpen('attOv')){ attBuildModel(sid); renderAtt(); } });
+}
+function closeAtt(){ closeOv('attOv'); attSaver.whenSaved(function(){ refresh(); }); }
+function attChipHtml(m){
+  var on=!!attOn[m.id], g=attGross[m.id];
+  return '<button type="button" class="achip'+(on?' on':'')+(m.sex==='女'?' f':'')+'" data-mid="'+m.id+'" data-nm="'+esc(m.name)+'" data-c="'+esc(m.cohort||'其他')+'" onclick="attToggle(\''+m.id+'\')">'+
+    '<span class="mk">✓</span><span class="an">'+esc(m.name)+'</span>'+((on&&g!==undefined)?'<span class="ag">'+g+'桿</span>':'')+'</button>';
+}
+function renderAtt(){
+  var h='', last=null;
+  membersByCohort().forEach(function(m){ var c=m.cohort||'其他';
+    if(c!==last){ h+='<div class="ah" data-c="'+esc(c)+'"></div>'; last=c; }
+    h+=attChipHtml(m); });
   document.getElementById('attBody').innerHTML=h;
-  document.getElementById('attGuests').innerHTML='';
-  DATA.scores.filter(function(x){return x.sid===sid && x.guest;}).forEach(function(g){ addAttGuest(g); });
-  updateAttCount(); openOv('attOv');
+  renderAttGuests(); updateAttUI();
 }
-function addAttGuest(g){
-  g=g||{};
-  var div=document.createElement('div'); div.className='scrow guest';
-  div.setAttribute('data-gross', (g.gross!==''&&g.gross!=null)?g.gross:'');   /* 保留成績登錄已填的桿數 */
-  div.innerHTML='<span style="flex:none;width:20px;text-align:center">👤</span>'+
-    '<input type="text" class="gname" placeholder="來賓姓名" value="'+esc(g.name||'')+'" style="flex:1;margin:0;padding:7px 9px;font-size:15px">'+
-    '<label style="flex:none;display:flex;align-items:center;gap:2px;margin:0;font-size:14px;cursor:pointer" title="留餐(有繳餐費)才送球"><input type="checkbox" class="gmeal"'+(g.meal?' checked':'')+' style="width:17px;height:17px;margin:0">🍽</label>'+
-    '<button type="button" class="ghost gdel" style="flex:none;padding:6px 9px;margin:0;border:none;color:#791F1F">✕</button>';
-  div.querySelector('.gdel').onclick=function(){ div.remove(); updateAttCount(); };
-  div.querySelector('.gname').oninput=updateAttCount;
-  document.getElementById('attGuests').appendChild(div);
+function attToggle(mid){
+  var m=memById(mid);
+  if(attOn[mid]){
+    if(attGross[mid]!==undefined){
+      if(!confirm((m?m.name:mid)+' 已登錄成績 '+attGross[mid]+' 桿。\n取消出席會一併刪除這筆成績,確定?')) return;
+      delete attGross[mid];
+    }
+    delete attOn[mid];
+  } else attOn[mid]=true;
+  attTouched=true;
+  var b=document.querySelector('#attBody .achip[data-mid="'+mid+'"]');
+  if(b&&m) b.outerHTML=attChipHtml(m);
+  attSaver.touch(); updateAttUI(true);
 }
-function filterAtt(){ var q=document.getElementById('attSearch').value.trim().toLowerCase();
-  document.querySelectorAll('#attBody .scrow').forEach(function(r){ var nm=r.querySelector('.nm').textContent.toLowerCase(); r.style.display=(!q||nm.indexOf(q)>=0)?'':'none'; }); }
-function attAll(on){ document.querySelectorAll('#attBody .scrow').forEach(function(r){ if(r.style.display==='none') return; var c=r.querySelector('.chk'); c.checked=on; r.classList.toggle('off',!on); }); updateAttCount(); }
-function updateAttCount(){ var n=document.querySelectorAll('#attBody .scrow .chk:checked').length;
-  document.querySelectorAll('#attGuests .scrow').forEach(function(r){ if(r.querySelector('.gname').value.trim()) n++; });
-  document.getElementById('attCount').textContent='出席 '+n+' 人'; }
-function saveAtt(){
-  var prev={}; DATA.scores.filter(function(x){return x.sid===attSid && !x.guest;}).forEach(function(r){ prev[r.mid]=r; });
+/* 來賓:放在名單最上面(不用捲過全部會員才找得到);留餐做成有字的按鈕 */
+function renderAttGuests(){
+  var named=attGuests.filter(function(g){return g.name.trim();}).length;
+  var h='<div class="card" style="padding:9px 12px;margin:0 0 8px"><div style="display:flex;align-items:center;gap:8px">'+
+    '<b style="font-size:14px">👤 來賓</b><span class="sub">'+(named?named+' 位・':'')+'留餐才送球</span>'+
+    '<button type="button" class="ghost" onclick="attAddGuest()" style="flex:none;margin:0 0 0 auto;padding:5px 11px;font-size:13px;color:var(--pri)">＋ 加來賓</button></div>';
+  attGuests.forEach(function(g,i){
+    h+='<div class="agst"><input type="text" placeholder="來賓姓名" value="'+esc(g.name)+'" oninput="attGuestName('+i+',this.value)">'+
+      '<button type="button" class="mtog'+(g.meal?' on':'')+'" onclick="attGuestMeal('+i+')">🍽 '+(g.meal?'留餐':'不留餐')+'</button>'+
+      '<button type="button" class="ghost" onclick="attGuestDel('+i+')" style="flex:none;margin:0;padding:6px 9px;border:none;color:#791F1F">✕</button></div>'; });
+  document.getElementById('attGuests').innerHTML=h+'</div>';
+}
+function attAddGuest(){
+  attGuests.push({name:'', meal:false, gross:''}); renderAttGuests();
+  var ins=document.querySelectorAll('#attGuests .agst input'); if(ins.length) ins[ins.length-1].focus();
+}
+function attGuestName(i,v){ if(!attGuests[i]) return; attGuests[i].name=v; attTouched=true; attSaver.touch(); updateAttUI(true); }
+function attGuestMeal(i){ var g=attGuests[i]; if(!g) return; g.meal=!g.meal; attTouched=true; renderAttGuests(); if(g.name.trim()) attSaver.touch(); }
+function attGuestDel(i){
+  var g=attGuests[i]; if(!g) return;
+  if(g.name.trim() && !confirm('移除來賓「'+g.name.trim()+'」?'+(g.gross!==''?'\n(已登錄成績 '+g.gross+' 桿,會一併刪除)':''))) return;
+  attGuests.splice(i,1); attTouched=true; renderAttGuests(); if(g.name.trim()) attSaver.touch(); updateAttUI(true);
+}
+function setAttFilter(f){ attFilter=f; updateAttUI(); }
+function applyAttFilter(){
+  var q=document.getElementById('attSearch').value.trim().toLowerCase(), shown=0, perC={}, onC={}, totC={};
+  document.querySelectorAll('#attBody .achip').forEach(function(b){
+    var on=!!attOn[b.getAttribute('data-mid')], c=b.getAttribute('data-c');
+    totC[c]=(totC[c]||0)+1; if(on) onC[c]=(onC[c]||0)+1;
+    var ok=(attFilter==='all')||(attFilter==='on'&&on)||(attFilter==='off'&&!on);
+    if(q) ok=ok&&((b.getAttribute('data-nm')||'').toLowerCase().indexOf(q)>=0||c.toLowerCase().indexOf(q)>=0);
+    b.style.display=ok?'':'none'; if(ok){ shown++; perC[c]=(perC[c]||0)+1; }
+  });
+  document.querySelectorAll('#attBody .ah').forEach(function(hd){ var c=hd.getAttribute('data-c');
+    hd.style.display=perC[c]?'':'none'; hd.textContent=c+'・到 '+(onC[c]||0)+'/'+(totC[c]||0); });
+  var em=document.getElementById('attEmpty'); em.classList.toggle('hide',shown>0);
+  if(!shown) em.textContent=q?('找不到「'+q+'」'):(attFilter==='on'?'還沒有人到':(attFilter==='off'?'🎉 全員到齊':'沒有會員資料'));
+}
+/* keepRows=true:只更新數字,不重新過濾——剛點的人留在原位,點錯可以馬上點回來 */
+function updateAttUI(keepRows){
+  var s=DATA.sessions.find(function(x){return x.id===attSid;})||{};
+  var tot=DATA.members.length, here=0; DATA.members.forEach(function(m){ if(attOn[m.id]) here++; });
+  var gn=attGuests.filter(function(g){return g.name.trim();}).length;
+  document.getElementById('attSub').innerHTML=fmtMD(s.date)+(s.courseId?' ｜ '+esc(courseName(s.courseId)):'')+' ｜ <b style="color:var(--pri)">出席 '+(here+gn)+' 人</b>'+(gn?'(含來賓 '+gn+')':'');
+  document.getElementById('attPills').innerHTML=[['all','全部',tot],['on','已到',here],['off','未到',tot-here]].map(function(p){
+    return '<button type="button" class="ghost'+(attFilter===p[0]?' on':'')+'" onclick="setAttFilter(\''+p[0]+'\')">'+p[1]+' '+p[2]+'</button>'; }).join('');
+  var nx=document.getElementById('attNext'); nx.textContent='下一步:👥 分組('+(here+gn)+' 人)→'; nx.style.opacity=(here+gn)?'':'.45';
+  if(!keepRows) applyAttFilter();
+  else document.querySelectorAll('#attBody .ah').forEach(function(hd){ var c=hd.getAttribute('data-c'), on=0, t=0;
+    document.querySelectorAll('#attBody .achip').forEach(function(b){ if(b.getAttribute('data-c')===c){ t++; if(attOn[b.getAttribute('data-mid')]) on++; } });
+    hd.textContent=c+'・到 '+on+'/'+t; });
+}
+function attPayload(){
   var rows=[];
-  document.querySelectorAll('#attBody .scrow').forEach(function(r){ if(!r.querySelector('.chk').checked) return;
-    var mid=r.getAttribute('data-mid'), old=prev[mid];
-    rows.push({sid:attSid, mid:mid, gross:(old&&old.gross!==''&&old.gross!=null)?old.gross:''}); });
-  /* 來賓:從畫面讀(新增/既有),保留成績登錄已填的桿數 */
-  document.querySelectorAll('#attGuests .scrow').forEach(function(r){ var nm=r.querySelector('.gname').value.trim(); if(!nm) return;
-    var g=r.getAttribute('data-gross')||'';
-    rows.push({sid:attSid, mid:'', guest:true, name:nm, gross:g===''?'':Number(g), meal:r.querySelector('.gmeal').checked}); });
-  api('scoreSave',{sid:attSid, rows:rows}).then(function(){ closeOv('attOv'); toast('✓ 已存出席 '+rows.length+' 人'); return refresh(); }).catch(function(e){ toast(e.message); });
+  membersByCohort().forEach(function(m){ if(attOn[m.id]) rows.push({sid:attSid, mid:m.id, gross:(attGross[m.id]!==undefined?attGross[m.id]:'')}); });
+  attGuests.forEach(function(g){ var nm=g.name.trim(); if(!nm) return;
+    rows.push({sid:attSid, mid:'', guest:true, name:nm, gross:(g.gross===''?'':Number(g.gross)), meal:!!g.meal}); });
+  return {sid:attSid, rows:rows};
 }
-/* ===== 會員禮發放(總幹事;🏷️球標+酒 / 👕衣服分男女款 S~3XL)===== */
+/* 存成功後把這一場的列寫回 DATA.scores(與 scoresRead 同形狀),場次卡/分組/成績登錄立刻看到 */
+function attMirror(p){
+  DATA.scores=DATA.scores.filter(function(x){return x.sid!==p.sid;}).concat(p.rows.map(function(r){
+    return r.guest ? {sid:p.sid, mid:'', gross:r.gross, name:r.name, guest:true, meal:!!r.meal}
+                   : {sid:p.sid, mid:r.mid, gross:r.gross, name:'', guest:false, meal:false}; }));
+  if(!PREVIEW) saveCache(DATA);
+  try{ showTab(curTab); }catch(e){}
+}
+function attToGroups(){
+  var sid=attSid, n=attPayload().rows.length;
+  if(!n){ toast('先點選今天到場的人'); return; }
+  attSaver.whenSaved(function(){ closeOv('attOv'); openGroups(sid); });
+}
+/* ===== 會員禮(總幹事)=====
+   兩個分頁對應兩件事:A 現場發放(一人一列:🏷️球標+酒 / 👕衣服 兩顆大按鈕)、B 尺寸登記(款式/尺寸/來源+訂購統計)。
+   變更自動儲存:giftSave 是整表覆寫、同一份狀態重送結果相同,所以失敗可自動重試;右上角顯示儲存狀態 */
 var GIFT_SIZES=['S','M','L','XL','2XL','3XL','5XL'];
 var GIFT_SRCS=['套量','回覆','推測'];   /* 尺寸來源:套量/回覆=確定;推測或未標=建議多備 */
 var giftTab='A', giftFilter='all', giftModel={};
+var giftDirty=false, giftSaving=false, giftErr=false, giftSavedOnce=false, giftTimer=null;
+function giftToday(){ var d=new Date(); return ''+d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2); }
+function giftSorted(){ return DATA.members.slice().sort(function(a,b){ return (cohortRank(a.cohort)-cohortRank(b.cohort))||(a.id<b.id?-1:1); }); }
+function giftSure(g){ return g.src==='套量'||g.src==='回覆'; }   /* 尺寸是否確定 */
 function openGift(){
-  giftModel={};
-  var gmap={}; (DATA.gift||[]).forEach(function(g){ gmap[g.mid]=g; });
-  DATA.members.forEach(function(m){
-    var g=gmap[m.id]||{};
-    giftModel[m.id]={ ball:!!g.ball, ballD:g.ball||'', style:(g.style||(m.sex==='女'?'女':'男')), size:(g.size||''), shirt:!!g.shirt, shirtD:g.shirt||'', src:(g.src||'') };
-  });
-  switchGiftTab('A'); openOv('giftOv');
+  if(!(giftDirty||giftSaving)){   /* 還有未存完的變更時保留編輯中的狀態,不拿後端舊資料蓋掉 */
+    giftModel={}; giftSavedOnce=false;
+    var gmap={}; (DATA.gift||[]).forEach(function(g){ gmap[g.mid]=g; });
+    DATA.members.forEach(function(m){
+      var g=gmap[m.id]||{};
+      giftModel[m.id]={ ball:!!g.ball, ballD:g.ball||'', style:(g.style||(m.sex==='女'?'女':'男')), size:(g.size||''), shirt:!!g.shirt, shirtD:g.shirt||'', src:(g.src||'') };
+    });
+  }
+  switchGiftTab('A'); setGiftSaveState(); openOv('giftOv');
 }
-function switchGiftTab(t){
+function closeGift(){ closeOv('giftOv'); if(giftDirty && !giftSaving){ clearTimeout(giftTimer); giftFlush(); } }
+function switchGiftTab(t, keepSearch){
   giftTab=t; giftFilter='all';
-  var a=document.getElementById('gtabA'), b=document.getElementById('gtabB');
-  a.style.background=(t==='A')?'var(--gold)':''; a.style.color=(t==='A')?'#fff':'';
-  b.style.background=(t==='B')?'var(--gold)':''; b.style.color=(t==='B')?'#fff':'';
-  document.getElementById('giftHint').textContent=(t==='A')?'打勾＝已領「球標+酒」;存檔時自動記領取日。':'選款式+尺寸+來源(套量/回覆/推測);推測或未標來源的尺寸建議多備。實際領取時再打勾「領取」。';
+  document.getElementById('gtabA').classList.toggle('on',t==='A');
+  document.getElementById('gtabB').classList.toggle('on',t==='B');
+  if(!keepSearch) document.getElementById('giftSearch').value='';
   renderGift();
 }
+/* 發放按鈕:未領=白底、已領=綠底+日期;衣服按鈕直接顯示該拿的款式尺寸,沒登記尺寸則黃色虛線提醒 */
+function giftTogHtml(mid,k){
+  var g=giftModel[mid], on=!!g[k], d=(k==='ball')?g.ballD:g.shirtD;
+  var label=(k==='ball')?'🏷️ 球標+酒':('👕 '+(g.size?((g.style||'')+'款 '+g.size):'尺寸未填'));
+  var cls='gtog'+(on?' on':'')+((k==='shirt'&&!g.size&&!on)?' need':'');
+  return '<button type="button" class="'+cls+'" onclick="giftToggle(\''+mid+'\',\''+k+'\')">'+label+'<small>'+(on?('✓ 已領'+(d?' '+fmtMD(d):'')):'未領')+'</small></button>';
+}
+function giftSelHtml(mid,g){
+  return '<select onchange="giftSet(\''+mid+'\',\'style\',this.value)" style="width:62px">'+
+      '<option value="男"'+(g.style==='男'?' selected':'')+'>男款</option><option value="女"'+(g.style==='女'?' selected':'')+'>女款</option></select>'+
+    '<select onchange="giftSet(\''+mid+'\',\'size\',this.value)" style="width:68px">'+
+      '<option value="">尺寸</option>'+GIFT_SIZES.map(function(s){return '<option value="'+s+'"'+(g.size===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'+
+    '<select onchange="giftSet(\''+mid+'\',\'src\',this.value)" style="width:82px">'+
+      '<option value="">來源?</option>'+GIFT_SRCS.map(function(s){return '<option value="'+s+'"'+(g.src===s?' selected':'')+'>'+(s==='套量'?'實際套量':s==='回覆'?'本人回覆':'推測')+'</option>';}).join('')+'</select>';
+}
+function giftRowCls(g){ return 'grow'+((giftTab==='A'&&g.ball&&g.shirt)?' done':'')+((giftTab==='B'&&!g.size)?' warn':''); }
+function giftRowInner(m,g){
+  var nm='<div class="nm"'+(m.sex==='女'?' style="color:#C2185B"':'')+'>'+esc(m.name)+'<span class="hc">'+esc(m.cohort||'')+'</span></div>';
+  return nm+((giftTab==='A')?(giftTogHtml(m.id,'ball')+giftTogHtml(m.id,'shirt')):giftSelHtml(m.id,g));
+}
 function renderGift(){
-  var ms=DATA.members.slice().sort(function(a,b){ return (cohortRank(a.cohort)-cohortRank(b.cohort))||(a.id<b.id?-1:1); });
   var h='';
-  ms.forEach(function(m){
-    var g=giftModel[m.id]; if(!g) return;
-    var nm='<div class="nm"'+(m.sex==='女'?' style="color:#C2185B"':'')+'>'+esc(m.name)+'<span class="hc">'+(m.cohort||'')+'</span></div>';
-    if(giftTab==='A'){
-      h+='<label class="scrow'+(g.ball?'':' off')+'" data-mid="'+m.id+'" data-nm="'+esc(m.name)+'" style="cursor:pointer">'+
-        '<input type="checkbox" class="chk"'+(g.ball?' checked':'')+' onchange="giftSet(\''+m.id+'\',\'ball\',this.checked);giftRowSync(this)">'+nm+
-        (g.ballD?'<span class="sub" style="flex:none;margin-left:auto">'+fmtMD(g.ballD)+' 領':'')+(g.ballD?'</span>':'')+'</label>';
-    } else {
-      h+='<div class="scrow'+(g.shirt?'':' off')+'" data-mid="'+m.id+'" data-nm="'+esc(m.name)+'" style="gap:6px;flex-wrap:wrap">'+nm+
-        '<select onchange="giftSet(\''+m.id+'\',\'style\',this.value)" style="flex:none;width:66px;margin:0;padding:6px;font-size:13px">'+
-          '<option value="男"'+(g.style==='男'?' selected':'')+'>男款</option><option value="女"'+(g.style==='女'?' selected':'')+'>女款</option></select>'+
-        '<select onchange="giftSet(\''+m.id+'\',\'size\',this.value)" style="flex:none;width:74px;margin:0;padding:6px;font-size:13px">'+
-          '<option value="">尺寸</option>'+GIFT_SIZES.map(function(s){return '<option value="'+s+'"'+(g.size===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'+
-        '<select onchange="giftSet(\''+m.id+'\',\'src\',this.value)" style="flex:none;width:78px;margin:0;padding:6px;font-size:13px">'+
-          '<option value="">來源?</option>'+GIFT_SRCS.map(function(s){return '<option value="'+s+'"'+(g.src===s?' selected':'')+'>'+(s==='套量'?'實際套量':s==='回覆'?'本人回覆':'推測')+'</option>';}).join('')+'</select>'+
-        '<label style="flex:none;display:flex;align-items:center;gap:3px;font-size:13px;margin:0"><input type="checkbox"'+(g.shirt?' checked':'')+' onchange="giftSet(\''+m.id+'\',\'shirt\',this.checked);giftRowSync(this)">領取'+
-        (g.shirtD?'<span class="sub">'+fmtMD(g.shirtD)+'</span>':'')+'</label></div>';
-    }
-  });
+  giftSorted().forEach(function(m){ var g=giftModel[m.id]; if(!g) return;
+    h+='<div class="'+giftRowCls(g)+'" data-mid="'+m.id+'" data-nm="'+esc(m.name)+'">'+giftRowInner(m,g)+'</div>'; });
   document.getElementById('giftBody').innerHTML=h;
-  document.getElementById('giftSearch').value=''; updateGiftUI();
+  updateGiftUI();
 }
-function giftSet(mid,k,v){ if(giftModel[mid]) giftModel[mid][k]=v; if(k==='style'||k==='size'||k==='src') updateGiftUI(); }
-function giftSure(g){ return g.src==='套量'||g.src==='回覆'; }   /* 尺寸是否確定 */
-function giftRowSync(el){ var row=el.closest('.scrow'); if(row) row.classList.toggle('off',!el.checked); updateGiftUI(); }
+function giftRowRefresh(mid){
+  var row=document.querySelector('#giftBody .grow[data-mid="'+mid+'"]'), m=memById(mid), g=giftModel[mid];
+  if(row&&m&&g){ row.className=giftRowCls(g); row.innerHTML=giftRowInner(m,g); }
+}
+function giftToggle(mid,k){
+  var g=giftModel[mid]; if(!g) return;
+  if(k==='shirt' && !g.shirt && !g.size){
+    /* 沒登記尺寸就發衣服,事後無從得知拿了哪件 → 先帶去尺寸登記(只列這個人) */
+    var m=memById(mid), nm=m?m.name:'';
+    switchGiftTab('B', true); document.getElementById('giftSearch').value=nm; applyGiftFilter();
+    toast('先登記 '+nm+' 實際拿的尺寸,再回「現場發放」點領取'); return;
+  }
+  g[k]=!g[k];
+  if(!g[k]){ if(k==='ball') g.ballD=''; else g.shirtD=''; }
+  giftRowRefresh(mid); giftTouch(); updateGiftUI(true);
+}
+function giftSet(mid,k,v){
+  var g=giftModel[mid]; if(!g) return;
+  g[k]=v; giftRowRefresh(mid); giftTouch(); updateGiftUI(true);
+}
 function setGiftFilter(f){ giftFilter=f; updateGiftUI(); }
-function filterGift(){ applyGiftFilter(); }
-function applyGiftFilter(){
-  var q=document.getElementById('giftSearch').value.trim().toLowerCase();
-  document.querySelectorAll('#giftBody .scrow').forEach(function(r){
-    var g=giftModel[r.getAttribute('data-mid')]||{};
-    var got=(giftTab==='A')?g.ball:g.shirt;
-    var ok=(giftFilter==='all')||(giftFilter==='yes'&&got)||(giftFilter==='no'&&!got)||(giftFilter==='nosize'&&!g.size)||(giftFilter==='unsure'&&!!g.size&&!giftSure(g));
-    if(q){ var nm=(r.getAttribute('data-nm')||'').toLowerCase(); ok=ok&&nm.indexOf(q)>=0; }
-    r.style.display=ok?'':'none';
-  });
+function giftMatch(g){
+  if(giftFilter==='ballno') return !g.ball;
+  if(giftFilter==='shirtno') return !g.shirt;
+  if(giftFilter==='done') return !!(g.ball&&g.shirt);
+  if(giftFilter==='nosize') return !g.size;
+  if(giftFilter==='unsure') return !!g.size&&!giftSure(g);
+  return true;
 }
-/* 統計+篩選 pills:勾選/改尺寸即時更新;衣服 tab 另有尺寸統計卡(訂購用,可一鍵複製) */
-function updateGiftUI(){
-  var tot=0,got=0,noSize=0,unsure=0,cnt={'男':{},'女':{}},guess={'男':{},'女':{}};
-  DATA.members.forEach(function(m){ var g=giftModel[m.id]; if(!g) return; tot++;
-    if(giftTab==='A'){ if(g.ball) got++; }
-    else { if(g.shirt) got++;
-      if(!g.size) noSize++;
-      else { var sty=g.style||'男'; cnt[sty][g.size]=(cnt[sty][g.size]||0)+1;
-        if(!giftSure(g)){ unsure++; guess[sty][g.size]=(guess[sty][g.size]||0)+1; } } }
+function applyGiftFilter(){
+  var q=document.getElementById('giftSearch').value.trim().toLowerCase(), shown=0;
+  document.querySelectorAll('#giftBody .grow').forEach(function(r){
+    var g=giftModel[r.getAttribute('data-mid')]||{}, ok=giftMatch(g);
+    if(q){ ok=ok&&(r.getAttribute('data-nm')||'').toLowerCase().indexOf(q)>=0; }
+    r.style.display=ok?'':'none'; if(ok) shown++;
   });
-  document.getElementById('giftCount').textContent='已領 '+got+'/'+tot;
-  var pills=[['all','全部',tot],['no','未領',tot-got],['yes','已領',got]];
-  if(giftTab==='B'){ pills.push(['nosize','未填尺寸',noSize]); pills.push(['unsure','尺寸待確認',unsure]); }
-  document.getElementById('giftPills').innerHTML=pills.map(function(p){
-    return '<button type="button" class="ghost" onclick="setGiftFilter(\''+p[0]+'\')" style="flex:none;margin:0;padding:6px 12px;font-size:13px'+(giftFilter===p[0]?';background:var(--pri);color:#fff;border-color:var(--pri)':'')+'">'+p[1]+' '+p[2]+'</button>';
-  }).join('');
-  var st=document.getElementById('giftStats');
-  if(giftTab==='B'){
+  var em=document.getElementById('giftEmpty');
+  em.classList.toggle('hide',shown>0);
+  if(!shown) em.textContent=q?('找不到「'+q+'」'):((giftFilter==='ballno'||giftFilter==='shirtno')?'🎉 這一項全部發完了':(giftFilter==='nosize'?'✓ 所有人都填好尺寸了':(giftFilter==='unsure'?'✓ 沒有待確認的尺寸':'沒有符合的會員')));
+}
+/* 統計+篩選:A=兩項進度條;B=尺寸統計卡(訂購用,可複製)。
+   keepRows=true:只更新數字,不重新過濾列——剛點完的人留在原位,點錯可以馬上點回來 */
+function updateGiftUI(keepRows){
+  var tot=0,ballGot=0,shirtGot=0,bothGot=0,noSize=0,unsure=0,cnt={'男':{},'女':{}},guess={'男':{},'女':{}};
+  Object.keys(giftModel).forEach(function(mid){ var g=giftModel[mid]; tot++;
+    if(g.ball) ballGot++; if(g.shirt) shirtGot++; if(g.ball&&g.shirt) bothGot++;
+    if(!g.size) noSize++;
+    else { var sty=g.style||'男'; cnt[sty][g.size]=(cnt[sty][g.size]||0)+1;
+      if(!giftSure(g)){ unsure++; guess[sty][g.size]=(guess[sty][g.size]||0)+1; } }
+  });
+  var pills, st=document.getElementById('giftStats');
+  if(giftTab==='A'){
+    var tile=function(t,n){ return '<div class="gp"><div class="t">'+t+'</div><div class="n">'+n+'<small> / '+tot+' 已領'+(tot-n?'・還差 '+(tot-n):'')+'</small></div><div class="bar"><i style="width:'+(tot?Math.round(n/tot*100):0)+'%"></i></div></div>'; };
+    st.innerHTML='<div class="gprog">'+tile('🏷️ 球標+酒',ballGot)+tile('👕 衣服',shirtGot)+'</div>';
+    pills=[['all','全部',tot],['ballno','球標酒未領',tot-ballGot],['shirtno','衣服未領',tot-shirtGot],['done','都領了',bothGot]];
+  } else {
     var rows=['男','女'].map(function(sty){
       var sum=0, tds=GIFT_SIZES.map(function(s){ var n=cnt[sty][s]||0, q=guess[sty][s]||0; sum+=n;
         return '<td'+(n?'':' style="color:var(--sub)"')+'>'+(n?(n+(q?'<span style="color:var(--warn)">('+q+'?)</span>':'')):'·')+'</td>'; }).join('');
@@ -988,8 +1198,63 @@ function updateGiftUI(){
       '<button type="button" class="ghost" onclick="copyGiftStats()" style="margin:0 0 0 auto;padding:5px 10px;font-size:12px;flex:none">📋 複製</button></div>'+
       '<div class="hcptbl-x"><table class="hcptbl" style="margin:0"><thead><tr><th></th>'+GIFT_SIZES.map(function(s){return '<th>'+s+'</th>';}).join('')+'<th>計</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
       (unsure?'<div class="sub" style="margin-top:5px">(n?)=推測或未標來源的件數,該尺寸建議多備。</div>':'')+'</div>';
-  } else st.innerHTML='';
-  applyGiftFilter();
+    pills=[['all','全部',tot],['nosize','未填尺寸',noSize],['unsure','尺寸待確認',unsure]];
+  }
+  document.getElementById('giftPills').innerHTML=pills.map(function(p){
+    return '<button type="button" class="ghost'+(giftFilter===p[0]?' on':'')+'" onclick="setGiftFilter(\''+p[0]+'\')">'+p[1]+' '+p[2]+'</button>'; }).join('');
+  if(!keepRows) applyGiftFilter();
+}
+/* --- 自動儲存 --- */
+function setGiftSaveState(){
+  var el=document.getElementById('giftSave'); if(!el) return;
+  el.onclick=null;
+  if(giftErr){ el.className='gsave err'; el.textContent='⚠️ 未儲存・點此重試'; el.onclick=function(){ giftErr=false; giftDirty=true; giftFlush(); }; }
+  else if(giftSaving||giftDirty){ el.className='gsave ing'; el.textContent='儲存中…'; }
+  else if(giftSavedOnce){ el.className='gsave ok'; el.textContent='✓ 已儲存'; }
+  else { el.className='gsave idle'; el.textContent='自動儲存'; }
+}
+function giftTouch(){ giftDirty=true; giftErr=false; setGiftSaveState(); clearTimeout(giftTimer); giftTimer=setTimeout(giftFlush,1200); }
+function giftRows(){ return Object.keys(giftModel).map(function(mid){ var g=giftModel[mid]; return {mid:mid, ball:!!g.ball, style:g.style||'', size:g.size||'', shirt:!!g.shirt, src:g.src||''}; }); }
+function giftFlush(){
+  if(giftSaving||!giftDirty) return;
+  giftSaving=true; setGiftSaveState(); giftSend(2);
+}
+function giftSend(tries){
+  var rows=giftRows(); giftDirty=false;
+  if(!rows.length){ giftSaving=false; setGiftSaveState(); return; }   /* 空表絕不送:giftSave 是整表覆寫 */
+  api('giftSave',{rows:rows}).then(function(j){
+    if(typeof j.n!=='number') throw new Error('儲存回應異常');
+    giftSaving=false; giftErr=false; giftSavedOnce=true; giftMirror(rows);
+    if(giftDirty){ clearTimeout(giftTimer); giftFlush(); } else setGiftSaveState();
+  }).catch(function(e){
+    if(tries>0){ setTimeout(function(){ giftSend(tries-1); },2500); return; }
+    giftSaving=false; giftDirty=true; giftErr=true; setGiftSaveState();
+    toast('⚠️ 會員禮儲存失敗:'+(e&&e.message||e)+'(變更還在,請點右上角重試)');
+  });
+}
+/* 存成功後把狀態寫回 DATA.gift(領取日:既有保留、新領=今天,與後端規則一致),名單頁不必等重抓 */
+function giftMirror(rows){
+  var t=giftToday(), old={}; (DATA.gift||[]).forEach(function(g){ old[g.mid]=g; });
+  DATA.gift=rows.map(function(r){ var o=old[r.mid]||{};
+    return {mid:r.mid, ball:r.ball?(o.ball||t):'', style:r.style, size:r.size, shirt:r.shirt?(o.shirt||t):'', src:r.src}; });
+  DATA.gift.forEach(function(d){ var g=giftModel[d.mid], chg=false; if(!g) return;
+    if(g.ball&&!g.ballD&&d.ball){ g.ballD=d.ball; chg=true; }
+    if(g.shirt&&!g.shirtD&&d.shirt){ g.shirtD=d.shirt; chg=true; }
+    if(chg&&giftTab==='A') giftRowRefresh(d.mid); });   /* 按鈕補上領取日 */
+  if(!PREVIEW) saveCache(DATA);
+  if(curTab==='member'){ try{ renderMember(); }catch(e){} }
+}
+window.addEventListener('beforeunload',function(e){
+  if(giftDirty||giftSaving){ if(giftDirty&&!giftSaving){ clearTimeout(giftTimer); giftFlush(); } e.preventDefault(); e.returnValue=''; }
+});
+/* 會員名單頂部「🎁 會員禮」格:直接顯示還欠幾人沒領,不用點進去才知道 */
+function updateGiftTile(){
+  var el=document.getElementById('ctGift'), btn=document.getElementById('ctGiftBtn'); if(!el||!btn) return;
+  var gmap={}; (DATA.gift||[]).forEach(function(g){ gmap[g.mid]=g; });
+  var tot=DATA.members.length, b=0, s=0;
+  DATA.members.forEach(function(m){ var g=gmap[m.id]||{}; if(!g.ball) b++; if(!g.shirt) s++; });
+  btn.classList.toggle('todo', (b+s)>0); btn.classList.toggle('alldone', tot>0&&(b+s)===0);
+  el.innerHTML=(tot&&(b+s)===0)?'✓ 全部發完':('球標酒未領 '+b+'<br>衣服未領 '+s);
 }
 function copyGiftStats(){
   var cnt={'男':{},'女':{}}, guess={'男':{},'女':{}}, noSize=[], unsure=[], tot=0;
@@ -1115,10 +1380,6 @@ function dlYearCsv(){
   document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
   toast('✓ 已下載 CSV');
 }
-function saveGift(){
-  var rows=DATA.members.map(function(m){ var g=giftModel[m.id]||{}; return {mid:m.id, ball:!!g.ball, style:g.style||'', size:g.size||'', shirt:!!g.shirt, src:g.src||''}; });
-  api('giftSave',{rows:rows}).then(function(){ closeOv('giftOv'); toast('✓ 會員禮已儲存'); return refresh(); }).catch(function(e){ toast(e.message); });
-}
 /* ===== 今日分組(總幹事編輯;全員可見)===== */
 function attGroupList(sid){ var arr=[], seen={};
   (DATA.scores||[]).forEach(function(x){ if(x.sid!==sid) return;
@@ -1126,35 +1387,92 @@ function attGroupList(sid){ var arr=[], seen={};
     else if(x.mid && !seen[x.mid]){ seen[x.mid]=1; var m=memById(x.mid); if(m) arr.push({mid:m.id, name:m.name, sex:m.sex, guest:false}); } });
   return arr; }
 function attKey(a){ return a.guest?('g:'+a.name):('m:'+a.mid); }
-var grpSid=null, grpModel={}, grpAtts=[], grpN=1;
+/* 分組編輯:上面=未分組名單,下面=各組卡。亮框的組是「加入中」,點未分組的名字就進那一組,
+   滿 4 人自動跳到下一個未滿的組;點組內名字=移出。變更自動儲存(groupSave 整場覆寫) */
+var grpSid=null, grpModel={}, grpAtts=[], grpN=1, grpActive=1, grpTouched=false;
+var grpSaver=autoSaver({chip:'grpSave', name:'分組', build:grpPayload, send:function(p){ return api('groupSave',p); }, done:grpMirror});
+function grpCount(i){ var n=0; grpAtts.forEach(function(a){ if(grpModel[attKey(a)]===i) n++; }); return n; }
+function grpPoolLen(){ return grpAtts.filter(function(a){ return !grpModel[attKey(a)]; }).length; }
+function grpNextOpen(){ for(var i=1;i<=grpN;i++) if(grpCount(i)<4) return i; return 0; }
+function grpBuildModel(sid){
+  grpAtts=attGroupList(sid); grpModel={};
+  var valid={}, maxG=0; grpAtts.forEach(function(a){ valid[attKey(a)]=1; });
+  (DATA.groups||[]).filter(function(g){return g.sid===sid;}).forEach(function(g){
+    var k=g.mid?('m:'+g.mid):('g:'+g.name); if(!valid[k]) return;   /* 已不在出席名單的人不帶入 */
+    grpModel[k]=g.grp; if(g.grp>maxG) maxG=g.grp; });
+  grpN=Math.max(maxG, Math.ceil(grpAtts.length/4), 1);
+  grpActive=grpNextOpen()||1;
+}
 function openGroups(sid){
   var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
-  grpAtts=attGroupList(sid);
-  if(!grpAtts.length){ toast('請先做「✅ 出席登記」'); return; }
-  grpSid=sid; grpModel={};
-  var maxG=0; (DATA.groups||[]).filter(function(g){return g.sid===sid;}).forEach(function(g){ grpModel[g.mid?('m:'+g.mid):('g:'+g.name)]=g.grp; if(g.grp>maxG)maxG=g.grp; });
-  grpN=Math.max(maxG, Math.ceil(grpAtts.length/4), 1);
-  document.getElementById('grpTitle').textContent='👥 '+((s.tripName?s.tripName+'・':'')+s.name)+'・分組';
-  document.getElementById('grpSub').textContent=fmtMD(s.date)+' ｜ 出席 '+grpAtts.length+' 人 ｜ 指定每人第幾組';
-  renderGroupEditor(); openOv('groupOv');
+  if(grpSaver.busy() && grpSid!==sid){ toast('上一場的分組還在儲存,請稍候幾秒再開'); return; }
+  if(!(grpSaver.busy() && grpSid===sid)){
+    if(!attGroupList(sid).length){ toast('請先做「✅ 出席登記」'); return; }
+    grpSid=sid; grpBuildModel(sid); grpTouched=false; grpSaver.fresh();
+  }
+  document.getElementById('grpTitle').textContent='👥 分組・'+((s.tripName?s.tripName+'・':'')+s.name);
+  renderGroups(); openOv('groupOv');
+  refresh().then(function(){ if(grpSid===sid && !grpTouched && !grpSaver.busy() && ovOpen('groupOv') && attGroupList(sid).length){ grpBuildModel(sid); renderGroups(); } });
 }
-function renderGroupEditor(){
-  var h=grpAtts.map(function(a){ var k=attKey(a), cur=grpModel[k]||0;
-    var o='<option value="0"'+(cur?'':' selected')+'>未分</option>'; for(var i=1;i<=grpN;i++)o+='<option value="'+i+'"'+(cur===i?' selected':'')+'>第'+i+'組</option>';
-    return '<label class="scrow'+(cur?'':' off')+'" data-k="'+esc(k)+'" style="cursor:default">'+
-      '<div class="nm"'+(a.sex==='女'?' style="color:#C2185B"':'')+'>'+(a.guest?'👤 ':'')+esc(a.name)+'</div>'+
-      '<select class="grpsel" style="flex:none;width:84px;margin:0;padding:6px;font-size:14px">'+o+'</select></label>'; }).join('');
-  var el=document.getElementById('groupBody'); el.innerHTML=h;
-  el.querySelectorAll('.scrow').forEach(function(row){ var k=row.getAttribute('data-k'); row.querySelector('.grpsel').onchange=function(){ grpModel[k]=+this.value; row.classList.toggle('off',!this.value||this.value==='0'); updateGrpCount(); }; });
-  document.getElementById('grpNlbl').textContent='目前 '+grpN+' 組'; updateGrpCount();
+function closeGroups(){ closeOv('groupOv'); grpSaver.whenSaved(function(){ refresh(); }); }
+function grpChip(a,inGroup){
+  var i=grpAtts.indexOf(a);
+  return '<button type="button" class="pchip'+(inGroup?' in':'')+(a.sex==='女'?' f':'')+'" onclick="'+(inGroup?'event.stopPropagation();grpRemove(':'grpAdd(')+i+')">'+(a.guest?'👤 ':'')+esc(a.name)+'</button>';
 }
-function grpAddOne(){ grpN++; renderGroupEditor(); }
-function grpAuto(){ grpN=Math.max(1,Math.ceil(grpAtts.length/4)); grpAtts.forEach(function(a,i){ grpModel[attKey(a)]=Math.floor(i/4)+1; }); renderGroupEditor(); }
-function updateGrpCount(){ var un=grpAtts.filter(function(a){return !grpModel[attKey(a)];}).length;
-  document.getElementById('grpCount').textContent=un?('未分 '+un+' 人'):'全部已分組'; }
-function saveGroups(){
+function renderGroups(){
+  var s=DATA.sessions.find(function(x){return x.id===grpSid;})||{};
+  var pool=grpAtts.filter(function(a){ return !grpModel[attKey(a)]; });
+  document.getElementById('grpSub').innerHTML=fmtMD(s.date)+' ｜ 出席 '+grpAtts.length+' 人 ｜ '+(pool.length?'<b style="color:#A32D2D">未分組 '+pool.length+' 人</b>':'<b style="color:#27500A">全部已分組</b>');
+  document.getElementById('grpPool').innerHTML='<div class="card" style="padding:10px 12px;margin:0 0 10px">'+
+    (pool.length?('<div class="sub" style="margin-bottom:7px"><b style="color:var(--txt)">未分組 '+pool.length+' 人</b>　點名字 → 加入 <b style="color:var(--pri)">第'+grpActive+'組</b></div><div class="gchips">'+pool.map(function(a){return grpChip(a,false);}).join('')+'</div>')
+               :'<div style="font-size:14px;font-weight:600;color:#27500A">✓ '+grpAtts.length+' 人都分好了</div>')+'</div>';
+  var h='';
+  for(var i=1;i<=grpN;i++){
+    var ms=grpAtts.filter(function(a){ return grpModel[attKey(a)]===i; }), n=ms.length, act=(i===grpActive);
+    h+='<div class="gcard'+(act?' act':'')+'" onclick="grpSetActive('+i+')"><div class="gh"><b>第'+i+'組</b>'+
+      '<span class="cnt'+(n>4?' over':'')+'">'+n+' 人'+(n>4?'・超過 4 人':'')+'</span>'+(act?'<span class="tag">加入中</span>':'')+'</div>'+
+      (n?('<div class="gchips">'+ms.map(function(a){return grpChip(a,true);}).join('')+'</div>'):'<div class="emp">空的'+(act?'・點上面的名字加入':'・點這裡設成加入中')+'</div>')+'</div>';
+  }
+  document.getElementById('groupBody').innerHTML=h;
+}
+function grpSetActive(i){ grpActive=i; renderGroups(); }
+function grpAdd(idx){
+  var a=grpAtts[idx]; if(!a) return;
+  grpModel[attKey(a)]=grpActive; grpTouched=true;
+  if(grpCount(grpActive)>=4){   /* 這組滿了 → 跳到下一個未滿的組;都滿了且還有人沒分就開新的一組 */
+    var n=grpNextOpen(); if(!n && grpPoolLen()>0){ grpN++; n=grpN; }
+    if(n) grpActive=n;
+  }
+  renderGroups(); grpSaver.touch();
+}
+function grpRemove(idx){
+  var a=grpAtts[idx]; if(!a) return;
+  delete grpModel[attKey(a)]; grpTouched=true; renderGroups(); grpSaver.touch();
+}
+function grpAddOne(){ grpN++; grpActive=grpN; renderGroups(); }
+function grpAuto(){
+  if(Object.keys(grpModel).length && !confirm('重新自動分組(照名單順序每 4 人一組)會蓋掉目前的分組,繼續?')) return;
+  grpN=Math.max(1,Math.ceil(grpAtts.length/4));
+  grpAtts.forEach(function(a,i){ grpModel[attKey(a)]=Math.floor(i/4)+1; });
+  grpActive=grpNextOpen()||grpN; grpTouched=true; renderGroups(); grpSaver.touch();
+}
+function grpCopy(){
+  var s=DATA.sessions.find(function(x){return x.id===grpSid;})||{}, L=[];
+  L.push('👥 '+(s.tripName?s.tripName+'・':'')+(s.name||'')+' 分組('+fmtMD(s.date)+')');
+  for(var i=1;i<=grpN;i++){ var ms=grpAtts.filter(function(a){ return grpModel[attKey(a)]===i; });
+    if(ms.length) L.push('第'+i+'組:'+ms.map(function(a){return (a.guest?'👤':'')+a.name;}).join('、')); }
+  var pool=grpAtts.filter(function(a){ return !grpModel[attKey(a)]; });
+  if(pool.length) L.push('未分組:'+pool.map(function(a){return (a.guest?'👤':'')+a.name;}).join('、'));
+  copyText(L.join('\n'),'✓ 已複製分組');
+}
+function grpPayload(){
   var rows=[]; grpAtts.forEach(function(a){ var g=grpModel[attKey(a)]||0; if(!g) return; rows.push({sid:grpSid, grp:g, mid:a.mid||'', name:a.guest?a.name:''}); });
-  api('groupSave',{sid:grpSid, rows:rows}).then(function(){ closeOv('groupOv'); toast('✓ 已存分組 '+rows.length+' 人'); return refresh(); }).catch(function(e){ toast(e.message); });
+  return {sid:grpSid, rows:rows};
+}
+function grpMirror(p){
+  DATA.groups=(DATA.groups||[]).filter(function(g){return g.sid!==p.sid;}).concat(p.rows.map(function(r){ return {sid:p.sid, grp:r.grp, mid:r.mid, name:r.name}; }));
+  if(!PREVIEW) saveCache(DATA);
+  try{ showTab(curTab); }catch(e){}
 }
 /* 出席・分組 檢視(全員;行事曆入口)*/
 function showAttGroup(sid){
@@ -2026,9 +2344,8 @@ function giftShirtHtml(g){ var sd=(g.style?g.style+'款 ':'')+(g.size||'');
 function renderMember(){
   var el=document.getElementById('memberBody'); if(!el) return;
   var _sn=document.getElementById('memSrcNote'); if(_sn) _sn.style.display=(user==='凌華')?'':'none';  /* 來源說明僅總幹事 */
-  var _gb=document.getElementById('giftBtn'); if(_gb) _gb.classList.toggle('hide', user!=='凌華');  /* 會員禮發放:僅總幹事 */
-  var _rb=document.getElementById('rosterBtn'); if(_rb) _rb.classList.toggle('hide', user!=='凌華');  /* 名冊總表(含會員禮欄):僅總幹事 */
-  var _yb=document.getElementById('yearBtn'); if(_yb) _yb.classList.toggle('hide', user!=='凌華');  /* 年度差點結算:僅總幹事 */
+  var _ct=document.getElementById('chiefTools'); if(_ct) _ct.classList.toggle('hide', user!=='凌華');  /* 會員禮/名冊總表/差點結算:僅總幹事 */
+  if(user==='凌華') updateGiftTile();
   var q=(document.getElementById('memSearch')?document.getElementById('memSearch').value.trim():'');
   var ms=DATA.members.slice();
   if(q) ms=ms.filter(function(m){ return (m.name&&m.name.indexOf(q)>=0)||(m.cohort&&m.cohort.indexOf(q)>=0); });
