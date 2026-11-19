@@ -347,6 +347,21 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .agst input[type=text]{flex:1;min-width:0;margin:0;padding:8px 10px;font-size:15px}
 .mtog{flex:none;margin:0;padding:7px 9px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-size:13px;color:var(--sub);cursor:pointer;white-space:nowrap}
 .mtog.on{background:var(--gold-soft);border-color:#E0B36A;color:#8A6A1E;font-weight:600}
+/* 成績登錄:一人一列(姓名・總桿大輸入框・淨桿) */
+.srow{display:flex;align-items:center;gap:8px;padding:7px 2px;border-top:1px solid var(--line)}
+.srow .nm{flex:1;min-width:0;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srow .nm .hc{font-size:11px;color:var(--sub);font-weight:400;margin-left:5px}
+.srow .sg{flex:none;width:76px;margin:0;padding:9px 4px;text-align:center;font-size:17px;font-weight:600}
+.srow .net{flex:none;width:52px;text-align:right;font-size:13px;font-weight:700;color:var(--pri)}
+.srow .sx{flex:none;width:30px;margin:0;padding:6px 0;border:none;background:none;color:#B9B2A7;font-size:14px;cursor:pointer}
+.srow.has .sg{background:#F3F8F4;border-color:#B9D9A0}
+.srow.inv .sg{background:#FDF0EF;border-color:#D9534F}
+.srow.inv .net{color:#A32D2D}
+.srow.out .nm{color:var(--sub);font-weight:400}
+.srow.out .sx{color:var(--pri);font-size:18px}
+.sh{font-size:12px;font-weight:600;color:var(--sub);margin:10px 2px 3px}
+.agst .sg{flex:none;width:62px;margin:0;padding:8px 2px;text-align:center;font-size:15px;font-weight:600}
+.agst.inv .sg{background:#FDF0EF;border-color:#D9534F}
 /* 分組:上面未分組名單,下面各組卡(亮框的組=加入中) */
 .gchips{display:flex;flex-wrap:wrap;gap:6px}
 .pchip{margin:0;padding:8px 11px;min-height:40px;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--txt);font-size:15px;font-weight:600;cursor:pointer}
@@ -523,19 +538,18 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
   <button class="btn" onclick="saveMember()">儲存球員資料</button>
 </div></div>
 
-<!-- 成績登錄(總幹事；出席勾選 + 總桿→淨桿) -->
+<!-- 成績登錄(總幹事):預設只列出席者,一人一列填總桿→淨桿自動算;變更自動儲存 -->
 <div class="overlay full" id="scoreOv"><div class="sheet sheet-full">
-  <div class="head" style="margin-top:0"><b id="scoreTitle">📝 成績登錄</b><button class="ghost" onclick="closeOv('scoreOv')">✕</button></div>
-  <p class="sub" id="scoreSub" style="margin:0 0 8px"></p>
-  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-    <input id="scoreSearch" type="text" placeholder="🔍 搜尋姓名" style="flex:1;margin:0;padding:9px 11px;font-size:14px" oninput="filterScore()">
-    <span id="scoreCount" class="pill st-done" style="white-space:nowrap"></span>
+  <div class="gtop">
+    <div class="head"><b><span id="scoreTitle">📝 成績登錄</span><span id="scoreChip" class="gsave idle"></span></b><button class="ghost" onclick="closeScore()">✕</button></div>
+    <p class="sub" id="scoreSub" style="margin:0 0 6px"></p>
+    <input id="scoreSearch" type="text" placeholder="🔍 搜尋姓名(含未出席的會員)" style="margin:0 0 6px;padding:10px 12px;font-size:15px" oninput="applyScoreFilter()">
   </div>
+  <div id="scorePills" class="gpills"></div>
   <div id="scoreBody"></div>
-  <div id="scoreGuests"></div>
-  <button type="button" class="ghost" onclick="addGuestRow()" style="width:100%;border-style:dashed;color:var(--pri);margin:6px 0 4px;padding:9px">＋ 臨時來賓(記錄不排名)</button>
-  <p class="sub" style="margin:2px 2px 8px">出席但總桿留白＝未完賽(DNF,仍算出席、不列排名)。</p>
-  <button class="btn" onclick="saveScore()">儲存成績</button>
+  <div id="scoreEmpty" class="sub hide" style="text-align:center;padding:22px 0"></div>
+  <div id="scoreGuests" style="margin-top:10px"></div>
+  <p class="sub" style="margin:4px 2px 8px">填好自動儲存;按鍵盤的「下一個/Enter」跳到下一位。出席但總桿留白＝未完賽(DNF,仍算出席、不列排名)。桿數須在 50～200 之間才會存。</p>
 </div></div>
 
 <!-- 快速出席登記(總幹事；只打勾誰來了，不碰桿數) -->
@@ -770,7 +784,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.19b', EXPECT_GS='v2026.10.24';
+var GP_BUILD='v2026.11.19c', EXPECT_GS='v2026.10.24';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS){ el.classList.add('hide'); el.textContent=''; }
@@ -858,64 +872,6 @@ function showSessAwards(sid){
   document.getElementById('awShowBody').innerHTML=sessAwardConfigHtml(s);
   openOv('awShowOv');
 }
-/* 成績登錄:出席勾選 + 總桿→淨桿(淨桿=總桿−當期差點) */
-var scoreSid=null;
-function openScore(sid){
-  var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
-  scoreSid=sid;
-  document.getElementById('scoreTitle').textContent='📝 '+((s.tripName?s.tripName+'・':'')+s.name)+'・成績登錄';
-  document.getElementById('scoreSub').textContent=fmtMD(s.date)+(s.courseId?' ｜ '+courseName(s.courseId):'')+' ｜ 勾出席 → 填總桿，淨桿自動算';
-  document.getElementById('scoreSearch').value='';
-  var existing={}; DATA.scores.filter(function(x){return x.sid===sid;}).forEach(function(r){ existing[r.mid]=r; });
-  var ms=DATA.members.slice().sort(function(a,b){ return (cohortRank(a.cohort)-cohortRank(b.cohort))||(a.id<b.id?-1:1); });
-  var h='';
-  ms.forEach(function(m){
-    var ex=existing[m.id], on=!!ex, _sh=hcpForSession(m.id, scoreSid), hc=(_sh||_sh===0)?_sh:'';
-    h+='<div class="scrow'+(on?'':' off')+'" data-mid="'+m.id+'" data-hc="'+hc+'">'+
-      '<input type="checkbox" class="chk"'+(on?' checked':'')+'>'+
-      '<div class="nm"'+(m.sex==='女'?' style="color:#C2185B"':'')+'>'+esc(m.name)+'<span class="hc">'+(hc===''?'差點?':'差'+hc)+'</span></div>'+
-      '<input type="number" class="gross" inputmode="numeric" placeholder="總桿" value="'+(ex&&ex.gross!==''&&ex.gross!=null?ex.gross:'')+'"><span class="net"></span></div>';
-  });
-  var el=document.getElementById('scoreBody'); el.innerHTML=h;
-  el.querySelectorAll('.scrow').forEach(bindScrow);
-  document.getElementById('scoreGuests').innerHTML='';
-  DATA.scores.filter(function(x){return x.sid===sid && x.guest;}).forEach(function(g){ addGuestRow(g); });
-  updateScoreCount(); openOv('scoreOv');
-}
-function addGuestRow(g){
-  g=g||{};
-  var div=document.createElement('div'); div.className='scrow guest';
-  div.innerHTML='<span style="flex:none;width:20px;text-align:center">👤</span>'+
-    '<input type="text" class="gname" placeholder="來賓姓名" value="'+esc(g.name||'')+'" style="flex:1;margin:0;padding:7px 9px;font-size:15px">'+
-    '<input type="number" class="gross" inputmode="numeric" placeholder="總桿" value="'+(g.gross!==''&&g.gross!=null?g.gross:'')+'">'+
-    '<label style="flex:none;display:flex;align-items:center;gap:2px;margin:0;font-size:14px;cursor:pointer" title="留餐(有繳餐費)才送球"><input type="checkbox" class="gmeal"'+(g.meal?' checked':'')+' style="width:17px;height:17px;margin:0">🍽</label>'+
-    '<button type="button" class="ghost gdel" style="flex:none;padding:6px 9px;margin:0;border:none;color:#791F1F">✕</button>';
-  div.querySelector('.gdel').onclick=function(){ div.remove(); updateScoreCount(); };
-  div.querySelector('.gname').oninput=updateScoreCount;
-  document.getElementById('scoreGuests').appendChild(div);
-}
-function bindScrow(row){
-  var chk=row.querySelector('.chk'), gross=row.querySelector('.gross');
-  chk.onchange=function(){ row.classList.toggle('off',!chk.checked); if(!chk.checked) gross.value=''; updateNet(row); updateScoreCount(); };
-  gross.oninput=function(){ if(gross.value!==''&&!chk.checked){ chk.checked=true; row.classList.remove('off'); } updateNet(row); updateScoreCount(); };
-  updateNet(row);
-}
-function updateNet(row){
-  var chk=row.querySelector('.chk'), g=row.querySelector('.gross').value, hc=row.getAttribute('data-hc'), net=row.querySelector('.net');
-  if(chk.checked && g!==''){ if(hc!==''){ net.textContent='淨'+(Number(g)-Number(hc)); net.style.color='var(--pri)'; } else { net.textContent='需差點'; net.style.color='#A32D2D'; } }
-  else net.textContent='';
-}
-function filterScore(){ var q=document.getElementById('scoreSearch').value.trim();
-  document.querySelectorAll('#scoreBody .scrow').forEach(function(r){ r.style.display=(!q||r.querySelector('.nm').textContent.indexOf(q)>=0)?'flex':'none'; }); }
-function updateScoreCount(){ var n=document.querySelectorAll('#scoreBody .scrow .chk:checked').length; var gn=0; document.querySelectorAll('#scoreGuests .gname').forEach(function(i){ if(i.value.trim())gn++; }); document.getElementById('scoreCount').textContent='出席 '+(n+gn)+' 人'+(gn?'(含來賓'+gn+')':''); }
-function saveScore(){
-  var rows=[];
-  document.querySelectorAll('#scoreBody .scrow').forEach(function(r){ if(!r.querySelector('.chk').checked) return;
-    var g=r.querySelector('.gross').value.trim(); rows.push({sid:scoreSid, mid:r.getAttribute('data-mid'), gross:g===''?'':Number(g)}); });
-  document.querySelectorAll('#scoreGuests .scrow').forEach(function(r){ var nm=r.querySelector('.gname').value.trim(); if(!nm) return;
-    var g=r.querySelector('.gross').value.trim(); rows.push({sid:scoreSid, mid:'', guest:true, name:nm, gross:g===''?'':Number(g), meal:r.querySelector('.gmeal').checked}); });
-  api('scoreSave',{sid:scoreSid, rows:rows}).then(function(){ closeOv('scoreOv'); toast('✓ 已存成績 '+rows.length+' 筆'); return refresh(); }).catch(function(e){ toast(e.message); });
-}
 /* ===== 自動儲存器(出席/分組共用)=====
    只能用在「整場覆寫、同一份狀態重送結果相同」的寫入。變更後 1.2 秒送出;失敗自動重試 2 次,
    仍失敗則保留變更並亮紅燈讓使用者點重試。o={chip:狀態標籤id, name, build:()=>payload, send:(payload)=>Promise, done:(payload)=>void} */
@@ -967,6 +923,7 @@ function attBuildModel(sid){
 }
 function openAtt(sid){
   var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
+  if(scoreSaver.busy()){ toast('成績還在儲存,請稍候幾秒再開出席登記'); return; }
   if(attSaver.busy() && attSid!==sid){ toast('上一場的出席還在儲存,請稍候幾秒再開'); return; }
   if(!(attSaver.busy() && attSid===sid)){ attSid=sid; attBuildModel(sid); attTouched=false; attSaver.fresh(); }
   attFilter='all';
@@ -1017,7 +974,7 @@ function renderAttGuests(){
   document.getElementById('attGuests').innerHTML=h+'</div>';
 }
 function attAddGuest(){
-  attGuests.push({name:'', meal:false, gross:''}); renderAttGuests();
+  attGuests.push({name:'', meal:false, gross:''}); attTouched=true; renderAttGuests();
   var ins=document.querySelectorAll('#attGuests .agst input'); if(ins.length) ins[ins.length-1].focus();
 }
 function attGuestName(i,v){ if(!attGuests[i]) return; attGuests[i].name=v; attTouched=true; attSaver.touch(); updateAttUI(true); }
@@ -1075,6 +1032,153 @@ function attToGroups(){
   var sid=attSid, n=attPayload().rows.length;
   if(!n){ toast('先點選今天到場的人'); return; }
   attSaver.whenSaved(function(){ closeOv('attOv'); openGroups(sid); });
+}
+/* ===== 成績登錄(總幹事):預設只列出席者,一人一列填總桿,淨桿=總桿−當場差點;變更自動儲存 =====
+   與出席登記寫同一份資料(scoreSave 整場覆寫),所以兩邊不可同時有未存完的變更(open 時互相擋)。
+   桿數只收 50～200 的整數:打到一半的數字(例如 95 才打了 9)不會被存出去,公開頁不會閃出怪成績 */
+var scoreSid=null, scOn={}, scGross={}, scGuests=[], scFilter='att', scOrder='cohort', scTouched=false;
+var scoreSaver=autoSaver({chip:'scoreChip', name:'成績', build:scorePayload, send:function(p){ return api('scoreSave',p); }, done:attMirror});
+function scValid(v){ var n=Number(v); return (String(v).trim()!=='' && n>=50 && n<=200 && Math.floor(n)===n) ? n : null; }
+function scBuildModel(sid){
+  scOn={}; scGross={}; scGuests=[];
+  DATA.scores.filter(function(x){return x.sid===sid;}).forEach(function(r){
+    var g=(r.gross!==''&&r.gross!=null)?r.gross:'';
+    if(r.guest) scGuests.push({name:r.name||'', meal:!!r.meal, gross:g});
+    else if(r.mid){ scOn[r.mid]=true; scGross[r.mid]=g; }
+  });
+}
+function scHasGroups(){ return (DATA.groups||[]).some(function(g){return g.sid===scoreSid;}); }
+function openScore(sid){
+  var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
+  if(attSaver.busy()){ toast('出席還在儲存,請稍候幾秒再開成績登錄'); return; }
+  if(scoreSaver.busy() && scoreSid!==sid){ toast('上一場的成績還在儲存,請稍候幾秒再開'); return; }
+  if(!(scoreSaver.busy() && scoreSid===sid)){ scoreSid=sid; scBuildModel(sid); scTouched=false; scoreSaver.fresh(); }
+  scFilter=Object.keys(scOn).length?'att':'out';   /* 還沒人出席(沒先做出席登記)就直接列全部會員 */
+  scOrder=scHasGroups()?'grp':'cohort';
+  document.getElementById('scoreTitle').textContent='📝 成績・'+((s.tripName?s.tripName+'・':'')+s.name);
+  document.getElementById('scoreSearch').value='';
+  renderScore(); openOv('scoreOv');
+  refresh().then(function(){ if(scoreSid===sid && !scTouched && !scoreSaver.busy() && ovOpen('scoreOv')){ scBuildModel(sid); renderScore(); } });
+}
+function closeScore(){ closeOv('scoreOv'); scoreSaver.whenSaved(function(){ refresh(); }); }
+function scRowCls(mid){ var on=!!scOn[mid]; return 'srow'+(on?'':' out')+((on&&scGross[mid]!=='')?' has':''); }
+function scNetText(mid){
+  if(!scOn[mid]||scGross[mid]==='') return '';
+  var hc=hcpForSession(mid, scoreSid); return (hc||hc===0)?('淨'+(scGross[mid]-hc)):'無差點';
+}
+function scRowHtml(m,hkey){
+  var on=!!scOn[m.id], hc=hcpForSession(m.id, scoreSid), g=on?scGross[m.id]:'';
+  return '<div class="'+scRowCls(m.id)+'" data-mid="'+m.id+'" data-nm="'+esc(m.name)+'" data-c="'+esc(m.cohort||'')+'" data-h="'+esc(hkey)+'">'+
+    '<div class="nm"'+(m.sex==='女'?' style="color:#C2185B"':'')+'>'+esc(m.name)+'<span class="hc">'+((hc||hc===0)?'差'+hc:'差點?')+'</span></div>'+
+    '<input type="number" class="sg" inputmode="numeric" enterkeyhint="next" placeholder="總桿" value="'+(g===''||g==null?'':g)+'" oninput="scoreInput(\''+m.id+'\',this)" onkeydown="scoreKey(event,this)">'+
+    '<span class="net">'+scNetText(m.id)+'</span>'+
+    '<button type="button" class="sx" title="'+(on?'從本場出席移除':'加入本場出席')+'" onclick="'+(on?'scoreRemove':'scoreAdd')+'(\''+m.id+'\')">'+(on?'✕':'＋')+'</button></div>';
+}
+/* 排序:有分組就照組別(記分卡是一組一張),沒有就照屆別;未出席的會員排在最後,平常隱藏 */
+function renderScore(){
+  var h='', last=null, ms=membersByCohort(), gmap={};
+  (DATA.groups||[]).forEach(function(g){ if(g.sid===scoreSid && g.mid) gmap[g.mid]=g.grp; });
+  var att=ms.filter(function(m){return scOn[m.id];}), out=ms.filter(function(m){return !scOn[m.id];});
+  if(scOrder==='grp') att.sort(function(a,b){ return ((gmap[a.id]||999)-(gmap[b.id]||999)); });   /* 穩定排序:組內維持屆別順序 */
+  att.forEach(function(m){
+    var hk=(scOrder==='grp')?(gmap[m.id]?('第'+gmap[m.id]+'組'):'未分組'):(m.cohort||'其他');
+    if(hk!==last){ h+='<div class="sh" data-h="'+esc(hk)+'">'+esc(hk)+'</div>'; last=hk; }
+    h+=scRowHtml(m,hk); });
+  if(out.length){ h+='<div class="sh" data-h="__out">未出席的會員(點 ＋ 或直接填桿數=加入出席)</div>'; out.forEach(function(m){ h+=scRowHtml(m,'__out'); }); }
+  document.getElementById('scoreBody').innerHTML=h;
+  renderScoreGuests(); updateScoreUI();
+}
+function scRowRefresh(mid){
+  var row=document.querySelector('#scoreBody .srow[data-mid="'+mid+'"]'), m=memById(mid);
+  if(row&&m){ var hk=row.getAttribute('data-h'), disp=row.style.display; row.outerHTML=scRowHtml(m,hk);
+    var nr=document.querySelector('#scoreBody .srow[data-mid="'+mid+'"]'); if(nr) nr.style.display=disp; }
+}
+function scoreInput(mid,el){
+  scTouched=true;   /* 一開始打字就算動過:背景重抓回來時不可重畫,否則打到一半的數字會不見 */
+  var row=el.closest('.srow'), v=el.value.trim(), changed=false, inv=false;
+  if(v===''){ if(scOn[mid] && scGross[mid]!==''){ scGross[mid]=''; changed=true; } }
+  else { var n=scValid(v);
+    if(n==null) inv=true;
+    else { if(!scOn[mid]){ scOn[mid]=true; changed=true;   /* 未出席的人直接填桿數=加入出席;不重畫輸入框,游標才不會跳掉 */
+             var bx=row.querySelector('.sx'); bx.textContent='✕'; bx.setAttribute('onclick',"scoreRemove('"+mid+"')"); }
+           if(scGross[mid]!==n){ scGross[mid]=n; changed=true; } } }
+  row.className=scRowCls(mid)+(inv?' inv':'');
+  row.querySelector('.net').textContent=inv?'桿數?':scNetText(mid);
+  if(changed){ scTouched=true; scoreSaver.touch(); }
+  updateScoreUI(true);
+}
+function scoreKey(e,el){
+  if(e.key!=='Enter') return; e.preventDefault();
+  var ins=[].filter.call(document.querySelectorAll('#scoreBody .sg'),function(i){ return i.closest('.srow').style.display!=='none'; });
+  var k=ins.indexOf(el); if(k>=0&&ins[k+1]){ ins[k+1].focus(); ins[k+1].select(); } else el.blur();
+}
+function scoreAdd(mid){ scOn[mid]=true; scGross[mid]=''; scTouched=true; scRowRefresh(mid); scoreSaver.touch(); updateScoreUI(true); }
+function scoreRemove(mid){
+  var m=memById(mid), g=scGross[mid];
+  if(!confirm('把 '+(m?m.name:mid)+' 從本場出席移除?'+((g!==''&&g!=null)?'\n(已登錄 '+g+' 桿,會一併刪除)':''))) return;
+  delete scOn[mid]; delete scGross[mid]; scTouched=true; scRowRefresh(mid); scoreSaver.touch(); updateScoreUI(true);
+}
+function renderScoreGuests(){
+  var h='<div class="card" style="padding:9px 12px;margin:0 0 8px"><div style="display:flex;align-items:center;gap:8px">'+
+    '<b style="font-size:14px">👤 來賓</b><span class="sub">記錄不排名・留餐才送球</span>'+
+    '<button type="button" class="ghost" onclick="scoreAddGuest()" style="flex:none;margin:0 0 0 auto;padding:5px 11px;font-size:13px;color:var(--pri)">＋ 加來賓</button></div>';
+  scGuests.forEach(function(g,i){
+    h+='<div class="agst"><input type="text" placeholder="來賓姓名" value="'+esc(g.name)+'" oninput="scoreGuestName('+i+',this.value)">'+
+      '<input type="number" class="sg" inputmode="numeric" placeholder="總桿" value="'+(g.gross===''?'':g.gross)+'" oninput="scoreGuestGross('+i+',this)">'+
+      '<button type="button" class="mtog'+(g.meal?' on':'')+'" onclick="scoreGuestMeal('+i+')">🍽 '+(g.meal?'留餐':'不留餐')+'</button>'+
+      '<button type="button" class="ghost" onclick="scoreGuestDel('+i+')" style="flex:none;margin:0;padding:6px 7px;border:none;color:#791F1F">✕</button></div>'; });
+  document.getElementById('scoreGuests').innerHTML=h+'</div>';
+}
+function scoreAddGuest(){
+  scGuests.push({name:'', meal:false, gross:''}); scTouched=true; renderScoreGuests();
+  var ins=document.querySelectorAll('#scoreGuests .agst input[type=text]'); if(ins.length) ins[ins.length-1].focus();
+}
+function scoreGuestName(i,v){ if(!scGuests[i]) return; scGuests[i].name=v; scTouched=true; scoreSaver.touch(); }
+function scoreGuestGross(i,el){
+  var g=scGuests[i]; if(!g) return; scTouched=true; var v=el.value.trim(), row=el.closest('.agst'), inv=false, changed=false;
+  if(v===''){ if(g.gross!==''){ g.gross=''; changed=true; } }
+  else { var n=scValid(v); if(n==null) inv=true; else if(g.gross!==n){ g.gross=n; changed=true; } }
+  row.classList.toggle('inv',inv);
+  if(changed){ scTouched=true; if(g.name.trim()) scoreSaver.touch(); }
+}
+function scoreGuestMeal(i){ var g=scGuests[i]; if(!g) return; g.meal=!g.meal; scTouched=true; renderScoreGuests(); if(g.name.trim()) scoreSaver.touch(); }
+function scoreGuestDel(i){
+  var g=scGuests[i]; if(!g) return;
+  if(g.name.trim() && !confirm('移除來賓「'+g.name.trim()+'」?'+(g.gross!==''?'\n(已登錄成績 '+g.gross+' 桿,會一併刪除)':''))) return;
+  scGuests.splice(i,1); scTouched=true; renderScoreGuests(); if(g.name.trim()) scoreSaver.touch();
+}
+function setScoreFilter(f){ scFilter=f; updateScoreUI(); }
+function toggleScoreOrder(){ scOrder=(scOrder==='grp')?'cohort':'grp'; renderScore(); }
+function applyScoreFilter(){
+  var q=document.getElementById('scoreSearch').value.trim().toLowerCase(), shown=0, perH={};
+  document.querySelectorAll('#scoreBody .srow').forEach(function(r){
+    var mid=r.getAttribute('data-mid'), on=!!scOn[mid], has=on&&scGross[mid]!=='';
+    var ok=q ? ((r.getAttribute('data-nm')||'').toLowerCase().indexOf(q)>=0||(r.getAttribute('data-c')||'').toLowerCase().indexOf(q)>=0)   /* 搜尋時不分出席與否,全部會員都找 */
+             : ((scFilter==='att'&&on)||(scFilter==='todo'&&on&&!has)||(scFilter==='done'&&has)||(scFilter==='out'&&!on));
+    r.style.display=ok?'':'none'; if(ok){ shown++; perH[r.getAttribute('data-h')]=1; }
+  });
+  document.querySelectorAll('#scoreBody .sh').forEach(function(hd){ hd.style.display=perH[hd.getAttribute('data-h')]?'':'none'; });
+  var em=document.getElementById('scoreEmpty'); em.classList.toggle('hide',shown>0);
+  if(!shown) em.textContent=q?('找不到「'+q+'」'):(scFilter==='todo'?'🎉 出席的人都填好桿數了':(scFilter==='done'?'還沒有人填桿數':(scFilter==='att'?'還沒有出席名單——先做「✅ 出席登記」,或點上面「未出席」直接填':'所有會員都在出席名單裡')));
+}
+/* keepRows=true:只更新數字,不重新過濾——正在「未填」清單裡打字的那一列不會打到一半消失 */
+function updateScoreUI(keepRows){
+  var s=DATA.sessions.find(function(x){return x.id===scoreSid;})||{};
+  var tot=DATA.members.length, att=0, done=0;
+  DATA.members.forEach(function(m){ if(scOn[m.id]){ att++; if(scGross[m.id]!=='') done++; } });
+  document.getElementById('scoreSub').innerHTML=fmtMD(s.date)+(s.courseId?' ｜ '+esc(courseName(s.courseId)):'')+' ｜ <b style="color:'+((att&&done===att)?'#27500A':'var(--pri)')+'">已填 '+done+'/'+att+'</b>';
+  var h=[['att','出席',att],['todo','未填',att-done],['done','已填',done],['out','未出席',tot-att]].map(function(p){
+    return '<button type="button" class="ghost'+(scFilter===p[0]?' on':'')+'" onclick="setScoreFilter(\''+p[0]+'\')">'+p[1]+' '+p[2]+'</button>'; }).join('');
+  if(scHasGroups()) h+='<button type="button" class="ghost" onclick="toggleScoreOrder()" style="margin-left:auto">↕ '+(scOrder==='grp'?'依分組':'依屆別')+'</button>';
+  document.getElementById('scorePills').innerHTML=h;
+  if(!keepRows) applyScoreFilter();
+}
+function scorePayload(){
+  var rows=[];
+  membersByCohort().forEach(function(m){ if(scOn[m.id]) rows.push({sid:scoreSid, mid:m.id, gross:(scGross[m.id]===undefined?'':scGross[m.id])}); });
+  scGuests.forEach(function(g){ var nm=g.name.trim(); if(!nm) return;
+    rows.push({sid:scoreSid, mid:'', guest:true, name:nm, gross:(g.gross===''?'':Number(g.gross)), meal:!!g.meal}); });
+  return {sid:scoreSid, rows:rows};
 }
 /* ===== 會員禮(總幹事)=====
    兩個分頁對應兩件事:A 現場發放(一人一列:🏷️球標+酒 / 👕衣服 兩顆大按鈕)、B 尺寸登記(款式/尺寸/來源+訂購統計)。
