@@ -215,9 +215,6 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .ztab .zp{font-weight:700}
 .ztab .p3{color:#2C7A4B}.ztab .p5{color:#8a5a00}
 /* 獎項洞設定:黑白切一眼判斷 */
-#holeBody select.aw-bw{background:#FBEAF0;color:#A32D2D;font-weight:700;border-color:#E0A6A6}
-#holeBody select.aw-pon{color:#1F7A34;font-weight:600}
-#holeBody tr.row-bw>td{background:#FBE6EC}
 .cgrp td{background:#EEF3EC;color:var(--pri);font-weight:700;font-size:13px;padding:6px 10px;border-top:1px solid var(--line);position:sticky;top:0}
 .cgrp .n{color:var(--sub);font-weight:400;margin-left:4px}
 /* 會員程度標記(依高球生活) */
@@ -501,44 +498,67 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 
 <div class="nav" id="navBar"></div>
 
-<!-- 場次表單 -->
+<!-- 場次表單(總幹事):分區塊填寫,儲存鍵固定在底部;類型/狀態/盃賽用按鈕選(底下仍是原本的 select,儲存邏輯不變) -->
 <div class="overlay full" id="sessOv"><div class="sheet sheet-full">
-  <div class="head" style="margin-top:0"><b id="sessFormTitle">＋ 新增場次</b><button class="ghost" onclick="closeOv('sessOv')">✕</button></div>
+  <div class="gtop"><div class="head"><b id="sessFormTitle">＋ 新增場次</b><button class="ghost" onclick="closeSessForm()">✕</button></div></div>
   <input type="hidden" id="sId">
-  <label>類型</label><select id="sType" onchange="syncType()"><option>月例賽</option><option>外地賽</option><option>國外賽</option></select>
-  <!-- 所屬行程(外地/國外賽:把多天綁在一起，行事曆自動合成一塊) -->
-  <div id="sTripWrap" class="hide">
-    <label>所屬行程 <span class="sub" style="font-weight:400">(同行程的天在行事曆合成一塊)</span></label>
-    <select id="sTrip" onchange="onTripSel()"></select>
-    <input type="text" id="sTripNew" class="hide" placeholder="新行程名稱，例:秋季兩日外地賽">
-    <label>計分性質</label>
-    <select id="sScoring"><option>例賽</option><option>友誼賽</option></select>
+  <div id="sessFormBody" oninput="sessDirty=true" onchange="sessDirty=true">
+    <div class="card" style="padding:11px 12px">
+      <div class="sh" style="margin:0 0 6px">基本</div>
+      <select id="sType" class="hide" onchange="syncType()"><option>月例賽</option><option>外地賽</option><option>國外賽</option></select>
+      <div id="sTypeSeg" class="gpills"></div>
+      <label>日期</label><input type="date" id="sDate" onchange="sessDateHint()">
+      <label>名稱</label><input type="text" id="sName" placeholder="例:8月例賽 / 秋季兩日外地賽">
+      <label>狀態</label><select id="sStatus" class="hide"></select>
+      <div id="sStatusSeg" class="gpills" style="margin-bottom:0"></div>
+    </div>
+    <!-- 所屬行程(外地/國外賽:把多天綁在一起，行事曆自動合成一塊) -->
+    <div class="card hide" id="sTripWrap" style="padding:11px 12px">
+      <div class="sh" style="margin:0 0 6px">外地 / 國外賽</div>
+      <label>所屬行程 <span class="sub" style="font-weight:400">(同行程的天在行事曆合成一塊)</span></label>
+      <select id="sTrip" onchange="onTripSel()"></select>
+      <input type="text" id="sTripNew" class="hide" placeholder="新行程名稱，例:秋季兩日外地賽">
+      <label>計分性質</label><select id="sScoring" class="hide"><option>例賽</option><option>友誼賽</option></select>
+      <div id="sScoringSeg" class="gpills"></div>
+      <div id="sRegWrap"><label>報名連結 <span class="sub" style="font-weight:400">(貼 Google 表單或 LINE 連結)</span></label><input type="url" id="sRegUrl" placeholder="https://..." style="margin-bottom:0"></div>
+    </div>
+    <div class="card" style="padding:11px 12px">
+      <div class="sh" style="margin:0 0 6px">球場</div>
+      <select id="sCourse" onchange="fillZoneSel();sessParHint()"></select>
+      <div class="row" style="gap:8px" id="sZoneWrap">
+        <div style="flex:1"><label>前九區</label><select id="sZoneOut" onchange="sessParHint()"></select></div>
+        <div style="flex:1"><label>後九區</label><select id="sZoneIn" onchange="sessParHint()"></select></div>
+      </div>
+      <div id="sZoneAuto" class="sub hide" style="margin:-2px 0 9px 2px;color:var(--pri)"></div>
+      <label>標準桿 <span class="sub" style="font-weight:400">(預設 72,留空即可)</span></label><input type="number" id="sPar" inputmode="numeric" placeholder="72" style="margin-bottom:4px">
+      <div id="sParHint" class="sub" style="margin:0 2px"></div>
+    </div>
+    <div class="card" style="padding:11px 12px">
+      <div class="sh" style="margin:0 0 6px">時間・人數</div>
+      <div class="row" style="gap:8px">
+        <div style="flex:1"><label>集合時間</label><input type="time" id="sMeet"></div>
+        <div style="flex:1"><label>開球時間</label><input type="time" id="sTee"></div>
+      </div>
+      <div class="row" style="gap:8px">
+        <div style="flex:1"><label>報名人數</label><input type="number" id="sHeads" inputmode="numeric" placeholder="例:32" style="margin-bottom:0"></div>
+        <div style="flex:1"><label>組別</label><input type="text" id="sGroups" placeholder="例:8組" style="margin-bottom:0"></div>
+      </div>
+    </div>
+    <div class="card" style="padding:11px 12px">
+      <div class="sh" style="margin:0 0 6px">獎項</div>
+      <label>盃賽 <span class="sub" style="font-weight:400">(掛在此場,選填)</span></label><select id="sCup" class="hide"><option value="">無</option><option>會長盃</option><option>副會長盃</option></select>
+      <div id="sCupSeg" class="gpills"></div>
+      <label>親密獎基準幹部 <span class="sub" style="font-weight:400">(選填,成績判定用)</span></label>
+      <input type="text" id="sBase" placeholder="點下面的幹部,或直接打姓名" oninput="sessBaseHint()" style="margin-bottom:6px">
+      <div id="sBasePick" class="gchips"></div>
+      <div id="sBaseHint" class="sub" style="margin:5px 2px 0"></div>
+    </div>
+    <div class="card" style="padding:11px 12px">
+      <label style="margin-top:0">備註 <span class="sub" style="font-weight:400">(選填)</span></label><input type="text" id="sNote" style="margin-bottom:0">
+    </div>
   </div>
-  <label>日期</label><input type="date" id="sDate">
-  <label>名稱</label><input type="text" id="sName" placeholder="例:8月例賽 / 秋季兩日外地賽">
-  <label>球場</label><select id="sCourse" onchange="fillZoneSel()"></select>
-  <div class="row" style="gap:8px" id="sZoneWrap">
-    <div style="flex:1"><label>前九區</label><select id="sZoneOut"></select></div>
-    <div style="flex:1"><label>後九區</label><select id="sZoneIn"></select></div>
-  </div>
-  <div id="sZoneAuto" class="sub hide" style="margin:-2px 0 9px 2px;color:var(--pri)"></div>
-  <label>標準桿 <span class="sub" style="font-weight:400">(預設 72,留空即可;當日組合非 72 才填,影響差點計算)</span></label><input type="number" id="sPar" inputmode="numeric" placeholder="72">
-
-  <div class="row" style="gap:8px">
-    <div style="flex:1"><label>集合時間</label><input type="time" id="sMeet"></div>
-    <div style="flex:1"><label>開球時間</label><input type="time" id="sTee"></div>
-  </div>
-  <div class="row" style="gap:8px">
-    <div style="flex:1"><label>報名人數</label><input type="number" id="sHeads" inputmode="numeric" placeholder="例:32"></div>
-    <div style="flex:1"><label>組別</label><input type="text" id="sGroups" placeholder="例:8組"></div>
-  </div>
-  <label>狀態</label><select id="sStatus"></select>
-  <div id="sRegWrap"><label>報名連結(外地賽/國外賽用；貼 Google 表單或 LINE 連結)</label><input type="url" id="sRegUrl" placeholder="https://..."></div>
-  <label>盃賽(掛在此場，選填)</label><select id="sCup"><option value="">無</option><option>會長盃</option><option>副會長盃</option></select>
-  <label>親密獎基準幹部(選填，成績判定用)</label><input type="text" id="sBase" placeholder="幹部姓名">
-  <label>備註(選填)</label><input type="text" id="sNote">
-  <button class="btn" onclick="saveSess()">儲存場次</button>
-  <button class="btn sec hide" id="sDelBtn" onclick="delSess()" style="color:#791F1F;border-color:#F0CAD6">刪除此場次</button>
+  <button class="btn sec hide" id="sDelBtn" onclick="delSess()" style="color:#791F1F;border-color:#F0CAD6;margin-bottom:6px">刪除此場次</button>
+  <div style="position:sticky;bottom:0;background:#fff;padding:10px 0 4px;border-top:1px solid var(--line);z-index:2"><button class="btn" style="margin:0" onclick="saveSess()">儲存場次</button></div>
 </div></div>
 
 <!-- 編輯球員資料(總幹事；只改 golf 判定欄位，識別欄沿用會員名冊) -->
@@ -698,13 +718,17 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
   <div id="awShowBody"></div>
 </div></div>
 
-<!-- 獎項洞設定 -->
+<!-- 獎項洞設定(總幹事):前後九各 9 格,點一格切換 PAR ON → 黑白切 → 不設;統計固定在上方;手動儲存(會影響已登錄的技術獎) -->
 <div class="overlay full" id="holeOv"><div class="sheet sheet-full">
-  <div class="head" style="margin-top:0"><b id="holeTitle">🚩 獎項洞設定</b><button class="ghost" onclick="closeOv('holeOv')">✕</button></div>
-  <p class="sub" id="holeSub" style="margin:0 0 8px"></p>
-  <button type="button" class="ghost" onclick="autoFillHoles()" style="width:100%;margin:0 0 10px;border-style:dashed;padding:9px;color:var(--pri)">🪄 一鍵套用辦法(前後九各:三/四/五桿各2・黑白切3)</button>
+  <div class="gtop">
+    <div class="head"><b id="holeTitle">🚩 獎項洞設定</b><button class="ghost" onclick="closeHoleCfg()">✕</button></div>
+    <p class="sub" id="holeSub" style="margin:0 0 6px"></p>
+    <div id="holeCount" style="margin:0 0 2px;line-height:1.5"></div>
+  </div>
+  <button type="button" class="ghost" onclick="autoFillHoles()" style="width:100%;margin:6px 0 4px;border-style:dashed;padding:9px;color:var(--pri)">🪄 一鍵套用辦法(前後九各:三/四/五桿各2・黑白切3)</button>
   <div id="holeBody"></div>
-  <button class="btn" onclick="saveHoles()">儲存獎項洞</button>
+  <p class="sub" style="margin:6px 2px 8px">點一格切換:🟢 PAR ON → 🚩 黑白切 → 不設獎。辦法標準是每九 PAR ON 三/四/五桿各 2 洞、黑白切 3 洞;上方的數字變綠就是符合。</p>
+  <div style="position:sticky;bottom:0;background:#fff;padding:10px 0 4px;border-top:1px solid var(--line);z-index:2"><button class="btn" style="margin:0" onclick="saveHoles()">儲存獎項洞</button></div>
 </div></div>
 
 <!-- 獎項表單 -->
@@ -814,7 +838,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.19f', EXPECT_GS='v2026.10.24';
+var GP_BUILD='v2026.11.19g', EXPECT_GS='v2026.10.24';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS){ el.classList.add('hide'); el.textContent=''; }
@@ -2946,6 +2970,39 @@ function syncType(){
   document.getElementById('sRegWrap').classList.toggle('hide', !away);
   document.getElementById('sTripWrap').classList.toggle('hide', !away);
 }
+/* 場次表單輔助:按鈕組(底下仍是隱藏的 select,儲存邏輯讀 select 值)、標準桿提示、親密獎基準幹部點選、未存離開確認 */
+var sessDirty=false;
+function segSync(selId){
+  var sel=document.getElementById(selId), box=document.getElementById(selId+'Seg'); if(!sel||!box) return;
+  box.innerHTML=[].map.call(sel.options,function(o){ return '<button type="button" class="ghost'+(o.value===sel.value?' on':'')+'" data-v="'+esc(o.value)+'">'+esc(o.textContent)+'</button>'; }).join('');
+  [].forEach.call(box.children,function(b){ b.onclick=function(){ sel.value=b.getAttribute('data-v'); sessDirty=true; if(sel.onchange) sel.onchange(); segSync(selId); }; });
+}
+function closeSessForm(){ if(sessDirty && !confirm('場次有尚未儲存的變更,確定要關閉?')) return; closeOv('sessOv'); }
+function sessParHint(){
+  var el=document.getElementById('sParHint'), c=DATA.courses.find(function(x){return x.id===document.getElementById('sCourse').value}), t='';
+  if(c&&c.zones&&c.zones.length){
+    var zo=c.zones.find(function(z){return z.code===document.getElementById('sZoneOut').value}), zi=c.zones.find(function(z){return z.code===document.getElementById('sZoneIn').value});
+    if((!zo||!zi)&&c.zones.length===2){ zo=c.zones[0]; zi=c.zones[1]; }
+    if(zo&&zi){ var par=zo.pars.concat(zi.pars).reduce(function(a,b){return a+b;},0);
+      t=(par===72)?'這個組合的球場標準桿是 Par 72。':('這個組合的球場標準桿是 <b style="color:var(--warn)">Par '+par+'</b>。差點計算預設仍用 72;這一場要改用 '+par+' 才在上面填 '+par+'。'); }
+  }
+  el.innerHTML=t;
+}
+function sessDateHint(){   /* 月例賽選了日期、名稱還空著 → 帶入「N月例賽」 */
+  var d=document.getElementById('sDate').value, nm=document.getElementById('sName');
+  if(d && !nm.value.trim() && document.getElementById('sType').value==='月例賽') nm.value=(+d.slice(5,7))+'月例賽';
+}
+function sessBasePick(){   /* 本屆幹部一鍵帶入:親密獎判定要姓名完全相同,點選比手打保險 */
+  var cur=document.getElementById('sBase').value.trim();
+  var cad=DATA.members.filter(function(m){return m.cadre;});
+  document.getElementById('sBasePick').innerHTML=cad.map(function(m){
+    return '<button type="button" class="pchip'+(m.name===cur?' in':'')+(m.sex==='女'?' f':'')+'" data-n="'+esc(m.name)+'" title="'+esc(m.cadre)+'" style="padding:6px 10px;min-height:34px;font-size:14px" onclick="var i=document.getElementById(\'sBase\');i.value=(i.value.trim()===this.getAttribute(\'data-n\'))?\'\':this.getAttribute(\'data-n\');sessDirty=true;sessBaseHint()">'+esc(m.name)+'</button>'; }).join('');
+}
+function sessBaseHint(){
+  var v=document.getElementById('sBase').value.trim(), el=document.getElementById('sBaseHint'), m=v?DATA.members.find(function(x){return x.name===v;}):null;
+  el.innerHTML=!v?'':(m?('✓ '+esc(m.name)+(m.cadre?'・'+esc(m.cadre):'')):'<span style="color:#A32D2D">名冊裡找不到「'+esc(v)+'」。親密獎判定要姓名完全相同,請確認有沒有打錯。</span>');
+  sessBasePick();
+}
 function openSess(id){
   var s=id?DATA.sessions.find(function(x){return x.id===id}):null;
   document.getElementById('sessFormTitle').textContent=s?('✎ 編輯場次 '+s.id):'＋ 新增場次';
@@ -2970,6 +3027,8 @@ function openSess(id){
   document.getElementById('sScoring').value=(s&&s.scoring)?s.scoring:'例賽';
   document.getElementById('sDelBtn').classList.toggle('hide',!s);
   syncType();
+  ['sType','sStatus','sScoring','sCup'].forEach(segSync);
+  sessParHint(); sessBaseHint(); sessDirty=false;
   openOv('sessOv');
 }
 function saveSess(){
@@ -2995,84 +3054,93 @@ function saveSess(){
   var parV=document.getElementById('sPar').value;
   if(parV!==''){ parV=Number(parV); if(!(parV>=60&&parV<=80)){ toast('標準桿需在 60~80 之間(預設 72 請留空)'); return; } }
   p.par=(parV===''?'':parV);
-  api('sessUpsert',p).then(function(){ closeOv('sessOv'); toast('✓ 已儲存場次'); return refresh(); }).catch(function(e){ toast(e.message); });
+  api('sessUpsert',p).then(function(){ sessDirty=false; closeOv('sessOv'); toast('✓ 已儲存場次'); return refresh(); }).catch(function(e){ toast(e.message); });
 }
 
 function delSess(){ var id=document.getElementById('sId').value; if(!confirm('刪除場次 '+id+'?')) return;
-  api('sessDel',{id:id}).then(function(){ closeOv('sessOv'); toast('✓ 已刪除'); return refresh(); }).catch(function(e){ toast(e.message); }); }
+  api('sessDel',{id:id}).then(function(){ sessDirty=false; closeOv('sessOv'); toast('✓ 已刪除'); return refresh(); }).catch(function(e){ toast(e.message); }); }
 
-/* 獎項洞設定(公告與判定共用一份) */
-var holeCfgSid=null;
-function holeAwardOpts(cur){ return [['','—'],['paron','PAR ON獎'],['bwcut','黑白切獎']].map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===cur?' selected':'')+'>'+o[1]+'</option>'; }).join(''); }
+/* 獎項洞設定(公告與判定共用一份):前後九各 9 格,點一格切換 PAR ON → 黑白切 → 不設。
+   手動儲存:改洞的獎別會讓該洞已登錄的技術獎失效,所以存之前要讓總幹事確認 */
+var holeCfgSid=null, holeAw=[], holePars=[], holeZones=null, holeDirty=false;
+function holeResolve(s){   /* 取本場前後九分區;18洞(2區)球場自動帶入 */
+  var c=DATA.courses.find(function(x){return x.id===s.courseId});
+  if(!c||!c.zones||!c.zones.length) return {err:'此球場尚無逐洞資料，請先到球場主檔補分區 PAR'};
+  var zo=c.zones.find(function(z){return z.code===s.zoneOut}), zi=c.zones.find(function(z){return z.code===s.zoneIn});
+  if((!zo||!zi)&&c.zones.length===2){ zo=c.zones[0]; zi=c.zones[1]; }
+  if(!zo||!zi) return {err:'27洞以上球場，請先在場次編輯選好前九/後九區'};
+  return {c:c, zo:zo, zi:zi, mz:c.zones.length>2};
+}
 function openHoleConfig(sid){
   var s=DATA.sessions.find(function(x){return x.id===sid}); if(!s) return;
-  var c=DATA.courses.find(function(x){return x.id===s.courseId});
-  if(!c||!c.zones||!c.zones.length){ toast('此球場尚無逐洞資料，請先到球場主檔補分區 PAR'); return; }
-  var zo=c.zones.find(function(z){return z.code===s.zoneOut}), zi=c.zones.find(function(z){return z.code===s.zoneIn});
-  /* 18洞(2區)球場:前後九自動，免設定 */
-  if((!zo||!zi)&&c.zones.length===2){ zo=c.zones[0]; zi=c.zones[1]; }
-  if(!zo||!zi){ toast('27洞以上球場，請先在場次編輯選好前九/後九區'); return; }
-  holeCfgSid=sid;
-  document.getElementById('holeTitle').textContent='🚩 '+s.name+'・獎項洞設定';
-  document.getElementById('holeSub').textContent=c.name+' ｜ 前九 '+zo.name+'、後九 '+zi.name+' ｜ PAR 來自球場，逐洞指定獎項';
-  var mz=c.zones.length>2;
-  var pars=zo.pars.concat(zi.pars), aw=(s.holeAwards&&s.holeAwards.length===18)?s.holeAwards.slice():new Array(18).fill('');
-  var h='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th style="width:32px">洞</th><th>區</th><th>PAR</th><th style="width:118px">獎項洞</th></tr></thead><tbody>';
-  for(var i=0;i<18;i++){
-    if(i===0 && mz) h+='<tr><td colspan="4" class="sub" style="text-align:center;background:#FBF8F3;font-weight:600">— '+esc(zo.name)+' —</td></tr>';
-    if(i===9) h+='<tr><td colspan="4" class="sub" style="text-align:center;background:#FBF8F3;font-weight:600">— '+(mz?esc(zi.name):'後九')+' —</td></tr>';
-    h+='<tr><td class="mono"><b>'+(mz?(i<9?i+1:i-8):(i+1))+'</b></td><td class="sub">'+esc(i<9?zo.name:zi.name)+'</td><td class="mono">Par'+pars[i]+'</td>'+
-      '<td><select data-h="'+i+'" style="margin:0;padding:6px;font-size:14px">'+holeAwardOpts(aw[i])+'</select></td></tr>';
-  }
-  h+='</tbody></table></div><div id="holeCount" class="sub" style="margin:8px 2px;line-height:1.5"></div>';
+  var r=holeResolve(s); if(r.err){ toast(r.err); return; }
+  holeCfgSid=sid; holeZones=r; holePars=r.zo.pars.concat(r.zi.pars);
+  holeAw=(s.holeAwards&&s.holeAwards.length===18)?s.holeAwards.slice():new Array(18).fill('');
+  holeDirty=false;
+  document.getElementById('holeTitle').textContent='🚩 獎項洞・'+((s.tripName?s.tripName+'・':'')+s.name);
+  document.getElementById('holeSub').textContent=r.c.name+' ｜ 前九 '+r.zo.name+'、後九 '+r.zi.name;
+  renderHoleCfg(); openOv('holeOv');
+}
+function closeHoleCfg(){ if(holeDirty && !confirm('獎項洞有尚未儲存的變更,確定要關閉?')) return; closeOv('holeOv'); }
+function holeTile(i){
+  var v=holeAw[i], num=holeZones.mz?(i<9?i+1:i-8):(i+1);
+  var st=(v==='paron')?'background:#EAF3DE;border-color:#B9D9A0;color:#27500A':((v==='bwcut')?'background:#FBE9EC;border-color:#EDB9C4;color:#8C1D2F':'background:#fff;color:var(--sub)');
+  return '<button type="button" class="kchip" data-h="'+i+'" style="min-height:60px;white-space:normal;line-height:1.35;'+st+'" onclick="holeCycle('+i+')">'+
+    '<b style="font-size:15px">第'+num+'洞</b> <span style="font-size:11px;font-weight:400">Par'+holePars[i]+'</span><br>'+
+    '<span style="font-size:12px">'+(v==='paron'?'🟢 PAR ON':(v==='bwcut'?'🚩 黑白切':'— 不設'))+'</span></button>';
+}
+function renderHoleCfg(){
+  var z=holeZones, h='';
+  [[0,9,z.mz?z.zo.name:'前九'],[9,18,z.mz?z.zi.name:'後九']].forEach(function(rg){
+    var par=0; for(var k=rg[0];k<rg[1];k++) par+=holePars[k];
+    h+='<div class="sh">'+esc(rg[2])+'・Par '+par+'</div><div class="kgrid">';
+    for(var i=rg[0];i<rg[1];i++) h+=holeTile(i);
+    h+='</div>';
+  });
   document.getElementById('holeBody').innerHTML=h;
-  document.getElementById('holeBody').querySelectorAll('select[data-h]').forEach(function(sel){ sel.onchange=updateHoleCount; });
-  updateHoleCount(); openOv('holeOv');
+  updateHoleCount();
+}
+function holeCycle(i){
+  var v=holeAw[i]; holeAw[i]=(v==='paron')?'bwcut':((v==='bwcut')?'':'paron'); holeDirty=true;
+  var b=document.querySelector('#holeBody .kchip[data-h="'+i+'"]'); if(b) b.outerHTML=holeTile(i);
+  updateHoleCount();
 }
 function holeStats(){
-  var s=DATA.sessions.find(function(x){return x.id===holeCfgSid}), c=DATA.courses.find(function(x){return x.id===s.courseId});
-  var zo=c.zones.find(function(z){return z.code===s.zoneOut}), zi=c.zones.find(function(z){return z.code===s.zoneIn});
-  if((!zo||!zi)&&c.zones.length===2){ zo=c.zones[0]; zi=c.zones[1]; }
-  var pars=zo.pars.concat(zi.pars), sels=document.getElementById('holeBody').querySelectorAll('select[data-h]');
-  function tally(a,b){ var t={p3:0,p4:0,p5:0,bw:0,un:0}; for(var i=a;i<b;i++){ var pr=pars[i], v=sels[i].value;
+  function tally(a,b){ var t={p3:0,p4:0,p5:0,bw:0,un:0}; for(var i=a;i<b;i++){ var pr=holePars[i], v=holeAw[i];
     if(v==='paron'){ pr===3?t.p3++:(pr===4?t.p4++:t.p5++); } else if(v==='bwcut') t.bw++; else t.un++; } return t; }
-  return {pars:pars, front:tally(0,9), back:tally(9,18), mz:c.zones.length>2, zoNm:zo.name, ziNm:zi.name};
+  return {pars:holePars, front:tally(0,9), back:tally(9,18), mz:holeZones.mz, zoNm:holeZones.zo.name, ziNm:holeZones.zi.name};
 }
 function nineChips(t,label){
   var chip=function(l,cur,tgt){ var ok=(cur===tgt); return '<span style="display:inline-block;padding:2px 8px;border-radius:6px;margin:0 4px 4px 0;font-size:12px;font-weight:600;background:'+(ok?'#EAF3EC':'#FBE6EC')+';color:'+(ok?'#1F7A34':'#A32D2D')+'">'+l+' '+cur+'/'+tgt+(ok?'✓':'✗')+'</span>'; };
-  return '<div style="margin-bottom:4px"><b style="font-size:12px">'+label+'</b> '+chip('三桿',t.p3,2)+chip('四桿',t.p4,2)+chip('五桿',t.p5,2)+chip('黑白切',t.bw,3)+(t.un?'<span style="color:#A32D2D;font-size:12px">未指定'+t.un+'</span>':'')+'</div>';
-}
-function paintHoleSel(sel){
-  var v=sel.value, tr=sel.closest('tr');
-  sel.classList.toggle('aw-bw', v==='bwcut');
-  sel.classList.toggle('aw-pon', v==='paron');
-  if(tr) tr.classList.toggle('row-bw', v==='bwcut');
+  return '<div style="margin-bottom:2px"><b style="font-size:12px">'+label+'</b> '+chip('三桿',t.p3,2)+chip('四桿',t.p4,2)+chip('五桿',t.p5,2)+chip('黑白切',t.bw,3)+(t.un?'<span style="color:#A32D2D;font-size:12px">不設 '+t.un+'</span>':'')+'</div>';
 }
 function updateHoleCount(){
-  document.getElementById('holeBody').querySelectorAll('select[data-h]').forEach(paintHoleSel);
   var r=holeStats();
-  document.getElementById('holeCount').innerHTML=nineChips(r.front,r.mz?r.zoNm:'前九')+nineChips(r.back,r.mz?r.ziNm:'後九')+
-    '<div style="color:#8a5a00;margin-top:2px">每九:PAR ON 三/四/五桿各 2 洞・黑白切 3 洞</div>';
+  document.getElementById('holeCount').innerHTML=nineChips(r.front,r.mz?r.zoNm:'前九')+nineChips(r.back,r.mz?r.ziNm:'後九');
 }
 function autoFillHoles(){
-  var r=holeStats(), sels=document.getElementById('holeBody').querySelectorAll('select[data-h]');
+  if(holeAw.some(function(v){return v;}) && !confirm('一鍵套用會蓋掉目前的設定(黑白切洞每九從四桿洞隨機抽 3),繼續?')) return;
   [[0,9],[9,18]].forEach(function(rg){
     var p4holes=[];
-    for(var i=rg[0];i<rg[1];i++){ var pr=r.pars[i];
-      if(pr===3||pr===5){ sels[i].value='paron'; } else { sels[i].value='paron'; p4holes.push(i); } }
-    /* 每九從 par4 洞隨機抽 3 個當黑白切，其餘 par4 維持 PAR ON */
+    for(var i=rg[0];i<rg[1];i++){ holeAw[i]='paron'; if(holePars[i]!==3&&holePars[i]!==5) p4holes.push(i); }
+    /* 每九從 par4 洞隨機抽 3 個當黑白切，其餘維持 PAR ON */
     for(var k=p4holes.length-1;k>0;k--){ var j=Math.floor(Math.random()*(k+1)); var t=p4holes[k]; p4holes[k]=p4holes[j]; p4holes[j]=t; }
-    for(var m=0;m<Math.min(3,p4holes.length);m++){ sels[p4holes[m]].value='bwcut'; }
+    for(var m=0;m<Math.min(3,p4holes.length);m++){ holeAw[p4holes[m]]='bwcut'; }
   });
-  updateHoleCount(); toast('已套用(黑白切洞每九隨機抽3)');
+  holeDirty=true; renderHoleCfg(); toast('已套用(黑白切洞每九隨機抽3);記得按下方「儲存獎項洞」');
 }
 function saveHoles(){
-  var aw=[]; document.getElementById('holeBody').querySelectorAll('select[data-h]').forEach(function(sel){ aw.push(sel.value); });
-  var r=holeStats(), probs=[];
-  function chk(t,lb){ if(t.p3!==2)probs.push(lb+'三桿PARON '+t.p3+'(應2)'); if(t.p4!==2)probs.push(lb+'四桿PARON '+t.p4+'(應2)'); if(t.p5!==2)probs.push(lb+'五桿PARON '+t.p5+'(應2)'); if(t.bw!==3)probs.push(lb+'黑白切 '+t.bw+'(應3)'); if(t.un)probs.push(lb+'未指定 '+t.un+'洞'); }
+  var aw=holeAw.slice(), r=holeStats(), probs=[], s=DATA.sessions.find(function(x){return x.id===holeCfgSid})||{};
+  function chk(t,lb){ if(t.p3!==2)probs.push(lb+'三桿PARON '+t.p3+'(應2)'); if(t.p4!==2)probs.push(lb+'四桿PARON '+t.p4+'(應2)'); if(t.p5!==2)probs.push(lb+'五桿PARON '+t.p5+'(應2)'); if(t.bw!==3)probs.push(lb+'黑白切 '+t.bw+'(應3)'); if(t.un)probs.push(lb+'不設獎 '+t.un+'洞'); }
   chk(r.front,(r.mz?r.zoNm:'前九')+':'); chk(r.back,(r.mz?r.ziNm:'後九')+':');
   if(probs.length && !confirm('⚠️ 與辦法標準不符:\n\n'+probs.join('\n')+'\n\n仍要儲存嗎?')) return;
-  api('sessUpsert',{id:holeCfgSid, holeAwards:aw}).then(function(){ closeOv('holeOv'); toast('✓ 已儲存獎項洞'); return refresh(); }).catch(function(e){ toast(e.message); });
+  /* 已登錄的技術獎若落在「獎別被改掉」的洞,技術獎登錄頁會不再列出、下次存技術獎時移除 → 先講清楚 */
+  var hit=(DATA.tech||[]).filter(function(t){ return t.sid===holeCfgSid && (t.type==='paron'||t.type==='bwcut') && t.hole>=1 && t.hole<=18 && aw[t.hole-1]!==t.type; });
+  if(hit.length){
+    var lines=hit.slice(0,8).map(function(t){ var m=memById(t.mid); return holeLabel(s,t.hole)+' '+(t.type==='bwcut'?'黑白切':'PAR ON')+':'+(m?m.name:t.mid); });
+    if(!confirm('⚠️ 有 '+hit.length+' 筆已登錄的技術獎在被改掉的洞上:\n\n'+lines.join('\n')+(hit.length>8?'\n…':'')+'\n\n儲存後這些紀錄在技術獎登錄頁不會再列出,下次存技術獎時會被移除。仍要儲存嗎?')) return;
+  }
+  api('sessUpsert',{id:holeCfgSid, holeAwards:aw}).then(function(){ holeDirty=false; closeOv('holeOv'); toast('✓ 已儲存獎項洞'); return refresh(); }).catch(function(e){ toast(e.message); });
 }
 function zoneSubtotal(el){ var s=0; el.querySelectorAll('.z-par').forEach(function(x){ s+=(+x.value)||0; }); el.querySelector('.z-sub').textContent='Par 合計 '+s; }
 function addZone(z){
