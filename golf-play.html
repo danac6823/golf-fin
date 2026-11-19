@@ -348,17 +348,17 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .mtog{flex:none;margin:0;padding:7px 9px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-size:13px;color:var(--sub);cursor:pointer;white-space:nowrap}
 .mtog.on{background:var(--gold-soft);border-color:#E0B36A;color:#8A6A1E;font-weight:600}
 /* 成績登錄:一人一列(姓名・總桿大輸入框・淨桿) */
-.srow{display:flex;align-items:center;gap:8px;padding:7px 2px;border-top:1px solid var(--line)}
-.srow .nm{flex:1;min-width:0;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.srow .nm .hc{font-size:11px;color:var(--sub);font-weight:400;margin-left:5px}
-.srow .sg{flex:none;width:76px;margin:0;padding:9px 4px;text-align:center;font-size:17px;font-weight:600}
-.srow .net{flex:none;width:52px;text-align:right;font-size:13px;font-weight:700;color:var(--pri)}
-.srow .sx{flex:none;width:30px;margin:0;padding:6px 0;border:none;background:none;color:#B9B2A7;font-size:14px;cursor:pointer}
-.srow.has .sg{background:#F3F8F4;border-color:#B9D9A0}
-.srow.inv .sg{background:#FDF0EF;border-color:#D9534F}
-.srow.inv .net{color:#A32D2D}
-.srow.out .nm{color:var(--sub);font-weight:400}
-.srow.out .sx{color:var(--pri);font-size:18px}
+.scline{display:flex;align-items:center;gap:8px;padding:7px 2px;border-top:1px solid var(--line)}
+.scline .nm{flex:1;min-width:0;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scline .nm .hc{font-size:11px;color:var(--sub);font-weight:400;margin-left:5px}
+.scline .sg{flex:none;width:76px;margin:0;padding:9px 4px;text-align:center;font-size:17px;font-weight:600}
+.scline .net{flex:none;width:52px;text-align:right;font-size:13px;font-weight:700;color:var(--pri)}
+.scline .sx{flex:none;width:30px;margin:0;padding:6px 0;border:none;background:none;color:#B9B2A7;font-size:14px;cursor:pointer}
+.scline.has .sg{background:#F3F8F4;border-color:#B9D9A0}
+.scline.inv .sg{background:#FDF0EF;border-color:#D9534F}
+.scline.inv .net{color:#A32D2D}
+.scline.out .nm{color:var(--sub);font-weight:400}
+.scline.out .sx{color:var(--pri);font-size:18px}
 .sh{font-size:12px;font-weight:600;color:var(--sub);margin:10px 2px 3px}
 .agst .sg{flex:none;width:62px;margin:0;padding:8px 2px;text-align:center;font-size:15px;font-weight:600}
 .agst.inv .sg{background:#FDF0EF;border-color:#D9534F}
@@ -809,7 +809,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.19d', EXPECT_GS='v2026.10.24';
+var GP_BUILD='v2026.11.19e', EXPECT_GS='v2026.10.24';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS){ el.classList.add('hide'); el.textContent=''; }
@@ -1086,7 +1086,7 @@ function openScore(sid){
   refresh().then(function(){ if(scoreSid===sid && !scTouched && !scoreSaver.busy() && ovOpen('scoreOv')){ scBuildModel(sid); renderScore(); } });
 }
 function closeScore(){ closeOv('scoreOv'); scoreSaver.whenSaved(function(){ refresh(); }); }
-function scRowCls(mid){ var on=!!scOn[mid]; return 'srow'+(on?'':' out')+((on&&scGross[mid]!=='')?' has':''); }
+function scRowCls(mid){ var on=!!scOn[mid]; return 'scline'+(on?'':' out')+((on&&scGross[mid]!=='')?' has':''); }
 function scNetText(mid){
   if(!scOn[mid]||scGross[mid]==='') return '';
   var hc=hcpForSession(mid, scoreSid); return (hc||hc===0)?('淨'+(scGross[mid]-hc)):'無差點';
@@ -1114,13 +1114,13 @@ function renderScore(){
   renderScoreGuests(); updateScoreUI();
 }
 function scRowRefresh(mid){
-  var row=document.querySelector('#scoreBody .srow[data-mid="'+mid+'"]'), m=memById(mid);
+  var row=document.querySelector('#scoreBody .scline[data-mid="'+mid+'"]'), m=memById(mid);
   if(row&&m){ var hk=row.getAttribute('data-h'), disp=row.style.display; row.outerHTML=scRowHtml(m,hk);
-    var nr=document.querySelector('#scoreBody .srow[data-mid="'+mid+'"]'); if(nr) nr.style.display=disp; }
+    var nr=document.querySelector('#scoreBody .scline[data-mid="'+mid+'"]'); if(nr) nr.style.display=disp; }
 }
 function scoreInput(mid,el){
   scTouched=true;   /* 一開始打字就算動過:背景重抓回來時不可重畫,否則打到一半的數字會不見 */
-  var row=el.closest('.srow'), v=el.value.trim(), changed=false, inv=false;
+  var row=el.closest('.scline'), v=el.value.trim(), changed=false, inv=false;
   if(v===''){ if(scOn[mid] && scGross[mid]!==''){ scGross[mid]=''; changed=true; } }
   else { var n=scValid(v);
     if(n==null) inv=true;
@@ -1134,7 +1134,7 @@ function scoreInput(mid,el){
 }
 function scoreKey(e,el){
   if(e.key!=='Enter') return; e.preventDefault();
-  var ins=[].filter.call(document.querySelectorAll('#scoreBody .sg'),function(i){ return i.closest('.srow').style.display!=='none'; });
+  var ins=[].filter.call(document.querySelectorAll('#scoreBody .sg'),function(i){ return i.closest('.scline').style.display!=='none'; });
   var k=ins.indexOf(el); if(k>=0&&ins[k+1]){ ins[k+1].focus(); ins[k+1].select(); } else el.blur();
 }
 function scoreAdd(mid){ scOn[mid]=true; scGross[mid]=''; scTouched=true; scRowRefresh(mid); scoreSaver.touch(); updateScoreUI(true); }
@@ -1176,7 +1176,7 @@ function setScoreFilter(f){ scFilter=f; updateScoreUI(); }
 function toggleScoreOrder(){ scOrder=(scOrder==='grp')?'cohort':'grp'; renderScore(); }
 function applyScoreFilter(){
   var q=document.getElementById('scoreSearch').value.trim().toLowerCase(), shown=0, perH={};
-  document.querySelectorAll('#scoreBody .srow').forEach(function(r){
+  document.querySelectorAll('#scoreBody .scline').forEach(function(r){
     var mid=r.getAttribute('data-mid'), on=!!scOn[mid], has=on&&scGross[mid]!=='';
     var ok=q ? ((r.getAttribute('data-nm')||'').toLowerCase().indexOf(q)>=0||(r.getAttribute('data-c')||'').toLowerCase().indexOf(q)>=0)   /* 搜尋時不分出席與否,全部會員都找 */
              : ((scFilter==='att'&&on)||(scFilter==='todo'&&on&&!has)||(scFilter==='done'&&has)||(scFilter==='out'&&!on));
