@@ -132,6 +132,10 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .calrow.s-done,.rblk.s-done{border-left-color:#BEBAB2;background:#F2F0EC}
 .calrow.s-rain,.rblk.s-rain{border-left-color:#E0A0B2;background:#FCF1F4}
 .calrow.bare{background:none;border:none;box-shadow:none;border-radius:0;padding:2px 0 2px 2px}
+/* 團練(室內模擬器):行事曆上另一種顏色,和賽事區分 */
+.calrow.calprac{border-left-color:#3FA7A0;background:#EDF8F6}
+.calrow.calprac.pracpast{border-left-color:#BEBAB2;background:#F2F0EC}
+.pracbadge{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;background:#D9F0ED;color:#1F6F69;font-weight:700;margin-left:4px}
 .calrow.next:not(.bare){box-shadow:0 0 0 2px rgba(44,122,75,.55)}
 .nextbadge{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--pri2);border-radius:6px;padding:1px 7px;margin-right:6px;vertical-align:middle}
 .simbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--sub);background:#FFF7E6;border:1px solid #F0E4C0;border-radius:10px;padding:8px 11px;margin-bottom:10px}
@@ -465,7 +469,7 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 
   <!-- 場次主檔 -->
   <div id="sessSec" class="hide">
-    <div class="head"><b><span class="hico" data-ic="sess"></span>場次主檔</b><button class="ghost" id="sessAddBtn" onclick="openSess()">＋ 新增場次</button></div>
+    <div class="head"><b><span class="hico" data-ic="sess"></span>場次主檔</b><span><button class="ghost" id="pracAddBtn" onclick="pracBatch()" style="margin-right:6px">🗓 每月團練</button><button class="ghost" id="sessAddBtn" onclick="openSess()">＋ 新增場次</button></span></div>
     <div id="sessBody"></div>
   </div>
 
@@ -505,12 +509,18 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
   <div id="sessFormBody" oninput="sessDirty=true" onchange="sessDirty=true">
     <div class="card" style="padding:11px 12px">
       <div class="sh" style="margin:0 0 6px">基本</div>
-      <select id="sType" class="hide" onchange="syncType()"><option>月例賽</option><option>外地賽</option><option>國外賽</option></select>
+      <select id="sType" class="hide" onchange="syncType()"><option>月例賽</option><option>外地賽</option><option>國外賽</option><option>團練</option></select>
       <div id="sTypeSeg" class="gpills"></div>
       <label>日期</label><input type="date" id="sDate" onchange="sessDateHint()">
       <label>名稱</label><input type="text" id="sName" placeholder="例:8月例賽 / 秋季兩日外地賽">
-      <label>狀態</label><select id="sStatus" class="hide"></select>
-      <div id="sStatusSeg" class="gpills" style="margin-bottom:0"></div>
+      <div id="sStatusRow"><label>狀態</label><select id="sStatus" class="hide"></select>
+      <div id="sStatusSeg" class="gpills" style="margin-bottom:0"></div></div>
+    </div>
+    <!-- 團練:只有地點、說明、時間;不設球場/獎項(行事曆上的活動,不排名不計差點) -->
+    <div class="card hide" id="sPracCard" style="padding:11px 12px">
+      <div class="sh" style="margin:0 0 6px">團練</div>
+      <label>地點</label><input type="text" id="sPracPlace" placeholder="例:Par One室內高爾夫球俱樂部">
+      <label>說明 <span class="sub" style="font-weight:400">(選填,會顯示在行事曆)</span></label><input type="text" id="sPracMemo" placeholder="例:3個室內模擬器包廂・會員免費" style="margin-bottom:0">
     </div>
     <!-- 所屬行程(外地/國外賽:把多天綁在一起，行事曆自動合成一塊) -->
     <div class="card hide" id="sTripWrap" style="padding:11px 12px">
@@ -522,7 +532,7 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
       <div id="sScoringSeg" class="gpills"></div>
       <div id="sRegWrap"><label>報名連結 <span class="sub" style="font-weight:400">(貼 Google 表單或 LINE 連結)</span></label><input type="url" id="sRegUrl" placeholder="https://..." style="margin-bottom:0"></div>
     </div>
-    <div class="card" style="padding:11px 12px">
+    <div class="card" id="sCourseCard" style="padding:11px 12px">
       <div class="sh" style="margin:0 0 6px">球場</div>
       <select id="sCourse" onchange="fillZoneSel();sessParHint()"></select>
       <div class="row" style="gap:8px" id="sZoneWrap">
@@ -534,17 +544,17 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
       <div id="sParHint" class="sub" style="margin:0 2px"></div>
     </div>
     <div class="card" style="padding:11px 12px">
-      <div class="sh" style="margin:0 0 6px">時間・人數</div>
+      <div class="sh" id="sTimeHd" style="margin:0 0 6px">時間・人數</div>
       <div class="row" style="gap:8px">
-        <div style="flex:1"><label>集合時間</label><input type="time" id="sMeet"></div>
-        <div style="flex:1"><label>開球時間</label><input type="time" id="sTee"></div>
+        <div style="flex:1"><label id="sMeetLbl">集合時間</label><input type="time" id="sMeet"></div>
+        <div style="flex:1"><label id="sTeeLbl">開球時間</label><input type="time" id="sTee"></div>
       </div>
-      <div class="row" style="gap:8px">
+      <div class="row" style="gap:8px" id="sHeadRow">
         <div style="flex:1"><label>報名人數</label><input type="number" id="sHeads" inputmode="numeric" placeholder="例:32" style="margin-bottom:0"></div>
         <div style="flex:1"><label>組別</label><input type="text" id="sGroups" placeholder="例:8組" style="margin-bottom:0"></div>
       </div>
     </div>
-    <div class="card" style="padding:11px 12px">
+    <div class="card" id="sAwardCard" style="padding:11px 12px">
       <div class="sh" style="margin:0 0 6px">獎項</div>
       <label>盃賽 <span class="sub" style="font-weight:400">(掛在此場,選填)</span></label><select id="sCup" class="hide"><option value="">無</option><option>會長盃</option><option>副會長盃</option></select>
       <div id="sCupSeg" class="gpills"></div>
@@ -553,7 +563,7 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
       <div id="sBasePick" class="gchips"></div>
       <div id="sBaseHint" class="sub" style="margin:5px 2px 0"></div>
     </div>
-    <div class="card" style="padding:11px 12px">
+    <div class="card" id="sNoteCard" style="padding:11px 12px">
       <label style="margin-top:0">備註 <span class="sub" style="font-weight:400">(選填)</span></label><input type="text" id="sNote" style="margin-bottom:0">
     </div>
   </div>
@@ -832,13 +842,13 @@ function showTab(t){ if(user!=='凌華' && t==='sess') t='cal'; curTab=t;
 }
 function applyRole(r){ user=r;
   var ro=(r!=='凌華');
-  ['sessAddBtn','courseAddBtn'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.toggle('hide',ro); });
+  ['sessAddBtn','pracAddBtn','courseAddBtn'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.toggle('hide',ro); });
 }
 function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.21a', EXPECT_GS='v2026.10.24';
+var GP_BUILD='v2026.11.21b', EXPECT_GS='v2026.10.24';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS){ el.classList.add('hide'); el.textContent=''; }
@@ -1503,7 +1513,7 @@ function dlRosterCsv(){
 var YEAR_COLS=['編號','姓名','出賽','年度平均總桿(72桿基準)','年度新差點','本屆期初','建議次屆期初'];
 function yearCalc(pre){
   var sidPar={};
-  DATA.sessions.forEach(function(s){ if(s.id.indexOf(pre+'-')===0 && s.scoring!=='友誼賽') sidPar[s.id]=sessStdPar(s.id); });
+  DATA.sessions.forEach(function(s){ if(s.id.indexOf(pre+'-')===0 && s.scoring!=='友誼賽' && !isPrac(s)) sidPar[s.id]=sessStdPar(s.id); });
   return DATA.members.slice().sort(function(a,b){ return (cohortRank(a.cohort)-cohortRank(b.cohort))||(a.id<b.id?-1:1); })
     .map(function(m){
       var ds=[]; DATA.scores.forEach(function(x){ if(!x.guest && x.mid===m.id && sidPar[x.sid]!=null && x.gross!==''&&x.gross!=null) ds.push(x.gross - sidPar[x.sid]); });
@@ -2437,6 +2447,60 @@ function togglePast(){ var b=document.getElementById('pastBody'),c=document.getE
   var open=b.classList.toggle('hide')===false; if(c)c.style.transform=open?'rotate(90deg)':''; }
 function nextBadgeHtml(){ return '<span class="nextbadge">'+pi('hourglass')+' 下一場</span>'; }
 /* 單場卡片(從 renderCal 抽出，供過往/未來共用) */
+/* ===== 團練(室內模擬器・會員聯誼):只是行事曆上的活動,不排名、不設獎、不計差點 =====
+   存在場次表:類型='團練';球場留空,備註第一行=地點、其餘=說明;集合時間=開始、開球時間=結束。
+   PRAC_RULE=11/21 總幹事給的排法:每月第 2 個週四,11 月首場依公告為 11/19 */
+var PRAC_RULE={nth:2, dow:4, from:'202611', to:'202707', except:{'202611':'20261119'},
+  place:'Par One室內高爾夫球俱樂部', memo:'3個室內模擬器包廂・會員免費', meet:'19:00', tee:'22:00'};
+function isPrac(s){ return !!s && s.type==='團練'; }
+function pracPlace(s){ return String(s.note||'').split('\n')[0].trim(); }
+function pracMemo(s){ return String(s.note||'').split('\n').slice(1).join(' ').trim(); }
+function pracTime(s){ return (s.meet||'')+(s.meet&&s.tee?'–':'')+(s.tee||''); }
+function nthDowYmd(ym,nth,dow){ var first=new Date(+ym.slice(0,4),+ym.slice(4,6)-1,1), day=1+((dow-first.getDay()+7)%7)+(nth-1)*7; return ym+('0'+day).slice(-2); }
+function pracLast(){ var a=DATA.sessions.filter(isPrac).sort(function(x,y){return String(x.date)<String(y.date)?1:-1;}); return a[0]||null; }
+function pracMissing(){   /* 本屆還沒排團練的月份 → 該月應排的日期 */
+  var has={}, out=[], ym=PRAC_RULE.from;
+  DATA.sessions.forEach(function(s){ if(isPrac(s)) has[String(s.date).slice(0,6)]=1; });
+  while(ym<=PRAC_RULE.to){
+    if(!has[ym]) out.push(PRAC_RULE.except[ym]||nthDowYmd(ym,PRAC_RULE.nth,PRAC_RULE.dow));
+    var y=+ym.slice(0,4), m=+ym.slice(4,6)+1; if(m>12){ m=1; y++; } ym=y+('0'+m).slice(-2);
+  }
+  return out;
+}
+/* 一次把還沒排的月份建好:一場一場依序送(後端編號是取目前最大號+1,不能同時送);
+   中途失敗就停,重新整理後再按一次只會補還缺的月份,不會重複 */
+var pracBusy=false;
+function pracBatch(){
+  if(pracBusy) return;
+  var miss=pracMissing(); if(!miss.length){ toast('本屆每個月的團練都已經排進去了'); return; }
+  var L=pracLast(), place=L?pracPlace(L):PRAC_RULE.place, memo=L?pracMemo(L):PRAC_RULE.memo, meet=L?(L.meet||''):PRAC_RULE.meet, tee=L?(L.tee||''):PRAC_RULE.tee;
+  var exc={}; Object.keys(PRAC_RULE.except).forEach(function(k){ exc[PRAC_RULE.except[k]]=1; });
+  if(!confirm('把每月團練排進行事曆(每月第 2 個週四):\n\n'+miss.map(function(d){ return fmtD(d)+'('+weekOf(d)+')'+(exc[d]?' ← 依公告日期':''); }).join('\n')+
+    '\n\n時間 '+meet+'–'+tee+'\n地點 '+place+'\n\n排好後每一場都可以再單獨改日期或刪除。確定?')) return;
+  pracBusy=true; var i=0, made=0;
+  function next(){
+    if(i>=miss.length) return Promise.resolve();
+    var d=miss[i++]; toast('建立團練 '+i+' / '+miss.length+'…');
+    return api('sessUpsert',{id:'',type:'團練',date:d,name:(+d.slice(4,6))+'月室內團練',courseId:'',zoneOut:'',zoneIn:'',meet:meet,tee:tee,groups:'',heads:'',
+      status:'已預訂',regUrl:'',cup:'',tripId:'',tripName:'',scoring:'',base:'',note:place+(memo?'\n'+memo:''),par:''})
+      .then(function(j){ if(!j||!j.id) throw new Error('建立團練未成功,請再試一次'); made++; return next(); });
+  }
+  next().then(function(){ toast('✓ 已排入 '+made+' 場團練'); })
+    .catch(function(e){ toast('已排入 '+made+' 場後中斷:'+e.message+'(再按一次會補齊剩下的)'); })
+    .then(function(){ pracBusy=false; return refresh(); });
+}
+function pracEventHtml(s){
+  var past=(daysUntil(s.date)<0), pl=pracPlace(s), mm=pracMemo(s), tm=pracTime(s);
+  return '<div class="calrow calprac'+(past?' pracpast':'')+'">'+
+    '<div class="caldate"><div class="d mono">'+(String(s.date).slice(6,8)||'--')+'</div><div class="w">'+weekOf(s.date)+'</div></div>'+
+    '<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:6px;align-items:baseline">'+
+      '<div style="min-width:0"><b style="font-size:16px">'+esc(s.name)+'</b><span class="pracbadge">團練</span></div>'+
+      (past?'<span class="pill st-done">已結束</span>':'')+'</div>'+
+      (tm?'<div class="caltime"><span class="t">'+pi('clock')+' '+esc(tm)+'</span></div>':'')+
+      (pl?'<div class="calsub">📍 '+esc(pl)+'</div>':'')+
+      (mm?'<div class="calsub">'+esc(mm)+'</div>':'')+
+    '</div></div>';
+}
 /* 行事曆每場入口鈕:出席・分組(有出席或已分組才顯示)/ 獎項(有設定才顯示)*/
 function calBtns(s){
   var hasAtt=attList(s.id).length, hasGrp=(DATA.groups||[]).some(function(g){return g.sid===s.id;});
@@ -2448,6 +2512,7 @@ function calBtns(s){
   return b.length?'<div style="margin-top:2px">'+b.join('')+'</div>':'';
 }
 function oneEventHtml(s,isNext){
+  if(isPrac(s)) return pracEventHtml(s);
   var away=(s.type&&s.type!=='月例賽');
   var tb=away?'<span class="typebadge">'+esc(s.type)+'</span>':'';
   var courseInline = s.courseId ? '<span class="calcourse">'+pi('golf')+' '+esc(courseName(s.courseId))+'</span>'
@@ -2482,6 +2547,13 @@ function heroHtml(it){
   var s=it.trip?it.days[0]:it.s;
   var dStart=daysUntil(it.start), dEnd=daysUntil(it.end||it.start), done=dEnd<0;
   var when=done?((dEnd===-1)?'昨天打完':(-dEnd)+' 天前打完'):(dStart>0?'還有 '+dStart+' 天':(dStart===0?'就是今天':'進行中'));
+  if(!it.trip && isPrac(s)){   /* 團練:只講何時/何地/幾點,沒有報名與獎項鈕 */
+    var _pm=pracMemo(s);
+    return '<div class="hero"><span class="htag">'+pi('hourglass')+' 下一場 · '+when+'</span>'+
+      '<div class="hcourse">'+fmtMD(it.start)+'（'+weekOf(it.start).replace('週','')+'） '+esc(pracPlace(s)||'地點待定')+'</div>'+
+      '<div class="hmeta">'+esc(s.name)+(_pm?' · '+esc(_pm):'')+'</div>'+
+      '<div class="htimes"><div class="tcap"><div class="l">'+pi('clock')+' 開始</div><div class="v">'+esc(s.meet||'—')+'</div></div><div class="tcap"><div class="l">'+pi('flag')+' 結束</div><div class="v">'+esc(s.tee||'—')+'</div></div></div></div>';
+  }
   var course=s.courseId?courseName(s.courseId):(it.trip?'球場待定':'球場未定');
   var head=fmtMD(it.start)+'（'+weekOf(it.start).replace('週','')+'） '+esc(course);
   var meta=esc(it.trip?(s.tripName||s.name):s.name)+(s.cup?' · '+esc(s.cup):'');
@@ -2527,7 +2599,7 @@ function renderCal(){
   /* 英雄卡:優先顯示「剛打完 HERO_GRACE 天內」的場次(讓大家看成績),否則顯示下一場 */
   var HERO_GRACE=2;
   var nextIdx=-1; for(var hi=0;hi<upArr.length;hi++){ if(daysUntil(upArr[hi].start)>=0){ nextIdx=hi; break; } }
-  var recentIdx=-1; for(var hj=0;hj<upArr.length;hj++){ var _du=daysUntil(upArr[hj].end||upArr[hj].start); if(_du<0 && _du>=-HERO_GRACE) recentIdx=hj; }  /* 取最後一個=最近剛打完(從結束日算) */
+  var recentIdx=-1; for(var hj=0;hj<upArr.length;hj++){ var _du=daysUntil(upArr[hj].end||upArr[hj].start); if(_du<0 && _du>=-HERO_GRACE && !(!upArr[hj].trip && isPrac(upArr[hj].s))) recentIdx=hj; }  /* 取最後一個=最近剛打完(從結束日算) */
   var heroIdx=(recentIdx>=0)?recentIdx:nextIdx;
   if(heroIdx>=0) h+=heroHtml(upArr[heroIdx]);
   /* 接下來(其餘未歸檔場次，含寬限期剛結束者，月份分組) */
@@ -2555,7 +2627,8 @@ function renderSess(){
   var ro=(user!=='凌華');
   var h='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>日期</th><th>場次</th><th style="text-align:right;white-space:nowrap">人數</th></tr></thead><tbody>';
   ss.forEach(function(s){
-    var tb=(s.type&&s.type!=='月例賽')?'<span class="typebadge">'+esc(s.type)+'</span>':'';
+    var prac=isPrac(s);
+    var tb=prac?'<span class="pracbadge">團練</span>':((s.type&&s.type!=='月例賽')?'<span class="typebadge">'+esc(s.type)+'</span>':'');
     var cup=s.cup?'<span class="cupbadge">'+pi('medal')+' '+esc(s.cup)+'</span>':'';
     var tripDay='';
     if(s.tripId){ var mates=DATA.sessions.filter(function(x){return x.tripId===s.tripId}).sort(function(a,b){return String(a.date)<String(b.date)?-1:1;}); var n=mates.findIndex(function(x){return x.id===s.id})+1; tripDay=' <span class="typebadge" style="background:#E7F0F9;color:#3A6EA0">'+esc(s.tripName||'行程')+'·D'+n+'</span>'; }
@@ -2564,7 +2637,7 @@ function renderSess(){
     var holeBtn=(!ro&&s.courseId)?'<button class="rowact hbtn" data-hc="'+s.id+'" title="獎項洞設定">🚩 獎項洞</button>':'';
     var editBtn=ro?'':'<button class="rowact ebtn" data-es="'+s.id+'" title="編輯場次">✎</button>';
     h+='<tr class="srow" data-sr="'+s.id+'"><td class="mono">'+fmtD(s.date)+'</td>'+
-      '<td><b>'+esc(s.name)+'</b>'+tb+cup+tripDay+scoreTag+' <span class="pill '+(ST_CLS[s.status]||'st-plan')+'">'+esc(s.status)+'</span></td>'+
+      '<td><b>'+esc(s.name)+'</b>'+tb+cup+tripDay+scoreTag+(prac?'':' <span class="pill '+(ST_CLS[s.status]||'st-plan')+'">'+esc(s.status)+'</span>')+'</td>'+
       '<td style="text-align:right;white-space:nowrap"><span class="mono">'+(s.heads||'—')+'</span>'+holeBtn+editBtn+'<span class="cv">▸</span></td></tr>';
     /* 明細列:點開才顯示 */
     var reg=s.regUrl?'<a class="linkbtn" href="'+esc(s.regUrl)+'" target="_blank" rel="noopener">🔗報名</a>':'';
@@ -2580,8 +2653,13 @@ function renderSess(){
     var att=DATA.scores?DATA.scores.filter(function(x){return x.sid===s.id;}).length:0;
     if(att) kv+='<span class="k">出席</span><span class="v" style="font-weight:600">'+att+' 人(已登錄)</span>';
     kv+='</div>';
+    if(prac){   /* 團練明細:只有地點/時間/說明,沒有出席・成績那排鈕 */
+      kv='<div class="kv"><span class="k">地點</span><span class="v"><b>'+esc(pracPlace(s)||'待定')+'</b></span>'+
+        (pracTime(s)?'<span class="k">時間</span><span class="v" style="color:var(--pri);font-weight:600">'+esc(pracTime(s))+'</span>':'')+
+        (pracMemo(s)?'<span class="k">說明</span><span class="v">'+esc(pracMemo(s))+'</span>':'')+'</div>';
+    }
     var hasHole=(s.holeAwards&&s.holeAwards.length===18);
-    var act=ro?'':'<div class="sdt-act"><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:#5AA17F;border-color:#5AA17F" data-at="'+s.id+'">✅ 出席登記</button><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:#6B8FB5;border-color:#6B8FB5" data-gp="'+s.id+'">👥 分組</button><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:var(--pri);border-color:var(--pri)" data-sc="'+s.id+'">📝 成績登錄</button>'+(att&&hasHole?'<button class="ghost" style="padding:6px 12px;font-size:13px" data-tc="'+s.id+'">🎯 技術獎</button>':'')+(att?'<button class="ghost" style="padding:6px 12px;font-size:13px;color:#8a6a20;background:#FBF0DA;border-color:#E8DAB0" data-jd="'+s.id+'">🏆 本場成績</button>':'')+'</div>';
+    var act=(ro||prac)?'':'<div class="sdt-act"><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:#5AA17F;border-color:#5AA17F" data-at="'+s.id+'">✅ 出席登記</button><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:#6B8FB5;border-color:#6B8FB5" data-gp="'+s.id+'">👥 分組</button><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:var(--pri);border-color:var(--pri)" data-sc="'+s.id+'">📝 成績登錄</button>'+(att&&hasHole?'<button class="ghost" style="padding:6px 12px;font-size:13px" data-tc="'+s.id+'">🎯 技術獎</button>':'')+(att?'<button class="ghost" style="padding:6px 12px;font-size:13px;color:#8a6a20;background:#FBF0DA;border-color:#E8DAB0" data-jd="'+s.id+'">🏆 本場成績</button>':'')+'</div>';
     h+='<tr class="sdt-row hide" data-sd="'+s.id+'"><td colspan="3"><div class="sdt">'+kv+act+'</div></td></tr>';
   });
   h+='</tbody></table></div>';
@@ -2968,10 +3046,26 @@ function onTripSel(){
   /* 選既有行程且名稱空白時，帶入行程名稱 */
   if(v&&v!=='__new__'){ var t=tripList().find(function(x){return x.id===v}); var nm=document.getElementById('sName'); if(t&&!nm.value.trim()) nm.value=t.name; }
 }
+var pracAuto=null;   /* 切到團練時自動帶入的時間;切回賽事若沒改過就清掉,免得 19:00 變成集合時間 */
 function syncType(){
-  var away=(document.getElementById('sType').value!=='月例賽');
-  document.getElementById('sRegWrap').classList.toggle('hide', !away);
-  document.getElementById('sTripWrap').classList.toggle('hide', !away);
+  var g=function(id){ return document.getElementById(id); };
+  var type=g('sType').value, prac=(type==='團練'), away=(type!=='月例賽' && !prac);
+  g('sRegWrap').classList.toggle('hide', !away);
+  g('sTripWrap').classList.toggle('hide', !away);
+  ['sCourseCard','sAwardCard','sNoteCard','sHeadRow','sStatusRow'].forEach(function(id){ g(id).classList.toggle('hide', prac); });
+  g('sPracCard').classList.toggle('hide', !prac);
+  g('sMeetLbl').textContent=prac?'開始時間':'集合時間'; g('sTeeLbl').textContent=prac?'結束時間':'開球時間'; g('sTimeHd').textContent=prac?'時間':'時間・人數';
+  g('sName').placeholder=prac?'例:12月室內團練':'例:8月例賽 / 秋季兩日外地賽';
+  if(prac && !g('sId').value){   /* 新增團練:地點/說明/時間沿用上一次團練(沒有就用預設),空的才帶 */
+    var L=pracLast();
+    if(!g('sPracPlace').value) g('sPracPlace').value=L?pracPlace(L):PRAC_RULE.place;
+    if(!g('sPracMemo').value) g('sPracMemo').value=L?pracMemo(L):PRAC_RULE.memo;
+    if(!g('sMeet').value && !g('sTee').value){ g('sMeet').value=L?(L.meet||''):PRAC_RULE.meet; g('sTee').value=L?(L.tee||''):PRAC_RULE.tee; pracAuto=[g('sMeet').value,g('sTee').value]; }
+    sessDateHint();
+  } else if(!prac && pracAuto){
+    if(g('sMeet').value===pracAuto[0] && g('sTee').value===pracAuto[1]){ g('sMeet').value=''; g('sTee').value=''; }
+    pracAuto=null;
+  }
 }
 /* 場次表單輔助:按鈕組(底下仍是隱藏的 select,儲存邏輯讀 select 值)、標準桿提示、親密獎基準幹部點選、未存離開確認 */
 var sessDirty=false;
@@ -2994,6 +3088,7 @@ function sessParHint(){
 function sessDateHint(){   /* 月例賽選了日期、名稱還空著 → 帶入「N月例賽」 */
   var d=document.getElementById('sDate').value, nm=document.getElementById('sName');
   if(d && !nm.value.trim() && document.getElementById('sType').value==='月例賽') nm.value=(+d.slice(5,7))+'月例賽';
+  if(d && !nm.value.trim() && document.getElementById('sType').value==='團練') nm.value=(+d.slice(5,7))+'月室內團練';
 }
 function sessBasePick(){   /* 本屆幹部一鍵帶入:親密獎判定要姓名完全相同,點選比手打保險 */
   var cur=document.getElementById('sBase').value.trim();
@@ -3024,7 +3119,10 @@ function openSess(id){
   document.getElementById('sCup').value=s?s.cup||'':'';
   document.getElementById('sBase').value=s?s.base||'':'';
   document.getElementById('sPar').value=(s&&s.par)?s.par:'';
-  document.getElementById('sNote').value=s?s.note||'':'';
+  document.getElementById('sNote').value=(s&&!isPrac(s))?s.note||'':'';
+  document.getElementById('sPracPlace').value=isPrac(s)?pracPlace(s):'';
+  document.getElementById('sPracMemo').value=isPrac(s)?pracMemo(s):'';
+  pracAuto=null;
   document.getElementById('sTripNew').value='';
   populateTrips(s?s.tripId||'':'');
   document.getElementById('sScoring').value=(s&&s.scoring)?s.scoring:'例賽';
@@ -3038,7 +3136,7 @@ function saveSess(){
   var name=document.getElementById('sName').value.trim(), date=document.getElementById('sDate').value.replace(/-/g,'');
   if(!name){ toast('名稱必填'); return; }
   if(!date){ toast('日期必填'); return; }
-  var type=document.getElementById('sType').value, away=(type!=='月例賽');
+  var type=document.getElementById('sType').value, prac=(type==='團練'), away=(type!=='月例賽' && !prac);
   var tripId='', tripName='', scoring='';
   if(away){
     scoring=document.getElementById('sScoring').value;
@@ -3057,6 +3155,14 @@ function saveSess(){
   var parV=document.getElementById('sPar').value;
   if(parV!==''){ parV=Number(parV); if(!(parV>=60&&parV<=80)){ toast('標準桿需在 60~80 之間(預設 72 請留空)'); return; } }
   p.par=(parV===''?'':parV);
+  if(prac){   /* 團練不帶球場/獎項/行程;地點+說明存進備註(第一行=地點) */
+    var cur=p.id?DATA.sessions.find(function(x){return x.id===p.id;}):null;
+    if(cur && !isPrac(cur) && DATA.scores.some(function(x){return x.sid===cur.id;})){ toast('這一場已經有出席或成績紀錄,不能改成團練'); return; }
+    var pl=document.getElementById('sPracPlace').value.trim(), mm=document.getElementById('sPracMemo').value.trim();
+    if(!pl){ toast('請填團練地點'); return; }
+    p.courseId=''; p.zoneOut=''; p.zoneIn=''; p.groups=''; p.heads=''; p.regUrl=''; p.cup=''; p.base=''; p.par='';
+    p.note=pl+(mm?'\n'+mm:'');
+  }
   api('sessUpsert',p).then(function(){ sessDirty=false; closeOv('sessOv'); toast('✓ 已儲存場次'); return refresh(); }).catch(function(e){ toast(e.message); });
 }
 
