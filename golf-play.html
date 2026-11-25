@@ -325,6 +325,11 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .jd-p small{display:block;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .jd-p.jd-g{background:linear-gradient(160deg,#fff 40%,var(--gold-soft));border-color:#EDD9A6}
 .jd-new{color:var(--warn);font-weight:700}
+.jd-ex{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;font-size:15px;line-height:1.45}
+.jd-ex>div{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jd-ex i{display:block;font-style:normal;font-size:12px;color:var(--sub)}
+.jd-ex b{font-weight:600}
+.jd-ex small{font-size:11px;color:var(--sub);margin-left:5px}
 /* 本場成績頁的技術獎:一種獎一區,區內兩欄「第幾洞 得主」 */
 .tk-g{border:1px solid var(--line);border-radius:11px;margin-top:8px;overflow:hidden}
 .tk-h{display:flex;align-items:center;padding:6px 11px;font-size:14px;font-weight:700}
@@ -1025,7 +1030,7 @@ function fillIcons(){ var l=document.querySelectorAll('[data-ic]'); for(var i=0;
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function fmtD(d){ d=String(d); return d.length===8? d.slice(0,4)+'/'+d.slice(4,6)+'/'+d.slice(6,8):d; }
 function weekOf(d){ d=String(d); if(d.length!==8)return''; var dt=new Date(+d.slice(0,4),+d.slice(4,6)-1,+d.slice(6,8)); return '週'+WEEK[dt.getDay()]; }
-function courseName(id){ var c=DATA.courses.find(function(x){return x.id===id}); return c?c.name:(id?'(已刪球場)':'—'); }
+function courseName(id){ var c=DATA.courses.find(function(x){return x.id===id}); return c?c.name:(id?(user==='凌華'?'(已刪球場)':'球場資料更新中'):'—'); }   /* 會員端的球場是網頁內建的:總幹事剛新增的球場要等網頁更新才有名字 */
 function toast(m,ms){ var d=document.createElement('div'); d.textContent=m; d.style.cssText='position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:#1a1d21;color:#fff;padding:9px 16px;border-radius:20px;font-size:13px;z-index:99'; document.body.appendChild(d); setTimeout(function(){d.remove()},ms||1900); }
 
 function renderNav(){
@@ -1052,7 +1057,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.25m', EXPECT_GS='v2026.11.25';
+var GP_BUILD='v2026.11.25n', EXPECT_GS='v2026.11.25';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS || user!=='凌華'){ el.classList.add('hide'); el.textContent=''; }   /* 只提醒總幹事:會員看了也不能做什麼 */
@@ -1748,8 +1753,8 @@ function announceText(sid,o){
   var NET_NM=['淨桿冠軍','淨桿亞軍','淨桿季軍','淨桿殿軍'].map(awLbl);
   J.net.slice(0,4).forEach(function(r,i){ L.push(NET_NM[i]+':'+r.name+'(淨'+r.net+')'); });
   J.net.forEach(function(r){ (J.awards[r.mid]||[]).forEach(function(a){
-    if(/^跳獎\(\d+\)$|^幸運7$|^第12名$|^BB獎$/.test(a)) L.push('🎁 '+awDisp(a)+':'+r.name+'(第'+r.pos+'名)'); }); });
-  if(J.intimacy&&J.intimacy.length) L.push('💑 親密獎:'+J.intimacy.join('、'));
+    if(/^跳獎\(\d+\)$|^幸運7$|^第12名$|^BB獎$/.test(a)) L.push(awLbl(a)+':'+r.name+'(第'+r.pos+'名)'); }); });
+  if(J.intimacy&&J.intimacy.length) L.push(awLbl('親密獎')+':'+J.intimacy.join('、'));
   var tech=DATA.tech.filter(function(x){return x.sid===sid;});
   if(tech.length){
     L.push(''); L.push('🎯 技術獎');
@@ -2294,9 +2299,10 @@ var TECH_KEY={paron:'paron4',bwcut:'bwcut',onputt:'onputt',birdie:'birdie',eagle
 function awardByKey(k){ return DATA.awards.find(function(a){return a.key===k;}); }
 /* 獎項的呈現全站統一(2026-11-25 盤點):
    - 名稱照《獎項辦法》的寫法顯示(LUCKY 7、BB 獎、BIRDIE 獎…);判定引擎與已落底資料內部仍是原名(幸運7/BB獎),只在顯示時轉換,不改資料
-   - 圖示:🏆 總桿冠軍、🥇🥈🥉 淨桿冠亞季、🏅 殿軍(與一直以來發到 LINE 的得獎公告相同) */
+   - 圖示:🏆 總桿冠軍、🥇🥈🥉 淨桿冠亞季、🏅 殿軍、🎁 第12名/LUCKY 7/跳獎/BB 獎、💑 親密獎(與一直以來發到 LINE 的得獎公告相同) */
 var AW_IC={'總桿冠軍':'🏆','淨桿冠軍':'🥇','淨桿亞軍':'🥈','淨桿季軍':'🥉','淨桿殿軍':'🏅'};
-function awLbl(a){ return (AW_IC[a]?AW_IC[a]+' ':'')+a; }
+function awIcon(a){ a=String(a); return AW_IC[a]||(a==='親密獎'?'💑':(/^(第12名|幸運7|跳獎|BB獎)/.test(a)?'🎁':'')); }   /* 第12名/LUCKY 7/跳獎/BB 獎共用 🎁 */
+function awLbl(a){ var ic=awIcon(a); return (ic?ic+' ':'')+awDisp(a); }
 function awDisp(a){ return String(a==null?'':a).replace(/^幸運7/,'LUCKY 7').replace(/^BB獎/,'BB 獎'); }
 function rankKeyOf(nm){ if(RANK_KEY[nm]) return RANK_KEY[nm]; if(/^跳獎/.test(nm)) return 'jump5'; return null; }
 /* 由判定結果 + 技術獎 + 本場特殊獎 + 來賓，攤平成獎項紀錄列(不寫入，純算) */
@@ -2769,6 +2775,12 @@ function openJudge(sid){
   /* 版面順序:(總幹事)收工檢查表 → 得獎亮點四格 → 親密獎 → 排名表 → 未列排名 → 技術獎/特殊獎/改派 → 本場獎項洞設定(賽後只是參考,放最後) */
   var h=wrapCard+'<div class="jd-pod">'+pod(awLbl('總桿冠軍'),champ,champSub,' jd-g')+pod(awLbl('淨桿冠軍'),V.net[0],netSub(V.net[0]))+
     pod(awLbl('淨桿亞軍'),V.net[1],netSub(V.net[1]))+pod(awLbl('淨桿季軍'),V.net[2],netSub(V.net[2]))+'</div>';
+  /* 其他名次獎:殿軍、跳獎、LUCKY 7、第12名、BB 獎——照名次列在亮點下面(原本只在排名表每個人旁邊的小標籤,要整張表掃過才找得到) */
+  var _exRe=/^(淨桿殿軍|第12名|幸運7|跳獎\(\d+\)|BB獎)$/, _ex=[], _exSeen={};
+  V.net.forEach(function(r){ awOf(r.mid).forEach(function(a){ if(_exRe.test(a)){ _ex.push({a:a,r:r}); _exSeen[r.mid+'|'+a]=1; } }); });
+  V.all.forEach(function(r){ if(r.mid) awOf(r.mid).forEach(function(a){ if(_exRe.test(a) && !_exSeen[r.mid+'|'+a]) _ex.push({a:a,r:r}); }); });   /* 現場改派給沒進排名表的人 */
+  if(_ex.length) h+='<div class="card"><div class="sub" style="margin-bottom:6px">🎁 其他名次獎</div><div class="jd-ex">'+_ex.map(function(x){
+      return '<div><i>'+esc(awLbl(x.a))+'</i><b'+(x.r.sex==='女'?' class="mname-f"':'')+'>'+esc(x.r.name)+'</b>'+meTag(x.r)+(x.r.pos?'<small>第 '+x.r.pos+' 名</small>':'')+((J.ovr&&J.ovr[x.a])?'<small>改派</small>':'')+'</div>'; }).join('')+'</div></div>';
   /* 親密獎獨立卡:總桿制後得主可能不在淨桿排名表(如新會員),需自己的顯示位 */
   if(s.base){
     var _im=intim.map(function(n){ var m=DATA.members.find(function(x){return x.name===n;}); return '<span'+((m&&m.sex==='女')?' style="color:#C2185B"':'')+'>'+esc(n)+'</span>'; }).join('、');
