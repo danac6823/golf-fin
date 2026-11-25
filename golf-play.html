@@ -333,7 +333,15 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .fin-link{display:block;margin:10px 0 2px;padding:11px 12px;border:1px dashed #D9D2C7;border-radius:12px;text-align:center;font-size:14px;font-weight:600;color:var(--pri);text-decoration:none;background:rgba(255,255,255,.6)}
 .fin-link small{display:block;font-size:12px;font-weight:400;color:var(--sub);margin-top:1px}
 /* 成績分頁:各場成績直排(同一張卡,滿寬) + 查個人成績 */
-.rs-list .rs-card{display:block;width:100%;max-width:none;margin:0 0 10px}
+.rs-list .rs-card{display:block;width:100%;max-width:none;margin:0 0 12px;padding:14px 16px}
+/* 成績分頁的卡是滿寬的,字放大(行事曆的橫向小卡維持原尺寸) */
+.rs-list .rs-hd{font-size:19px}
+.rs-list .rs-hd span{font-size:14px}
+.rs-list .rs-sub{font-size:14px;margin:2px 0 9px}
+.rs-list .rs-ln{font-size:18px;line-height:1.8}
+.rs-list .rs-ln i{font-size:14.5px;width:92px}
+.rs-list .rs-ln b small{font-size:14px;margin-left:5px}
+.rs-list .rs-go{font-size:14px;margin-top:8px}
 .ps-box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:6px;box-shadow:0 1px 3px rgba(120,90,50,.05)}
 .ps-box input{margin:0}
 .ps-pick{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
@@ -1014,7 +1022,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.25g', EXPECT_GS='v2026.11.25';
+var GP_BUILD='v2026.11.25i', EXPECT_GS='v2026.11.25';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS || user!=='凌華'){ el.classList.add('hide'); el.textContent=''; }   /* 只提醒總幹事:會員看了也不能做什麼 */
@@ -1914,10 +1922,9 @@ function attGroupHtml(sid, quietEmpty){
   if(gs.length===0 && atts.length) h+='<p class="sub" style="margin:2px 2px 0">尚未分組。</p>';
   return h;
 }
-function showAttGroup(sid){
+function showAttGroup(sid){   /* 出席・分組:開同一個滿版場次頁(賽後直接切到「出席・分組」分頁) */
   var s=DATA.sessions.find(function(x){return x.id===sid;}); if(!s) return;
-  document.getElementById('agTitle').textContent='👥 '+esc((s.tripName?s.tripName+'・':'')+s.name)+'　'+fmtMD(s.date);
-  document.getElementById('agBody').innerHTML=attGroupHtml(sid); openOv('agOv');
+  openJudge(sid); if(document.getElementById('jtGrp')) switchJTab(sid,'grp');
 }
 /* ===== 技術獎登錄 A:每洞簽名制(PAR ON/黑白切；每人各≤2洞硬擋) ===== */
 var techSid=null;
@@ -2775,14 +2782,15 @@ function openJudge(sid){
   if(user==='凌華'){ var applied=DATA.hcpHist.some(function(x){return x.sid===sid;});
     h+='<div style="margin:8px 2px">'+(applied?'<span class="pill st-done" style="font-size:13px">✓ 本場差點調整已套用(當期差點+歷史已更新)</span>':'<button class="btn" style="background:var(--warn)" onclick="applyHcp(\''+sid+'\')">套用差點調整 → 寫入當期差點+差點歷史</button>')+'</div>'; }
   var landedN=DATA.awardLog.filter(function(x){return x.sid===sid;}).length;
-  var bar='<div class="segbar"><button class="seg on" data-jt="score" onclick="switchJTab(\''+sid+'\',\'score\')">🏆 本場成績</button>'+
-    '<button class="seg" data-jt="log" onclick="switchJTab(\''+sid+'\',\'log\')">📒 獎項紀錄'+(landedN?' <span class="segcnt">'+landedN+'</span>':'')+'</button></div>';
-  document.getElementById('judgeBody').innerHTML=bar+'<div id="jtScore">'+h+'</div><div id="jtLog" class="hide">'+awardLogPanel(sid)+'</div>';
+  var bar='<div class="segbar"><button class="seg on" data-jt="score" onclick="switchJTab(\''+sid+'\',\'score\')">🏆 成績</button>'+
+    '<button class="seg" data-jt="log" onclick="switchJTab(\''+sid+'\',\'log\')">📒 獎項紀錄'+(landedN?' <span class="segcnt">'+landedN+'</span>':'')+'</button>'+
+    '<button class="seg" data-jt="grp" onclick="switchJTab(\''+sid+'\',\'grp\')">👥 出席・分組</button></div>';
+  document.getElementById('judgeBody').innerHTML=bar+'<div id="jtScore">'+h+'</div><div id="jtLog" class="hide">'+awardLogPanel(sid)+'</div><div id="jtGrp" class="hide">'+attGroupHtml(sid)+'</div>';
   openOv('judgeOv');
 }
 function switchJTab(sid,w){
-  var sc=document.getElementById('jtScore'), lg=document.getElementById('jtLog'); if(!sc||!lg) return;
-  sc.classList.toggle('hide',w!=='score'); lg.classList.toggle('hide',w!=='log');
+  var sc=document.getElementById('jtScore'), lg=document.getElementById('jtLog'), gp=document.getElementById('jtGrp'); if(!sc||!lg) return;
+  sc.classList.toggle('hide',w!=='score'); lg.classList.toggle('hide',w!=='log'); if(gp) gp.classList.toggle('hide',w!=='grp');
   document.querySelectorAll('#judgeBody .seg').forEach(function(b){ b.classList.toggle('on',b.getAttribute('data-jt')===w); });
 }
 /* ===== 行事曆智慧收合:過往(結束日+5天前)收起，第一列=下一場 ===== */
@@ -2852,14 +2860,20 @@ function pracEventHtml(s){
     '</div></div>';
 }
 /* 行事曆每場入口鈕:出席・分組(有出席或已分組才顯示)/ 獎項(有設定才顯示)*/
+/* 場次頁入口的按鈕文字:依這一場現在有什麼;什麼都還沒有就不出按鈕 */
+function sessBtnLabel(s){
+  var hasAtt=attList(s.id).length||(DATA.groups||[]).some(function(g){return g.sid===s.id;});
+  if((DATA.scores||[]).some(function(x){return x.sid===s.id && x.gross!=='' && x.gross!=null;})) return '🏆 成績・得獎名單';
+  if(hasAtt) return hasAwards(s)?'👥 名單・分組・獎項':'👥 名單・分組';
+  return hasAwards(s)?'🚩 本場獎項':'';
+}
 function calBtns(s){
   var hasAtt=attList(s.id).length, hasGrp=(DATA.groups||[]).some(function(g){return g.sid===s.id;});
   var hasScr=(DATA.scores||[]).some(function(x){return x.sid===s.id && x.gross!=='' && x.gross!=null;});
   var st='margin:6px 6px 0 0;padding:5px 11px;font-size:12.5px;border-radius:7px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:600';
-  var b=[];
-  if(hasAtt||hasGrp) b.push('<button style="'+st+';color:#3B6EA5" onclick="event.stopPropagation();showAttGroup(\''+s.id+'\')">👥 出席・分組</button>');
-  if(hasAwards(s)||hasScr) b.push('<button style="'+st+';color:#8a6a20" onclick="event.stopPropagation();openJudge(\''+s.id+'\')">🏆 獎項・成績</button>');
-  return b.length?'<div style="margin-top:2px">'+b.join('')+'</div>':'';
+  /* 一場一顆鈕,都開同一個滿版的場次頁(賽前=名單分組+獎項;賽後=成績,分組在頁內分頁)——原本兩顆鈕開出來一個滿版一個半版 */
+  var lb=sessBtnLabel(s); if(!lb) return '';
+  return '<div style="margin-top:2px"><button style="'+st+';color:'+(hasScr?'#8a6a20':'#3B6EA5')+'" onclick="event.stopPropagation();openJudge(\''+s.id+'\')">'+lb+' ▸</button></div>';
 }
 function oneEventHtml(s,isNext){
   if(isPrac(s)) return pracEventHtml(s);
@@ -2910,12 +2924,9 @@ function heroHtml(it){
   var times=(s.meet||s.tee)
     ? '<div class="htimes"><div class="tcap"><div class="l">'+pi('clock')+' 集合</div><div class="v">'+esc(s.meet||'—')+'</div></div><div class="tcap"><div class="l">'+pi('flag')+' 開球</div><div class="v">'+esc(s.tee||'—')+'</div></div></div>'
     : '<div class="htimes"><div class="tcap wait"><div class="v" style="font-size:15px;color:var(--sub)">午球，時間待定</div></div></div>';
-  var btns=[];
-  var awBtn='<button class="btn '+(done?'gd':'sec')+'" style="flex:1" onclick="openJudge(\''+s.id+'\')">獎項・成績</button>';  /* 剛打完→金色主鈕優先看成績 */
-  if(done) btns.push(awBtn);
+  var btns=[], _lb=(sessBtnLabel(s)||'🚩 本場獎項').replace(/^\S+ /,'');   /* 英雄卡的鈕不帶圖示;還沒設定也給入口(點進去是「待當日公布」) */
   if(!done && s.regUrl) btns.push('<a class="btn gd" style="flex:1;text-align:center;text-decoration:none" href="'+esc(s.regUrl)+'" target="_blank" rel="noopener">前往報名</a>');
-  if(attList(s.id).length||(DATA.groups||[]).some(function(g){return g.sid===s.id;})) btns.push('<button class="btn sec" style="flex:1" onclick="showAttGroup(\''+s.id+'\')">出席・分組</button>');
-  if(!done) btns.push(awBtn);  /* 未來場:成績鈕放後面(未設定→骨架「待當日公布」) */
+  btns.push('<button class="btn '+(done?'gd':'sec')+'" style="flex:1" onclick="openJudge(\''+s.id+'\')">'+_lb+'</button>');   /* 一顆鈕=同一個場次頁;剛打完用金色 */
   var row2=btns.length?'<div class="hrow2">'+btns.join('')+'</div>':'';
   return '<div class="hero"><span class="htag">'+(done?('🏆 剛打完 · '+when):(pi('hourglass')+' 下一場 · '+when))+'</span>'+
     '<div class="hcourse">'+head+'</div><div class="hmeta">'+meta+'</div>'+times+row2+'</div>';
