@@ -1104,7 +1104,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.26c', EXPECT_GS='v2026.11.25';
+var GP_BUILD='v2026.11.26d', EXPECT_GS='v2026.11.25';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS || user!=='凌華'){ el.classList.add('hide'); el.textContent=''; }   /* 只提醒總幹事:會員看了也不能做什麼 */
@@ -2907,7 +2907,7 @@ function openJudge(sid){
     var _me=meMid(), _tk=techCardHtml(sid,s,function(r){ return (_me&&r&&r.mid===_me)?'<span class="jd-meb">我</span>':''; });   /* 沒登成績但有技術獎(洞洞有獎)→ 這頁就是得獎名單 */
     document.getElementById('judgeTitle').textContent=_tk?('🎯 '+sessTitle(s)+'・得獎名單'):('⛳ '+sessTitle(s)+'・賽前資訊');
     document.getElementById('judgeSub').textContent=fmtMD(s.date)+'('+weekOf(s.date)+')'+(s.courseId?' ｜ '+courseName(s.courseId):'')+(s.meet?' ｜ 集合 '+s.meet:'')+(s.tee?' ｜ 開球 '+s.tee:'');
-    document.getElementById('judgeBody').innerHTML=_tk+attGroupHtml(sid,true)+sessAwardConfigHtml(s)+(_tk?'':'<p class="sub" style="margin:10px 2px 2px;text-align:center">🏁 本場尚未完賽,成績與獎項紀錄將於賽後顯示。</p>');
+    document.getElementById('judgeBody').innerHTML=_tk+attGroupHtml(sid,true)+sessAwardConfigHtml(s)+(_tk?'':'<p class="sub" style="margin:10px 2px 2px;text-align:center">🏁 本場尚未完賽,成績與得獎名單將於賽後顯示。</p>');
     openOv('judgeOv'); return;
   }
   document.getElementById('judgeTitle').textContent='🏆 '+sessTitle(s)+'・本場成績';
@@ -2992,14 +2992,14 @@ function openJudge(sid){
     h+='<div style="margin:8px 2px">'+(applied?'<span class="pill st-done" style="font-size:13px">✓ 本場差點調整已套用(當期差點+歷史已更新)</span>':'<button class="btn" style="background:var(--warn)" onclick="applyHcp(\''+sid+'\')">套用差點調整 → 寫入當期差點+差點歷史</button>')+'</div>'; }
   var landedN=DATA.awardLog.filter(function(x){return x.sid===sid;}).length;
   var bar='<div class="segbar"><button class="seg on" data-jt="score" onclick="switchJTab(\''+sid+'\',\'score\')">🏆 成績</button>'+
-    '<button class="seg" data-jt="log" onclick="switchJTab(\''+sid+'\',\'log\')">📒 獎項紀錄'+(landedN?' <span class="segcnt">'+landedN+'</span>':'')+'</button>'+
+    (user==='凌華'?'<button class="seg" data-jt="log" onclick="switchJTab(\''+sid+'\',\'log\')">📒 獎項紀錄'+(landedN?' <span class="segcnt">'+landedN+'</span>':'')+'</button>':'')+   /* 獎項紀錄=帳務用(金額、球會/LINA 小計),只給總幹事;會員的得獎名單都在「成績」分頁 */
     '<button class="seg" data-jt="grp" onclick="switchJTab(\''+sid+'\',\'grp\')">👥 出席・分組</button></div>';
-  document.getElementById('judgeBody').innerHTML=bar+'<div id="jtScore">'+h+'</div><div id="jtLog" class="hide">'+awardLogPanel(sid)+'</div><div id="jtGrp" class="hide">'+attGroupHtml(sid)+'</div>';
+  document.getElementById('judgeBody').innerHTML=bar+'<div id="jtScore">'+h+'</div>'+(user==='凌華'?'<div id="jtLog" class="hide">'+awardLogPanel(sid)+'</div>':'')+'<div id="jtGrp" class="hide">'+attGroupHtml(sid)+'</div>';
   openOv('judgeOv');
 }
 function switchJTab(sid,w){
-  var sc=document.getElementById('jtScore'), lg=document.getElementById('jtLog'), gp=document.getElementById('jtGrp'); if(!sc||!lg) return;
-  sc.classList.toggle('hide',w!=='score'); lg.classList.toggle('hide',w!=='log'); if(gp) gp.classList.toggle('hide',w!=='grp');
+  var sc=document.getElementById('jtScore'), lg=document.getElementById('jtLog'), gp=document.getElementById('jtGrp'); if(!sc) return;
+  sc.classList.toggle('hide',w!=='score'); if(lg) lg.classList.toggle('hide',w!=='log'); if(gp) gp.classList.toggle('hide',w!=='grp');
   document.querySelectorAll('#judgeBody .seg').forEach(function(b){ b.classList.toggle('on',b.getAttribute('data-jt')===w); });
 }
 /* ===== 行事曆智慧收合:過往(結束日+5天前)收起，第一列=下一場 ===== */
