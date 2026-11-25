@@ -304,6 +304,53 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .ctool.gold{background:var(--gold-soft);border-color:#EDD9A6}
 .ctool.todo small{color:#A32D2D;font-weight:600}
 .ctool.alldone small{color:#27500A;font-weight:600}
+/* 管理頁(總幹事):待辦 → 現在這一場 → 場次 → 工具 */
+.mg-lbl{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--pri);margin:16px 2px 7px}
+.mg-lbl span{font-size:12px;font-weight:400;color:var(--sub)}
+.mg-focus{background:#fff;border:1.5px solid #CBE6D2;border-radius:16px;padding:13px;margin-bottom:10px;box-shadow:0 4px 16px rgba(55,134,106,.10)}
+.mg-fhd{display:flex;align-items:flex-start;gap:8px}
+.mg-fhd .mg-t{flex:1;min-width:0;font-size:19px;font-weight:800;line-height:1.25}
+.mg-fhd .mg-when{flex:none;background:var(--pri);color:#fff;font-size:12px;font-weight:700;border-radius:999px;padding:4px 11px;white-space:nowrap}
+.mg-fsub{font-size:13px;color:var(--sub);margin:3px 0 10px}
+.mg-next{display:block;width:100%;margin:0 0 11px;padding:12px;border:none;border-radius:12px;background:var(--pri);color:#fff;font-size:16px;font-weight:700;cursor:pointer;line-height:1.35}
+.mg-next small{display:block;font-size:12px;font-weight:400;opacity:.9}
+.mg-calm{margin:0 0 11px;padding:9px 12px;border-radius:11px;background:#EAF3DE;color:#27500A;font-size:13px;font-weight:600}
+.mg-calm.mg-wait{background:#F2EEE7;color:#6b7280}
+.mg-ph{display:flex;align-items:center;gap:8px;margin-top:7px}
+.mg-ph>i{flex:none;width:30px;font-style:normal;font-size:12px;font-weight:700;color:var(--sub)}
+.mg-g3{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.mg-tile{min-width:0;min-height:58px;margin:0;padding:7px 3px;border:1.5px solid var(--line);border-radius:11px;background:#fff;color:var(--txt);cursor:pointer;text-align:center;line-height:1.3}
+.mg-tile b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mg-tile small{display:block;font-size:11px;color:var(--sub);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mg-tile.mg-ok{background:#F1F8EC;border-color:#B9D9A0}
+.mg-tile.mg-ok small{color:#27500A;font-weight:600}
+.mg-tile.mg-part{background:var(--gold-soft);border-color:#E0B36A}
+.mg-tile.mg-part small{color:#8A6A1E;font-weight:600}
+.mg-tile.mg-cur{border-color:var(--pri);box-shadow:0 0 0 2px var(--pri-soft)}
+.mg-tile.mg-opt{border-style:dashed}
+.mg-row2{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.mg-row2 button{margin:0;padding:7px 12px;font-size:13px}
+.mg-todo{display:flex;align-items:center;gap:9px;width:100%;margin:0;padding:11px 12px;border:none;border-top:1px solid var(--line);background:none;color:var(--txt);text-align:left;cursor:pointer;font-size:14px}
+.mg-todo:first-child{border-top:none}
+.mg-todo .mg-ic{flex:none;width:22px;text-align:center}
+.mg-todo .mg-tx{flex:1;min-width:0;line-height:1.4}
+.mg-todo .mg-tx small{display:block;font-size:12px;color:var(--sub)}
+.mg-todo .mg-go{flex:none;font-size:12px;font-weight:600;color:var(--pri);white-space:nowrap}
+.mg-todo.mg-hot{background:#FFF8EA}
+.mg-item{border-top:1px solid var(--line)}
+.mg-item:first-child{border-top:none}
+.mg-line{display:flex;align-items:center;gap:10px;width:100%;margin:0;padding:10px 11px;border:none;background:none;color:var(--txt);text-align:left;cursor:pointer}
+.mg-line .mg-dt{flex:none;width:44px;text-align:center;font-weight:700;font-size:15px;line-height:1.15;font-variant-numeric:tabular-nums}
+.mg-line .mg-dt small{display:block;font-size:11px;font-weight:400;color:var(--sub)}
+.mg-line .mg-nm{flex:1;min-width:0;font-size:15px;font-weight:600;line-height:1.35}
+.mg-line .mg-nm small{display:block;font-size:12px;font-weight:400;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mg-line .mg-st{flex:none;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:#EFEDEA;color:#8A8A94;white-space:nowrap}
+.mg-line .mg-st.mg-sok{background:#EAF3DE;color:#27500A}
+.mg-line .mg-st.mg-stodo{background:var(--gold-soft);color:#8A6A1E}
+.mg-line .mg-cv{flex:none;color:var(--sub);font-size:12px;transition:transform .15s}
+.mg-item.mg-open .mg-cv{transform:rotate(90deg)}
+.mg-item.mg-open{background:#FBF8F3}
+.mg-det{padding:0 11px 12px}
 /* 會員禮:現場發放/尺寸登記 */
 .gtop{position:sticky;top:0;background:#fff;z-index:3;padding-top:calc(8px + env(safe-area-inset-top));padding-bottom:2px}
 .sheet-full .gtop .head{position:static;padding-top:0;margin-bottom:8px}
@@ -447,9 +494,29 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
   <div class="head" style="margin-top:0"><b>🔑 總幹事登入</b><button class="ghost" onclick="closeOv('loginOv')">✕</button></div>
   <div style="padding:2px 2px 12px">
     <p class="sub" style="margin:0 0 12px">會員檢視免登入;總幹事登入後可編輯賽務資料。</p>
-    <label style="font-size:13px;color:#666">登入代碼(向總幹事索取)</label>
-    <input id="tokenInput" type="password" placeholder="輸入代碼" autocomplete="off" onkeydown="if(event.key==='Enter')login()" style="width:100%;margin:6px 0 12px;padding:10px;border:1.5px solid var(--pri-soft);border-radius:10px">
-    <button class="btn" style="width:100%" onclick="login()">登入</button>
+    <!-- 包成表單+帳號欄:手機/瀏覽器才會問「要不要記住密碼」,下次自動帶入 -->
+    <form onsubmit="login();return false" autocomplete="on">
+      <input type="text" name="username" autocomplete="username" value="總幹事" readonly style="display:none">
+      <label style="font-size:13px;color:#666">密碼 <span style="font-weight:400">(還沒設密碼就輸入登入代碼)</span></label>
+      <input id="tokenInput" name="password" type="password" placeholder="輸入密碼" autocomplete="current-password" style="width:100%;margin:6px 0 12px;padding:10px;border:1.5px solid var(--pri-soft);border-radius:10px">
+      <button type="submit" class="btn" style="width:100%">登入</button>
+    </form>
+  </div>
+</div></div>
+<!-- 設定登入密碼(登入後才能設;密碼只給後端,網頁不留) -->
+<div class="overlay" id="pwOv"><div class="sheet" style="max-width:420px">
+  <div class="head" style="margin-top:0"><b>🔑 設定登入密碼</b><button class="ghost" onclick="closeOv('pwOv')">✕</button></div>
+  <div style="padding:2px 2px 12px">
+    <p class="sub" style="margin:0 0 12px;line-height:1.6">設好之後,登入只要輸入這組密碼,不用再記登入代碼。<br>原本的登入代碼仍然有效(當備用);要改密碼再來這裡設一次就好。</p>
+    <form onsubmit="savePw();return false" autocomplete="on">
+      <input type="text" name="username" autocomplete="username" value="總幹事" readonly style="display:none">
+      <label>新密碼 <span style="font-weight:400">(至少 8 個字,要有英文字母和數字)</span></label>
+      <input id="pwNew" name="new-password" type="password" autocomplete="new-password" oninput="pwHint()">
+      <label>再輸入一次</label>
+      <input id="pwNew2" type="password" autocomplete="new-password" oninput="pwHint()">
+      <div id="pwMsg" class="sub" style="margin:0 2px 8px;min-height:18px"></div>
+      <button type="submit" class="btn" id="pwBtn">儲存密碼</button>
+    </form>
   </div>
 </div></div>
 
@@ -467,9 +534,9 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
     <div id="calBody"></div>
   </div>
 
-  <!-- 場次主檔 -->
+  <!-- 管理(總幹事):待辦・現在這一場・場次・工具 -->
   <div id="sessSec" class="hide">
-    <div class="head"><b><span class="hico" data-ic="sess"></span>場次主檔</b><span><button class="ghost" id="pracAddBtn" onclick="pracBatch()" style="margin-right:6px">🗓 每月團練</button><button class="ghost" id="sessAddBtn" onclick="openSess()">＋ 新增場次</button></span></div>
+    <div class="head"><b><span class="hico" data-ic="sess"></span>總幹事管理</b><button class="ghost" id="sessAddBtn" onclick="openSess()">＋ 新增場次</button></div>
     <div id="sessBody"></div>
   </div>
 
@@ -779,20 +846,56 @@ function gasPost(payload){ payload.token=localStorage.getItem('gp_token');
       if(j.service) throw new Error('請求未送達(Google 轉址異常),請再試一次');
       return j; }); }
 function api(action,p){ var payload=p?JSON.parse(JSON.stringify(p)):{}; payload.action=action; return gasPost(payload); }
-function login(){ var tok=document.getElementById('tokenInput').value.trim(); if(!tok){toast('請輸入代碼');return;}
-  localStorage.setItem('gp_token',tok);
-  gasPost({action:'whoami'}).then(function(j){ user=j.name; closeOv('loginOv'); toast('✓ 總幹事已登入'); enterAdmin(); }).catch(function(e){ localStorage.removeItem('gp_token'); toast('登入失敗:'+e.message); }); }
-function logout(){ localStorage.removeItem('gp_token'); location.reload(); }
+/* 登入:輸入密碼(或原本的登入代碼)。密碼對了後端回傳登入代碼,存起來之後照舊用代碼驗證。
+   後端還沒更新成支援密碼時 pwLogin 會回「代碼無效」→ 退回舊做法,把輸入當代碼試一次 */
+var loginBusy=false;
+function login(){ var v=document.getElementById('tokenInput').value.trim(); if(!v){toast('請輸入密碼');return;}
+  if(loginBusy) return; loginBusy=true;
+  localStorage.removeItem('gp_token');
+  gasPost({action:'pwLogin',pw:v}).then(function(j){ if(!j.name||!j.token) throw new Error('登入回應異常,請再試一次'); return j; })
+    .catch(function(e){
+      if(!/代碼無效/.test(e&&e.message||'')) throw e;
+      localStorage.setItem('gp_token',v);
+      return gasPost({action:'whoami'}).then(function(j){ return {name:j.name, token:v}; }, function(e2){ throw new Error(/代碼無效/.test(e2.message)?'密碼不正確':e2.message); }); })
+    .then(function(j){ localStorage.setItem('gp_token',j.token); user=j.name; saveRole(j.name); document.getElementById('tokenInput').value='';
+      closeOv('loginOv'); toast(user==='凌華'?'✓ 總幹事已登入':'✓ 已登入(僅檢視)'); enterAdmin(); })
+    .catch(function(e){ localStorage.removeItem('gp_token'); toast('登入失敗:'+e.message); })
+    .then(function(){ loginBusy=false; }); }
+function pwRule(v){ return v.length>=8 && /[A-Za-z]/.test(v) && /[0-9]/.test(v); }
+function openPw(){ document.getElementById('pwNew').value=''; document.getElementById('pwNew2').value=''; pwHint(); openOv('pwOv'); }
+function pwHint(){ var a=document.getElementById('pwNew').value, b=document.getElementById('pwNew2').value, el=document.getElementById('pwMsg'), m='', bad=true;
+  if(!a) m=''; else if(!pwRule(a)) m='至少 8 個字,而且要同時有英文字母和數字'; else if(b&&a!==b) m='兩次輸入的不一樣'; else if(!b) { m='✓ 可以用,再輸入一次確認'; bad=false; } else { m='✓ 兩次一致'; bad=false; }
+  el.textContent=m; el.style.color=bad?'#A32D2D':'#27500A'; }
+function savePw(){ var a=document.getElementById('pwNew').value, b=document.getElementById('pwNew2').value, btn=document.getElementById('pwBtn');
+  if(!pwRule(a)){ toast('密碼至少 8 個字,而且要同時有英文字母和數字'); return; }
+  if(a!==b){ toast('兩次輸入的密碼不一樣'); return; }
+  btn.disabled=true; btn.textContent='儲存中…';
+  api('pwSet',{pw:a}).then(function(j){ if(!j.set) throw new Error('儲存回應異常,請再試一次');
+      closeOv('pwOv'); toast('✓ 密碼已設定,下次登入輸入這組密碼即可'); })
+    .catch(function(e){ toast(/未知動作/.test(e.message)?'後端還沒更新:請先把 Code.gs 貼到 GAS 並部署新版本,再來設密碼':('密碼沒有存成功:'+e.message)); })
+    .then(function(){ btn.disabled=false; btn.textContent='儲存密碼'; }); }
+function saveRole(r){ try{ if(r) localStorage.setItem('gp_role',r); else localStorage.removeItem('gp_role'); }catch(e){} }
+function logout(){ localStorage.removeItem('gp_token'); saveRole(''); localStorage.removeItem(CACHE_KEY); location.reload(); }   /* 快取含電話等欄位,登出一併清掉 */
 function authBtnClick(){ if(user==='凌華'){ if(confirm('登出總幹事,回到會員檢視?')) logout(); } else { openOv('loginOv'); } }
 function setAuthBtn(){ var l=document.getElementById('authLbl'), b=document.getElementById('authBtn');
   if(l) l.textContent=(user==='凌華')?'凌華・登出':'🔑';
   if(b) b.title=(user==='凌華')?'登出':'總幹事登入'; }
-function enterAdmin(){ applyRole(user); setAuthBtn(); refreshCached(); }
+function enterAdmin(){ if(user==='凌華') curTab='sess'; applyRole(user); setAuthBtn(); refreshCached(); }   /* 總幹事一進來先看管理頁 */
 function enterGuest(){ user='來賓'; applyRole('來賓'); setAuthBtn(); refreshCached(); }
 /* 預設=來賓唯讀(免登入看資料);有存 token 則嘗試總幹事登入 */
 function boot(){ var tok=localStorage.getItem('gp_token');
-  if(tok){ gasPost({action:'whoami'}).then(function(j){ user=j.name; enterAdmin(); }).catch(function(){ localStorage.removeItem('gp_token'); enterGuest(); }); }
-  else { enterGuest(); } }
+  if(!tok){ enterGuest(); return; }
+  /* 上次就是總幹事 → 先用快取直接開,身分在背景確認(寫入一律由後端再驗代碼);
+     只有後端明確說「代碼無效」才登出,斷線/轉址異常不登出 */
+  var role=''; try{ role=localStorage.getItem('gp_role')||''; }catch(e){}
+  if(role==='凌華'){ user=role; enterAdmin(); }
+  (function who(tries){ return gasPost({action:'whoami'}).then(function(j){ if(!j.name) throw new Error('回應格式不符'); return j; })
+      .catch(function(e){ if(tries>0 && !/代碼無效/.test(e&&e.message||'')) return new Promise(function(r){ setTimeout(r,2500); }).then(function(){ return who(tries-1); }); throw e; }); })(2).then(function(j){
+    var same=(user===j.name); user=j.name; saveRole(j.name); if(!same) enterAdmin();
+  }).catch(function(e){
+    if(/代碼無效/.test(e&&e.message||'')){ localStorage.removeItem('gp_token'); saveRole(''); localStorage.removeItem(CACHE_KEY); if(user==='凌華') toast('登入代碼已失效,請重新登入'); enterGuest(); }
+    else { if(user!=='凌華') enterGuest(); toast('⚠️ 連線不穩,身分尚未確認(登入狀態保留)'); }
+  }); }
 
 /* ===== 前端 ===== */
 var PLAY_STATIC={"courses":[{"id":"jiaoxi","name":"礁溪高爾夫俱樂部","alias":"","note":"宜蘭縣","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,3,4,4,5,5,3,4]},{"code":"u1b2","name":"IN","pars":[4,5,3,4,4,3,5,4,4]}]},{"id":"bali","name":"八里國際高爾夫球場","alias":"","note":"新北市","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,4,4,3,5,5,3,4]},{"code":"u1b2","name":"IN","pars":[4,4,3,5,4,4,3,4,5]}]},{"id":"datun","name":"大屯高爾夫球場","alias":"","note":"新北市","zones":[{"code":"u1b1","name":"OUT","pars":[4,3,4,3,3,5,5,4,5]},{"code":"u1b2","name":"IN","pars":[4,3,4,4,5,4,4,3,5]}]},{"id":"donghua","name":"東華高爾夫俱樂部","alias":"","note":"新北市","zones":[{"code":"u1b1","name":"OUT","pars":[5,4,3,4,4,3,4,5,4]},{"code":"u1b2","name":"IN","pars":[4,4,5,3,4,4,3,5,4]}]},{"id":"emerald","name":"翡翠高爾夫球場","alias":"","note":"新北市","zones":[{"code":"u1b1","name":"OUT","pars":[5,4,4,3,5,4,4,3,4]},{"code":"u1b2","name":"IN","pars":[4,3,5,4,4,4,4,3,5]}]},{"id":"goldcoast","name":"黃金海岸高爾夫球場","alias":"","note":"新北市","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,3,4,5,3,4,5,4]},{"code":"u1b2","name":"IN","pars":[5,3,4,4,4,3,4,4,5]}]},{"id":"hsinyi","name":"幸福高爾夫俱樂部","alias":"27洞","note":"新北市","zones":[{"code":"u1b1","name":"東區","pars":[4,3,5,4,3,4,4,5,5]},{"code":"u2b1","name":"西區","pars":[4,5,4,3,4,3,4,4,5]},{"code":"u3b1","name":"北區","pars":[4,5,3,4,5,3,4,4,4]}]},{"id":"kuohua","name":"北投國華高爾夫俱樂部","alias":"","note":"新北市","zones":[{"code":"out","name":"OUT (前九洞)","pars":[4,4,3,5,3,4,4,5,4]},{"code":"in","name":"IN (後九洞)","pars":[4,3,5,4,4,3,5,4,4]}]},{"id":"linkou","name":"林口高爾夫球場","alias":"27洞","note":"新北市","zones":[{"code":"u1b1","name":"東區","pars":[3,4,5,4,4,3,4,4,5]},{"code":"u2b1","name":"南區","pars":[5,4,4,5,3,4,4,3,4]},{"code":"u3b1","name":"西區","pars":[5,3,4,4,4,4,4,3,5]}]},{"id":"miramar","name":"美麗華高爾夫鄉村俱樂部","alias":"36洞","note":"新北市","zones":[{"code":"u1b1","name":"A球場 OUT","pars":[4,3,5,4,4,3,4,4,5]},{"code":"u1b2","name":"A球場 IN","pars":[4,5,3,4,4,5,3,4,4]},{"code":"u2b2","name":"B球場 IN","pars":[4,4,5,4,3,4,4,3,5]}]},{"id":"oceanview","name":"濱海高爾夫球場","alias":"","note":"新北市","zones":[{"code":"u1b1","name":"OUT","pars":[5,3,4,4,4,4,3,5,4]},{"code":"u1b2","name":"IN","pars":[4,3,5,4,3,4,4,5,4]}]},{"id":"baoshan","name":"寶山高爾夫球場","alias":"","note":"新竹縣","zones":[{"code":"u1b1","name":"OUT","pars":[5,4,4,4,3,5,4,3,4]},{"code":"u1b2","name":"IN","pars":[4,5,4,3,4,5,4,3,4]}]},{"id":"hgcc","name":"新豐高爾夫球場","alias":"27洞","note":"新竹縣","zones":[{"code":"u1b1","name":"西區","pars":[4,4,3,4,5,3,4,4,5]},{"code":"u2b1","name":"東區","pars":[4,3,4,4,5,4,4,3,5]},{"code":"u3b1","name":"中區","pars":[5,4,4,3,4,4,5,3,4]}]},{"id":"lily","name":"立益高爾夫球場","alias":"","note":"新竹縣","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,4,4,4,3,5,3,4]},{"code":"u1b2","name":"IN","pars":[4,5,4,3,5,3,5,4,4]}]},{"id":"royalkuanhsi","name":"老爺關西高爾夫球場","alias":"","note":"新竹縣","zones":[{"code":"out","name":"OUT (前九洞)","pars":[4,4,3,5,4,4,3,5,4]},{"code":"in","name":"IN (後九洞)","pars":[4,5,3,4,4,4,4,3,5]}]},{"id":"suncity","name":"山溪地高爾夫俱樂部","alias":"","note":"新竹縣","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,4,3,4,5,4,3,5]},{"code":"u1b2","name":"IN","pars":[4,4,3,4,3,4,5,4,5]}]},{"id":"thezaixing","name":"再興高爾夫俱樂部","alias":"","note":"新竹縣","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,3,5,4,4,4,3,5]},{"code":"u1b2","name":"IN","pars":[4,5,4,3,4,4,3,5,4]}]},{"id":"xuyang","name":"旭陽高爾夫球場","alias":"","note":"新竹縣","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,4,3,4,5,4,3,5]},{"code":"u1b2","name":"IN","pars":[5,3,4,4,5,4,3,4,4]}]},{"id":"cggc","name":"長庚高爾夫俱樂部","alias":"27洞","note":"桃園市","zones":[{"code":"north","name":"北區","pars":[3,4,5,4,4,4,5,3,4]},{"code":"middle","name":"中區","pars":[4,4,5,3,5,4,4,3,4]},{"code":"south","name":"南區","pars":[5,5,4,3,4,4,3,4,4]}]},{"id":"commander","name":"統帥高爾夫球場","alias":"","note":"桃園市","zones":[{"code":"u1b1","name":"OUT","pars":[5,4,4,4,4,3,4,3,5]},{"code":"u1b2","name":"IN","pars":[4,4,5,3,4,4,5,3,4]}]},{"id":"lanying","name":"藍鷹高爾夫俱樂部","alias":"","note":"桃園市","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,3,4,3,5,5,4,3]},{"code":"u1b2","name":"IN","pars":[4,4,4,5,3,4,5,3,5]}]},{"id":"lungtan","name":"龍潭高爾夫俱樂部","alias":"","note":"桃園市","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,3,5,4,4,3,5,4]},{"code":"u1b2","name":"IN","pars":[4,4,3,4,5,4,3,4,5]}]},{"id":"orient","name":"東方高爾夫俱樂部","alias":"","note":"桃園市","zones":[{"code":"u1b1","name":"OUT","pars":[5,3,4,4,5,4,3,4,4]},{"code":"u1b2","name":"IN","pars":[5,4,4,3,4,4,3,4,5]}]},{"id":"sunrise","name":"揚昇高爾夫鄉村俱樂部","alias":"","note":"桃園市","zones":[{"code":"u1b1","name":"OUT","pars":[4,3,4,3,4,5,4,4,5]},{"code":"u1b2","name":"IN","pars":[4,3,4,5,4,4,3,4,5]}]},{"id":"taipeigolf","name":"台北高爾夫俱樂部","alias":"45洞","note":"桃園市","zones":[{"code":"u1b1","name":"A區","pars":[5,5,4,3,4,3,4,4,4]},{"code":"u2b1","name":"B區","pars":[5,3,4,4,4,4,3,5,4]},{"code":"u3b1","name":"C區","pars":[4,5,4,3,4,4,5,3,4]},{"code":"u4b1","name":"D區","pars":[4,3,4,4,4,5,5,4,3]}]},{"id":"taoyuan","name":"桃園高爾夫俱樂部","alias":"27洞","note":"桃園市","zones":[{"code":"east","name":"東區","pars":[6,4,3,4,4,5,3,4,4]},{"code":"south","name":"南區","pars":[3,4,4,4,5,5,3,4,4]},{"code":"west","name":"西區","pars":[4,3,5,4,4,4,5,4,3]}]},{"id":"tashee","name":"大溪高爾夫俱樂部","alias":"27洞","note":"桃園市","zones":[{"code":"u1b1","name":"東區","pars":[5,3,4,4,5,4,4,4,3]},{"code":"u2b1","name":"中區","pars":[4,4,5,4,3,5,3,4,4]},{"code":"u3b1","name":"西區","pars":[4,4,3,4,5,5,4,3,4]}]},{"id":"yonghan","name":"永漢高爾夫球場","alias":"","note":"桃園市","zones":[{"code":"u1b1","name":"OUT","pars":[5,4,3,4,4,5,3,4,4]},{"code":"u1b2","name":"IN","pars":[4,4,5,4,4,3,4,3,5]}]},{"id":"taifong","name":"台豐高爾夫俱樂部","alias":"","note":"彰化縣","zones":[{"code":"out","name":"OUT (前九洞)","pars":[4,3,5,4,5,4,4,3,4]},{"code":"in","name":"IN (後九洞)","pars":[4,4,3,4,4,3,4,5,5]}]},{"id":"hongxi_taiping","name":"鴻禧太平高爾夫球場","alias":"9洞","note":"臺中市","zones":[{"code":"u1b1","name":"OUT","pars":[4,5,4,5,4,3,4,4,3]}]},{"id":"ticc","name":"台中國際高爾夫俱樂部","alias":"27洞","note":"臺中市","zones":[{"code":"u1b1","name":"東區","pars":[4,4,3,5,4,4,3,5,4]},{"code":"u2b1","name":"中區","pars":[4,4,3,5,4,4,3,4,5]},{"code":"u3b1","name":"西區","pars":[5,4,3,4,4,3,4,5,4]}]},{"id":"wufeng","name":"霧峰高爾夫球場","alias":"","note":"臺中市","zones":[{"code":"u1b1","name":"OUT","pars":[4,3,5,3,4,4,4,4,5]},{"code":"u1b2","name":"IN","pars":[4,4,5,3,4,5,4,3,4]}]},{"id":"ngcc","name":"全國花園鄉村俱樂部","alias":"","note":"苗栗縣","zones":[{"code":"out","name":"OUT (前九洞)","pars":[4,4,5,4,3,4,5,3,4]},{"code":"in","name":"IN (後九洞)","pars":[4,3,4,5,3,4,5,4,4]}]},{"id":"royal_miaoli","name":"皇家高爾夫球場","alias":"","note":"苗栗縣","zones":[{"code":"u1b1","name":"OUT","pars":[4,5,3,4,4,4,5,3,4]},{"code":"u1b2","name":"IN","pars":[5,4,4,4,3,4,3,4,5]}]},{"id":"chunghsing","name":"中興新村高爾夫球場","alias":"9洞","note":"南投縣","zones":[{"code":"u1b1","name":"OUT","pars":[5,3,4,3,4,5,4,4,4]}]},{"id":"nanfeng","name":"南峰高爾夫球場","alias":"","note":"南投縣","zones":[{"code":"u1b1","name":"OUT","pars":[5,4,4,3,4,4,3,5,4]},{"code":"u1b2","name":"IN","pars":[5,3,4,4,3,4,5,4,4]}]},{"id":"changhua","name":"彰化高爾夫俱樂部","alias":"","note":"彰化縣","zones":[{"code":"u1b1","name":"OUT","pars":[5,3,4,4,4,5,4,4,3]},{"code":"u1b2","name":"IN","pars":[5,3,4,4,4,4,3,5,5]}]},{"id":"chingchuankang","name":"清泉崗高爾夫球場","alias":"","note":"臺中市","zones":[{"code":"u1b1","name":"OUT","pars":[4,4,4,3,4,4,5,4,4]},{"code":"u1b2","name":"IN","pars":[4,3,4,5,4,4,5,3,4]}]},{"id":"tgcc","name":"台灣高爾夫俱樂部","alias":"","note":"新北市","zones":[{"code":"out","name":"OUT (前九洞)","pars":[4,3,4,4,4,5,5,3,4]},{"code":"in","name":"IN (後九洞)","pars":[3,4,4,5,4,5,4,3,4]}]},{"id":"formosa_first","name":"福爾摩莎第一高爾夫球場","alias":"36洞","note":"桃園市","zones":[{"code":"out","name":"藍天 OUT","pars":[3,5,5,3,4,4,5,3,4]},{"code":"in","name":"黃金 IN","pars":[4,4,3,5,4,3,5,4,4]}]},{"id":"formosa_yangmei","name":"福爾摩莎楊梅高爾夫球場","alias":"","note":"桃園市","zones":[{"code":"out","name":"OUT (前九洞)","pars":[4,3,4,5,4,3,5,4,4]},{"code":"in","name":"IN (後九洞)","pars":[4,3,5,5,4,3,4,4,4]}]},{"id":"sungbailing","name":"南投縣松柏嶺高爾夫球場","alias":"","note":"南投縣","zones":[]},{"id":"fengyuan","name":"豐原高爾夫俱樂部","alias":"","note":"臺中市","zones":[]},{"id":"taichung_sinon","name":"台中高爾夫球場","alias":"27洞","note":"臺中市","zones":[]}],"awards":[{"group":"淨桿排名獎(每場)","key":"gross","name":"總桿冠軍","note":"","items":[{"type":"現金","val":"1500","pool":"球會","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"net1","name":"淨桿冠軍","note":"","items":[{"type":"現金","val":"2000","pool":"球會","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"net2","name":"淨桿亞軍","note":"","items":[{"type":"現金","val":"1500","pool":"球會","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"net3","name":"淨桿季軍","note":"","items":[{"type":"現金","val":"1000","pool":"球會","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"net4","name":"淨桿殿軍","note":"","items":[{"type":"現金","val":"500","pool":"球會","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"no12","name":"第12名","note":"","items":[{"type":"現金","val":"300","pool":"球會","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"lucky7","name":"LUCKY 7","note":"","items":[{"type":"現金","val":"300","pool":"LINA會長","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"jump5","name":"跳獎","note":"","items":[{"type":"現金","val":"200","pool":"LINA會長","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"close","name":"親密獎","note":"每場指定幹部作為基準","items":[{"type":"現金","val":"300","pool":"LINA會長","sponsor":""}]},{"group":"淨桿排名獎(每場)","key":"bb","name":"BB 獎","note":"","items":[{"type":"送球","val":"2條","pool":"球會","sponsor":""},{"type":"其他","val":"益莊球券","pool":"個人","sponsor":"黃文華學長"}]},{"group":"技術獎(每洞・簽名制)","key":"paron3","name":"PAR ON・三桿洞","note":"共 4 洞","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"技術獎(每洞・簽名制)","key":"paron4","name":"PAR ON・四桿洞","note":"共 4 洞","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"技術獎(每洞・簽名制)","key":"paron5","name":"PAR ON・五桿洞","note":"共 4 洞","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"技術獎(每洞・簽名制)","key":"bwcut","name":"黑白切","note":"共 6 洞","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"最佳技術獎","key":"onputt","name":"直入獎","note":"","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"最佳技術獎","key":"birdie","name":"BIRDIE 獎","note":"","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"最佳技術獎","key":"eagle","name":"EAGLE 獎","note":"","items":[{"type":"送球","val":"1盒","pool":"球會","sponsor":""}]},{"group":"最佳技術獎","key":"hio","name":"一桿進洞獎","note":"","items":[{"type":"現金","val":"10000","pool":"球會","sponsor":""},{"type":"其他","val":"獎盃","pool":"球會","sponsor":""},{"type":"現金","val":"30000","pool":"LINA會長","sponsor":""}]},{"group":"來賓參加獎","key":"guest","name":"來賓參加獎","note":"","items":[{"type":"送球","val":"1條","pool":"球會","sponsor":""}]},{"group":"年度特別獎","key":"break100","name":"破百獎","note":"期初差點33~36且當場<100","items":[{"type":"送球","val":"1盒","pool":"球會","sponsor":""},{"type":"其他","val":"獎狀","pool":"球會","sponsor":""}]},{"group":"年度特別獎","key":"perfect","name":"年度全勤獎","note":"","items":[{"type":"其他","val":"精美禮品","pool":"球會","sponsor":""}]},{"group":"年度特別獎","key":"backer","name":"最強後盾獎","note":"","items":[{"type":"其他","val":"精美禮品","pool":"球會","sponsor":""}]}]};  /* 球場+獎項金額:內建靜態(來賓不讀試算表);改動需重生本檔 */
@@ -801,7 +904,7 @@ var WEEK=['日','一','二','三','四','五','六'];
 var ST_LIST=['規劃中','尚未預訂','已預訂','報名中','已完賽','雨取消'];
 var ST_CLS={'規劃中':'st-plan','尚未預訂':'st-nobook','已預訂':'st-book','報名中':'st-reg','已完賽':'st-done','雨取消':'st-rain'};
 var POOLS=['球會帳','LINA贊助'];
-var NAV=[['cal','cal','行事曆'],['sess','sess','場次'],['course','golf','球場'],['member','users','會員'],['award','trophy','獎項']];
+var NAV=[['cal','cal','行事曆'],['sess','sess','管理'],['course','golf','球場'],['member','users','會員'],['award','trophy','獎項']];
 /* Phosphor 圖示(regular,MIT 開源；viewBox 256、填色路徑) */
 var PIC={
  cal:'<path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/>',
@@ -842,13 +945,13 @@ function showTab(t){ if(user!=='凌華' && t==='sess') t='cal'; curTab=t;
 }
 function applyRole(r){ user=r;
   var ro=(r!=='凌華');
-  ['sessAddBtn','pracAddBtn','courseAddBtn'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.toggle('hide',ro); });
+  ['sessAddBtn','courseAddBtn'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.toggle('hide',ro); });
 }
 function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.21b', EXPECT_GS='v2026.10.24';
+var GP_BUILD='v2026.11.25a', EXPECT_GS='v2026.10.24';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS){ el.classList.add('hide'); el.textContent=''; }
@@ -2167,8 +2270,7 @@ function awardLogPanel(sid){
   }
   return h;
 }
-function applyHcp(sid){
-  if(DATA.hcpHist.some(function(x){return x.sid===sid;})){ toast('本場差點調整已套用過'); return; }
+function hcpChanges(sid){
   var J=judgeSession(sid), s=J.s, changes=[];
   function push(r,award){ if(r&&(r.hcpNew||r.hcpNew===0)&&r.hcpNew!==r.hcp) changes.push({mid:r.mid,date:s.date,before:r.hcp,after:r.hcpNew,note:award}); }
   /* 新會員第2場建立:必須排在得獎調整「之前」寫入——新制下同一人同場可能兩筆(建立→再因得獎調整),
@@ -2177,6 +2279,11 @@ function applyHcp(sid){
   push(J.champ,'總桿冠軍調整');
   var nn=['淨桿冠軍調整','淨桿亞軍調整','淨桿季軍調整','淨桿殿軍調整'];
   J.net.forEach(function(r,i){ if(i<4) push(r,nn[i]); });
+  return changes;
+}
+function applyHcp(sid){
+  if(DATA.hcpHist.some(function(x){return x.sid===sid;})){ toast('本場差點調整已套用過'); return; }
+  var changes=hcpChanges(sid);
   if(!changes.length){ toast('無差點變動可套用'); return; }
   if(!confirm('套用本場差點調整?更新 '+changes.length+' 位當期差點並寫入差點歷史(不可逆)')) return;
   api('hcpApply',{sid:sid,changes:changes}).then(function(){ toast('✓ 已套用 '+changes.length+' 位差點'); return refresh(); }).then(function(){ openJudge(sid); }).catch(function(e){ toast(e.message); });
@@ -2591,10 +2698,10 @@ function renderCal(){
   var pastArr=items.filter(isPast), upArr=items.filter(function(it){return !isPast(it);});
   function itemHtml(it,isNext){ return it.trip?eventCardHtml(it.days,isNext):oneEventHtml(it.s,isNext); }
   var h=ctrl;
-  /* 待辦(總幹事):已完賽有成績但尚未落底 */
+  /* 待辦(總幹事):與管理頁同一套判斷,點了就過去 */
   if(user==='凌華'){
-    var todo=pastArr.filter(function(it){ return !it.trip && DATA.scores.some(function(x){return x.sid===it.s.id;}) && !DATA.awardLog.some(function(x){return x.sid===it.s.id;}); });
-    if(todo.length) h+='<div class="todobar">'+pi('hourglass')+'<span><b>'+esc(todo[0].s.name)+'</b> 已完賽 → 待「落底獎項紀錄 / 拋轉」'+(todo.length>1?'(共 '+todo.length+' 場)':'')+'</span></div>';
+    mgMemo={}; var todo=mgTodos();
+    if(todo.length) h+='<div class="todobar" style="cursor:pointer" onclick="showTab(\'sess\')">'+pi('hourglass')+'<span style="flex:1"><b>待辦 '+todo.length+' 件</b>・'+esc(todo[0].t)+'</span><span>管理 ▸</span></div>';
   }
   /* 英雄卡:優先顯示「剛打完 HERO_GRACE 天內」的場次(讓大家看成績),否則顯示下一場 */
   var HERO_GRACE=2;
@@ -2622,64 +2729,173 @@ function renderCal(){
   }
   el.innerHTML=h;
 }
-function renderSess(){
-  var ss=DATA.sessions.slice().sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
-  var ro=(user!=='凌華');
-  var h='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>日期</th><th>場次</th><th style="text-align:right;white-space:nowrap">人數</th></tr></thead><tbody>';
-  ss.forEach(function(s){
-    var prac=isPrac(s);
-    var tb=prac?'<span class="pracbadge">團練</span>':((s.type&&s.type!=='月例賽')?'<span class="typebadge">'+esc(s.type)+'</span>':'');
-    var cup=s.cup?'<span class="cupbadge">'+pi('medal')+' '+esc(s.cup)+'</span>':'';
-    var tripDay='';
-    if(s.tripId){ var mates=DATA.sessions.filter(function(x){return x.tripId===s.tripId}).sort(function(a,b){return String(a.date)<String(b.date)?-1:1;}); var n=mates.findIndex(function(x){return x.id===s.id})+1; tripDay=' <span class="typebadge" style="background:#E7F0F9;color:#3A6EA0">'+esc(s.tripName||'行程')+'·D'+n+'</span>'; }
-    var scoreTag=(s.scoring==='友誼賽')?' <span class="scorebadge sc-fun">友誼</span>':'';
-    /* 主列:基本內容 + 操作鈕(總幹事)留在列上，一排單行；資訊收進展開 */
-    var holeBtn=(!ro&&s.courseId)?'<button class="rowact hbtn" data-hc="'+s.id+'" title="獎項洞設定">🚩 獎項洞</button>':'';
-    var editBtn=ro?'':'<button class="rowact ebtn" data-es="'+s.id+'" title="編輯場次">✎</button>';
-    h+='<tr class="srow" data-sr="'+s.id+'"><td class="mono">'+fmtD(s.date)+'</td>'+
-      '<td><b>'+esc(s.name)+'</b>'+tb+cup+tripDay+scoreTag+(prac?'':' <span class="pill '+(ST_CLS[s.status]||'st-plan')+'">'+esc(s.status)+'</span>')+'</td>'+
-      '<td style="text-align:right;white-space:nowrap"><span class="mono">'+(s.heads||'—')+'</span>'+holeBtn+editBtn+'<span class="cv">▸</span></td></tr>';
-    /* 明細列:點開才顯示 */
-    var reg=s.regUrl?'<a class="linkbtn" href="'+esc(s.regUrl)+'" target="_blank" rel="noopener">🔗報名</a>':'';
-    var courseTxt=s.courseId?('<b>'+esc(courseName(s.courseId))+'</b>'):(s.type!=='月例賽'?'<span class="sub" style="color:var(--warn)">球場待定</span>':'<span class="sub">球場未定</span>');
-    var kv='<div class="kv">';
-    if(s.tripId) kv+='<span class="k">行程</span><span class="v">'+esc(s.tripName||'')+'</span>';
-    kv+='<span class="k">球場</span><span class="v">'+courseTxt+'</span>';
-    if(s.scoring) kv+='<span class="k">計分</span><span class="v">'+esc(s.scoring)+(s.scoring==='友誼賽'?'(不計年度)':'(計入年度)')+'</span>';
-    var tline=[]; if(s.meet) tline.push('集合 '+esc(s.meet)); if(s.tee) tline.push('開球 '+esc(s.tee));
-    if(tline.length) kv+='<span class="k">時間</span><span class="v" style="color:var(--pri);font-weight:600">'+tline.join(' · ')+'</span>';
-    if(s.groups) kv+='<span class="k">組別</span><span class="v">'+esc(s.groups)+'</span>';
-    if(reg) kv+='<span class="k">報名</span><span class="v">'+reg+'</span>';
-    var att=DATA.scores?DATA.scores.filter(function(x){return x.sid===s.id;}).length:0;
-    if(att) kv+='<span class="k">出席</span><span class="v" style="font-weight:600">'+att+' 人(已登錄)</span>';
-    kv+='</div>';
-    if(prac){   /* 團練明細:只有地點/時間/說明,沒有出席・成績那排鈕 */
-      kv='<div class="kv"><span class="k">地點</span><span class="v"><b>'+esc(pracPlace(s)||'待定')+'</b></span>'+
-        (pracTime(s)?'<span class="k">時間</span><span class="v" style="color:var(--pri);font-weight:600">'+esc(pracTime(s))+'</span>':'')+
-        (pracMemo(s)?'<span class="k">說明</span><span class="v">'+esc(pracMemo(s))+'</span>':'')+'</div>';
-    }
-    var hasHole=(s.holeAwards&&s.holeAwards.length===18);
-    var act=(ro||prac)?'':'<div class="sdt-act"><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:#5AA17F;border-color:#5AA17F" data-at="'+s.id+'">✅ 出席登記</button><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:#6B8FB5;border-color:#6B8FB5" data-gp="'+s.id+'">👥 分組</button><button class="ghost" style="padding:6px 12px;font-size:13px;color:#fff;background:var(--pri);border-color:var(--pri)" data-sc="'+s.id+'">📝 成績登錄</button>'+(att&&hasHole?'<button class="ghost" style="padding:6px 12px;font-size:13px" data-tc="'+s.id+'">🎯 技術獎</button>':'')+(att?'<button class="ghost" style="padding:6px 12px;font-size:13px;color:#8a6a20;background:#FBF0DA;border-color:#E8DAB0" data-jd="'+s.id+'">🏆 本場成績</button>':'')+'</div>';
-    h+='<tr class="sdt-row hide" data-sd="'+s.id+'"><td colspan="3"><div class="sdt">'+kv+act+'</div></td></tr>';
+/* ===== 管理頁(總幹事):待辦 → 現在這一場 → 場次清單 → 工具 =====
+   每場的進度只在 mgFlow 算一次;行事曆待辦條、待辦清單、場次卡都讀它,不各自判斷 */
+var mgTab='up', mgOpen=null;
+var MG_PREP=14, MG_AWARD=1, MG_BOOK=75;   /* 幾天前開始提醒:場次資料 / 獎項洞・親密獎基準 / 訂球場(獎項洞一存檔會員就看得到,所以前一天才催) */
+function mgName(s){
+  if(!s.tripId) return s.name;
+  var mates=DATA.sessions.filter(function(x){return x.tripId===s.tripId;}).sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
+  return s.name+(mates.length>1?' D'+(mates.findIndex(function(x){return x.id===s.id;})+1):'');
+}
+function mgGames(){ return DATA.sessions.filter(function(s){return !isPrac(s);}).sort(function(a,b){return String(a.date)<String(b.date)?-1:1;}); }
+function mgWhen(s){ var d=daysUntil(s.date); return d===0?'今天':(d===1?'明天':(d>0?'還有 '+d+' 天':(d===-1?'昨天':(-d)+' 天前'))); }
+var mgMemo={};
+function mgFlow(s){ return mgMemo[s.id]||(mgMemo[s.id]=mgFlowCalc(s)); }   /* 一次重畫內同一場只算一次;renderSess/renderCal 開頭清掉 */
+function mgFlowCalc(s){
+  var sid=s.id, du=daysUntil(s.date), fun=(s.scoring==='友誼賽');
+  var rows=DATA.scores.filter(function(x){return x.sid===sid;}), att=rows.length;
+  var mem=rows.filter(function(x){return !x.guest;}), filled=mem.filter(function(x){return x.gross!==''&&x.gross!=null;}).length;
+  var gr=(DATA.groups||[]).filter(function(g){return g.sid===sid;}), gseen={}; gr.forEach(function(g){gseen[g.grp]=1;});
+  var grpN=Object.keys(gseen).length, ungrp=Math.max(0,att-gr.length);
+  var ha=(s.holeAwards&&s.holeAwards.length===18)?s.holeAwards:[], nP=0, nB=0;
+  ha.forEach(function(v){ if(v==='paron') nP++; else if(v==='bwcut') nB++; });
+  var techN=DATA.tech.filter(function(x){return x.sid===sid;}).length;
+  var saN=DATA.sessAward.filter(function(x){return x.sid===sid;}).length, ovN=(DATA.ovr||[]).filter(function(x){return x.sid===sid;}).length;
+  var landN=DATA.awardLog.filter(function(x){return x.sid===sid;}).length, prevN=filled?buildAwardLog(sid).length:0;
+  var landed=landN>0&&(!filled||landN===prevN);
+  var hcpOk=DATA.hcpHist.some(function(x){return x.sid===sid;})||(filled>0&&!hcpChanges(sid).length);
+  var miss=[]; if(!s.courseId) miss.push('球場'); else if(holeResolve(s).err) miss.push('前後九');
+  if(!s.tee&&!s.meet) miss.push('時間');
+  var scoreOk=filled>0&&(filled===mem.length||techN>0||landN>0);   /* 未完賽可以留白,進到後面步驟就不再催 */
+  var q="('"+sid+"')", T={
+    info:{ic:'📋',nm:'場次資料',st:miss.length?'part':'ok',tx:miss.length?'缺 '+miss.join('・'):(s.tee?esc(s.tee)+' 開球':'已填'),act:'openSess'+q,go:'補場次資料',why:'還缺 '+miss.join('、')},
+    hole:{ic:'🚩',nm:'獎項洞',st:(nP+nB)?'ok':'no',tx:(nP+nB)?'ON '+nP+'・切 '+nB:'未設定',act:'openHoleConfig'+q,go:'設定獎項洞',why:'儲存後會員即可看到'},
+    base:{ic:'💑',nm:'親密獎',st:s.base?'ok':'no',tx:s.base?esc(s.base):'基準未設',act:'mgBase'+q,go:'設定親密獎基準幹部',why:'判定親密獎需要'},
+    att:{ic:'✅',nm:'出席',st:att?'ok':'no',tx:att?att+' 人':(s.heads?'報名 '+esc(s.heads):'未登記'),act:'openAtt'+q,go:'登記出席',why:s.heads?'報名 '+esc(s.heads)+' 人':'點名字=到場'},
+    grp:{ic:'👥',nm:'分組',st:grpN?(ungrp?'part':'ok'):'no',tx:grpN?(ungrp?'未分 '+ungrp+' 人':grpN+' 組'):'未分組',act:'openGroups'+q,go:'分組',why:'出席 '+att+' 人'+(ungrp&&grpN?',還有 '+ungrp+' 人未分':'')},
+    score:{ic:'📝',nm:'成績',st:filled?(scoreOk?'ok':'part'):'no',tx:mem.length?filled+' / '+mem.length:'未登錄',act:'openScore'+q,go:'登錄成績',why:filled?'還有 '+(mem.length-filled)+' 人未填(未完賽可留白)':'出席 '+mem.length+' 人'},
+    tech:{ic:'🎯',nm:'技術獎',st:techN?'ok':'no',tx:techN?techN+' 筆':'未登錄',act:'openTech'+q,go:'登錄技術獎',why:'每洞簽名・最佳技術'},
+    sa:{ic:'🎖️',nm:'特殊獎',st:saN?'ok':'opt',tx:saN?saN+' 項':'有才填',act:'openSessAward'+q},
+    wrap:{ic:'🏆',nm:'判定收工',st:(landed&&hcpOk)?'ok':(landN?'part':'no'),tx:(landed&&hcpOk)?'✓ 已收工':(landN&&!landed?'判定有變動':(landed?'差點未套用':(filled?'未落底':'尚無成績'))),act:'openJudge'+q,
+      go:landN&&!landed?'核對獎項紀錄':(landed?'套用差點調整':'核對判定・落底'),why:landN&&!landed?'已落底 '+landN+' 筆,現在算出來是 '+prevN+' 筆':(landed?'獎項已落底,差點還沒套用':'確認得獎 → 落底 → 套用差點')}
+  };
+  if(ovN&&T.wrap.st==='ok') T.wrap.tx='✓ 含改派 '+ovN;
+  if(fun) ['hole','base','score','tech','wrap'].forEach(function(k){ if(T[k].st==='no'){ T[k].st='opt'; T[k].tx='友誼賽選填'; } });
+  var F={s:s, du:du, fun:fun, T:T, next:null, done:false, att:att};
+  if(s.status==='雨取消'){ F.off=true; return F; }
+  var order=[];
+  if(du>0){ if(du<=MG_PREP) order.push('info'); if(du<=MG_AWARD&&!fun) order.push('hole','base'); }
+  else if(du===0) order=fun?['info','att','grp']:['info','hole','att','grp','base','score','tech','wrap'];
+  else order=fun?['att']:['att','score','hole','tech','base','wrap'];
+  for(var i=0;i<order.length;i++){ var k=order[i], t=T[k];
+    if(t.st==='ok') continue;
+    if(k==='grp'&&filled) continue;             /* 已經打完在登成績,不再催分組 */
+    if(landN&&(k==='hole'||k==='tech'||k==='base')) continue;    /* 落底過=這幾項已經定案(例如本場確實沒有技術獎);之後有變動由「收工」那格提醒 */
+    F.next=t; F.key=k; break; }
+  F.done=(du<0||(du===0&&!fun&&T.wrap.st==='ok'))&&!F.next;
+  return F;
+}
+/* 現在這一場:今天 → 14 天內打完還沒收工的(照日期,先打的先收) → 下一場 → 最後一場 */
+function mgFocus(){
+  var gs=mgGames().filter(function(s){return s.status!=='雨取消';}), i, cand=null;
+  for(i=0;i<gs.length;i++) if(daysUntil(gs[i].date)===0) return gs[i];
+  for(i=0;i<gs.length&&!cand;i++){ var d=daysUntil(gs[i].date); if(d<0&&d>=-14&&mgFlow(gs[i]).next) cand=gs[i]; }
+  if(cand) return cand;
+  for(i=0;i<gs.length;i++) if(daysUntil(gs[i].date)>0) return gs[i];
+  return gs[gs.length-1]||null;
+}
+/* 待辦清單(不含「現在這一場」那張卡上已經寫的下一步;行事曆待辦條要全部) */
+function mgTodos(skipId){
+  var out=[];
+  mgGames().forEach(function(s){
+    if(s.id===skipId) return;
+    var F=mgFlow(s); if(!F.next) return;
+    out.push({ic:F.next.ic, t:mgName(s)+' → '+F.next.go, d:fmtMD(s.date)+'・'+mgWhen(s)+(F.next.why?'・'+F.next.why:''), act:F.next.act, hot:F.du<=0});
   });
-  h+='</tbody></table></div>';
-  var el=document.getElementById('sessBody'); el.innerHTML=h;
-  el.querySelectorAll('tr.srow').forEach(function(r){ r.onclick=function(){
-    var id=this.getAttribute('data-sr');
-    var det=el.querySelector('tr[data-sd="'+id+'"]');
-    var willOpen=!this.classList.contains('open');
-    /* 手風琴:先關全部，再開這一列 */
-    el.querySelectorAll('tr.srow.open').forEach(function(x){ x.classList.remove('open'); });
-    el.querySelectorAll('tr.sdt-row').forEach(function(x){ x.classList.add('hide'); });
-    if(willOpen){ this.classList.add('open'); if(det) det.classList.remove('hide'); }
-  }; });
-  if(!ro){ el.querySelectorAll('button[data-es]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openSess(this.getAttribute('data-es')); }; });
-    el.querySelectorAll('button[data-hc]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openHoleConfig(this.getAttribute('data-hc')); }; });
-    el.querySelectorAll('button[data-at]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openAtt(this.getAttribute('data-at')); }; });
-    el.querySelectorAll('button[data-gp]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openGroups(this.getAttribute('data-gp')); }; });
-    el.querySelectorAll('button[data-sc]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openScore(this.getAttribute('data-sc')); }; });
-    el.querySelectorAll('button[data-tc]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openTech(this.getAttribute('data-tc')); }; });
-    el.querySelectorAll('button[data-jd]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); openJudge(this.getAttribute('data-jd')); }; }); }
+  mgGames().forEach(function(s){ var d=daysUntil(s.date);
+    if(d>0&&d<=MG_BOOK&&(s.status==='尚未預訂'||s.status==='規劃中'))
+      out.push({ic:'📞', t:mgName(s)+' 球場'+s.status, d:fmtMD(s.date)+'・'+mgWhen(s)+(s.courseId?'・'+courseName(s.courseId):''), act:"openSess('"+s.id+"')", hot:d<=45}); });
+  var pay=DATA.members.filter(memFilters()[1][2]).length;
+  if(pay) out.push({ic:'💰', t:'待核繳費 '+pay+' 位', d:'名單在會員頁;核帳在 golf-fin', act:"mgMembers('pay')"});
+  return out;
+}
+function mgMembers(f){ memFilter=f; document.getElementById('memSearch').value=''; showTab('member'); window.scrollTo(0,0); }
+function mgBase(sid){ openSess(sid); var e=document.getElementById('sAwardCard'); if(e&&e.scrollIntoView) e.scrollIntoView({block:'center'}); }
+function mgAwardCfg(){ awardMode='edit'; showTab('award'); window.scrollTo(0,0); }
+function mgTilesHtml(F){
+  function row(lb,ks){ return '<div class="mg-ph"><i>'+lb+'</i><div class="mg-g3">'+ks.map(function(k){ var t=F.T[k];
+    return '<button type="button" class="mg-tile mg-'+t.st+(F.key===k?' mg-cur':'')+'" onclick="'+t.act+'"><b>'+t.ic+' '+t.nm+'</b><small>'+t.tx+'</small></button>'; }).join('')+'</div></div>'; }
+  return row('賽前',['info','hole','base'])+row('當天',['att','grp','score'])+row('賽後',['tech','sa','wrap']);
+}
+function mgNextHtml(F){
+  if(F.off) return '<div class="mg-calm mg-wait">☔ 雨取消</div>';
+  if(F.next) return '<button type="button" class="mg-next" onclick="'+F.next.act+'">下一步:'+F.next.ic+' '+F.next.go+' →'+(F.next.why?'<small>'+F.next.why+'</small>':'')+'</button>';
+  if(F.done) return '<div class="mg-calm">✓ '+(F.fun?'友誼賽・出席已登記':'本場已收工')+'</div>';
+  if(F.du===0) return '<div class="mg-calm">✓ 出席與分組已完成</div>';
+  if(F.du>MG_PREP) return '<div class="mg-calm mg-wait">還早,目前不用處理(打球前 '+MG_PREP+' 天開始提醒)</div>';
+  if(F.fun||F.du<=MG_AWARD) return '<div class="mg-calm">✓ 賽前準備完成</div>';
+  return '<div class="mg-calm mg-wait">✓ 場次資料齊全;獎項洞・親密獎基準前一天再設定即可</div>';
+}
+function mgBtnsHtml(F){
+  var s=F.s, b='<button class="ghost" onclick="openSess(\''+s.id+'\')">✎ 編輯場次</button>';
+  if(F.T.wrap.st==='ok'||F.T.wrap.st==='part') b+='<button class="ghost" onclick="copyAnnounce(\''+s.id+'\')">📋 複製得獎公告</button>';
+  else if(F.att) b+='<button class="ghost" onclick="showAttGroup(\''+s.id+'\')">👀 出席・分組名單</button>';
+  if(s.regUrl) b+='<a class="linkbtn" style="margin:0;padding:8px 12px" href="'+esc(s.regUrl)+'" target="_blank" rel="noopener">🔗 報名</a>';
+  return '<div class="mg-row2">'+b+'</div>';
+}
+function mgTags(s){
+  return ((s.type&&s.type!=='月例賽')?'<span class="typebadge">'+esc(s.type)+'</span>':'')+(s.cup?'<span class="cupbadge">'+esc(s.cup)+'</span>':'')+(s.scoring==='友誼賽'?' <span class="scorebadge sc-fun">友誼</span>':'');
+}
+function mgItemHtml(s){
+  var open=(mgOpen===s.id), prac=isPrac(s), st='', cls='', sub='', det='', F=null;
+  if(prac){
+    sub=[pracTime(s),pracPlace(s)].filter(Boolean).join('・'); st=daysUntil(s.date)<0?'已結束':mgWhen(s);
+    if(open) det=(pracMemo(s)?'<div class="sub" style="margin-bottom:8px">'+esc(pracMemo(s))+'</div>':'')+'<div class="mg-row2" style="margin-top:0"><button class="ghost" onclick="openSess(\''+s.id+'\')">✎ 編輯團練</button></div>';
+  } else {
+    F=mgFlow(s);
+    sub=s.courseId?courseName(s.courseId):'球場未定';
+    if(F.off){ st='雨取消'; }
+    else if(F.next){ st=F.du<0&&F.key==='wrap'?'待收工':F.next.nm+(F.next.st==='part'?'未完':'待辦'); cls=' mg-stodo'; }
+    else if(F.done){ st='✓ '+(F.fun?'已打完':'已收工'); cls=' mg-sok'; }
+    else { st=s.status; if(st==='尚未預訂'||st==='規劃中') cls=F.du<=MG_BOOK?' mg-stodo':''; else st=mgWhen(s); }
+    if(open) det=mgNextHtml(F)+mgTilesHtml(F)+mgBtnsHtml(F);
+  }
+  return '<div class="mg-item'+(open?' mg-open':'')+'"><button type="button" class="mg-line" onclick="mgToggle(\''+s.id+'\')">'+
+    '<span class="mg-dt">'+fmtMD(s.date)+'<small>'+weekOf(s.date)+'</small></span>'+
+    '<span class="mg-nm">'+esc(mgName(s))+(prac?'':mgTags(s))+'<small>'+esc(sub)+'</small></span>'+
+    '<span class="mg-st'+cls+'">'+esc(st)+'</span><span class="mg-cv">▸</span></button>'+(open?'<div class="mg-det">'+det+'</div>':'')+'</div>';
+}
+function mgToggle(id){ mgOpen=(mgOpen===id)?null:id; renderSess(); }
+function mgSetTab(t){ mgTab=t; mgOpen=null; renderSess(); }
+function renderSess(){
+  var el=document.getElementById('sessBody'); if(user!=='凌華'){ el.innerHTML=''; return; }
+  mgMemo={};
+  var fs=mgFocus(), h='';
+  /* 現在這一場 */
+  if(fs){ var F=mgFlow(fs);
+    h+='<div class="mg-focus"><div class="mg-fhd"><div class="mg-t">'+esc(mgName(fs))+mgTags(fs)+'</div><span class="mg-when">'+mgWhen(fs)+'</span></div>'+
+      '<div class="mg-fsub">'+fmtMD(fs.date)+'('+weekOf(fs.date).replace('週','')+')・'+esc(fs.courseId?courseName(fs.courseId):'球場未定')+(fs.meet?'・集合 '+esc(fs.meet):'')+(fs.tee?'・開球 '+esc(fs.tee):'')+'</div>'+
+      mgNextHtml(F)+mgTilesHtml(F)+mgBtnsHtml(F)+'</div>';
+  }
+  /* 其他待辦 */
+  var td=mgTodos(fs?fs.id:null);
+  h+='<div class="mg-lbl">其他待辦 '+(td.length?'<span>'+td.length+' 件・點了直接去做</span>':'')+'</div>';
+  h+=td.length?'<div class="card" style="padding:0;overflow:hidden">'+td.map(function(x){
+      return '<button type="button" class="mg-todo'+(x.hot?' mg-hot':'')+'" onclick="'+x.act+'"><span class="mg-ic">'+x.ic+'</span><span class="mg-tx">'+esc(x.t)+(x.d?'<small>'+x.d+'</small>':'')+'</span><span class="mg-go">去處理 ▸</span></button>'; }).join('')+'</div>'
+    :'<div class="card sub">🎉 沒有其他待辦</div>';
+  /* 場次 */
+  var gs=mgGames(), up=gs.filter(function(s){return daysUntil(s.date)>=0;}), past=gs.filter(function(s){return daysUntil(s.date)<0;}).reverse();
+  var pr=DATA.sessions.filter(isPrac).sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
+  var prUp=pr.filter(function(s){return daysUntil(s.date)>=0;}), prPast=pr.filter(function(s){return daysUntil(s.date)<0;});
+  var list=mgTab==='past'?past:(mgTab==='prac'?prUp.concat(prPast):up);
+  h+='<div class="mg-lbl">場次</div><div class="gpills" style="margin-bottom:8px">'+[['up','接下來',up.length],['past','已打完',past.length],['prac','團練',pr.length]].map(function(p){
+    return '<button type="button" class="ghost'+(mgTab===p[0]?' on':'')+'" onclick="mgSetTab(\''+p[0]+'\')">'+p[1]+' '+p[2]+'</button>'; }).join('')+
+    (mgTab==='prac'&&pracMissing().length?'<button type="button" class="ghost" style="margin-left:auto" onclick="pracBatch()">🗓 排入缺的 '+pracMissing().length+' 個月</button>':'')+'</div>';
+  h+=list.length?'<div class="card" style="padding:0;overflow:hidden">'+list.map(mgItemHtml).join('')+'</div>':'<div class="card sub">沒有場次</div>';
+  /* 工具 */
+  var gm={}, gb=0, gst=0; (DATA.gift||[]).forEach(function(g){gm[g.mid]=g;});
+  DATA.members.forEach(function(m){ var g=gm[m.id]||{}; if(!g.ball) gb++; if(!g.shirt) gst++; });
+  var gAll=DATA.members.length&&!(gb+gst);
+  h+='<div class="mg-lbl">工具</div><div class="ctools">'+[
+    ['openGift()','🎁 會員禮',gAll?'✓ 全部發完':'酒未領 '+gb+'・衣 '+gst,' gold'+(gAll?' alldone':' todo')],
+    ['openRoster()','📋 名冊總表','含會員禮・可下載',''],
+    ['openYear()','🧮 差點結算','年度試算・可下載',''],
+    ['mgAwardCfg()','⚙️ 獎項設定','獎金・出資池',''],
+    ['openPw()','🔑 登入密碼','設定・更改',''],
+    ['doSyncPlayers()','↻ 同步球員','從報名表單補空白','']
+  ].map(function(x){ return '<button type="button" class="ctool'+x[3]+'" onclick="'+x[0]+'"><b>'+x[1]+'</b><small>'+x[2]+'</small></button>'; }).join('')+'</div>';
+  el.innerHTML=h;
 }
 function scorecardHtml(c){
   if(!(c.zones&&c.zones.length)) return '<div class="kv"><span class="k">分區</span><span class="v sub">未設分區(僅基本資料，尚無逐洞 PAR)</span></div>';
@@ -2716,6 +2932,13 @@ function giftOf(mid){ return (DATA.gift||[]).find(function(x){return x.mid===mid
 function giftBallHtml(g){ return g.ball?('<b style="color:#1F7A34">✅ 已領</b> <span class="sub">'+fmtMD(g.ball)+'</span>'):'<b style="color:#A32D2D">未領</b>'; }
 function giftShirtHtml(g){ var sd=(g.style?g.style+'款 ':'')+(g.size||'');
   return g.shirt?('<b style="color:#1F7A34">✅ 已領</b> <span class="sub">'+(sd?sd+' ':'')+fmtMD(g.shirt)+'</span>'):('<b style="color:#A32D2D">未領</b>'+(sd?' <span class="sub">('+sd+')</span>':'')); }
+/* 會員篩選(總幹事):管理頁的會員待辦點過來就是對應的名單 */
+var memFilter='all';
+function memFilters(){ return [['all','全部',function(){return true;}],
+  ['pay','待核繳費',function(m){return !!m.status && m.status!=='已繳';}],
+  ['hcp','差點待建',function(m){var e=effHcp(m); return !(e||e===0);}],
+  ['birth','缺出生年',function(m){return !m.birthYear;}]]; }
+function setMemFilter(f){ memFilter=f; renderMember(); }
 function renderMember(){
   var el=document.getElementById('memberBody'); if(!el) return;
   var _sn=document.getElementById('memSrcNote'); if(_sn) _sn.style.display=(user==='凌華')?'':'none';  /* 來源說明僅總幹事 */
@@ -2724,6 +2947,8 @@ function renderMember(){
   var q=(document.getElementById('memSearch')?document.getElementById('memSearch').value.trim():'');
   var ms=DATA.members.slice();
   if(q) ms=ms.filter(function(m){ return (m.name&&m.name.indexOf(q)>=0)||(m.cohort&&m.cohort.indexOf(q)>=0); });
+  var _mf=(user==='凌華')?memFilter:'all', _mfs=memFilters();
+  if(_mf!=='all') ms=ms.filter((_mfs.find(function(f){return f[0]===_mf;})||_mfs[0])[2]);
   ms.sort(function(a,b){ return cohortRank(a.cohort)-cohortRank(b.cohort); });
   /* 頂部簡易統計:全體(不受搜尋影響) */
   var all=DATA.members, male=all.filter(function(m){return m.sex==='男';}).length, female=all.filter(function(m){return m.sex==='女';}).length;
@@ -2735,7 +2960,8 @@ function renderMember(){
     (pend && user==='凌華'?'<div><div style="font-size:23px;font-weight:800;color:#791F1F;line-height:1.1">'+pend+'</div><div class="sub">待核繳費</div></div>':'')+
     '</div>';
   var ro=(user!=='凌華');
-  var syncBtn=ro?'':'<div style="text-align:right;margin:-2px 0 10px"><button class="btn sec" style="width:auto;padding:7px 14px;font-size:13px" onclick="doSyncPlayers()">↻ 同步球員資料</button></div>';
+  var syncBtn=ro?'':'<div style="text-align:right;margin:-2px 0 10px"><button class="btn sec" style="width:auto;padding:7px 14px;font-size:13px" onclick="doSyncPlayers()">↻ 同步球員資料</button></div>'+
+    '<div class="gpills">'+_mfs.map(function(f){ return '<button type="button" class="ghost'+(_mf===f[0]?' on':'')+'" onclick="setMemFilter(\''+f[0]+'\')">'+f[1]+' '+DATA.members.filter(f[2]).length+'</button>'; }).join('')+'</div>';
   if(!ms.length){ el.innerHTML=stat+syncBtn+'<div class="card"><p class="sub">查無會員。</p></div>'; return; }
   var cnt={}; ms.forEach(function(m){ var k=m.cohort||'其他'; cnt[k]=(cnt[k]||0)+1; });
   var wc='color:var(--warn)';
