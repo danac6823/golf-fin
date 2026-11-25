@@ -474,6 +474,24 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .gpills button{flex:none;margin:0;padding:6px 12px;font-size:13px}
 .gpills button.gscope{flex:1 1 100%;border-style:dashed;color:var(--warn);font-weight:600;padding:8px 12px;font-size:14px}
 .gpills button.gscope.gs-on{background:var(--gold-lt);border:1px solid var(--gold);color:#7a5b12}
+.gpills button.gprint{margin-left:auto;border-style:dashed;color:var(--pri);font-weight:600}
+.stk-info{background:#F7F4EE;border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.75}
+.stk-info b{font-size:16px}
+.stk-ck{display:flex;gap:8px;align-items:flex-start;font-size:14px;font-weight:400;margin:4px 0;line-height:1.5}
+.stk-ck input{width:auto;flex:none;margin:3px 0 0}
+#stkArea{display:none}
+@media print{
+  body.gp-print{max-width:none!important;padding:0!important;margin:0!important;background:#fff!important}
+  body.gp-print>*:not(#stkArea){display:none!important}
+  body.gp-print #stkArea{display:block}
+  .stk-pg{width:210mm;height:296mm;display:grid;grid-template-columns:repeat(3,70mm);overflow:hidden;break-after:page;page-break-after:always}
+  .stk-pg:last-child{break-after:auto;page-break-after:auto}
+  .stk-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;color:#000;padding:2mm;box-sizing:border-box}
+  .stk-cut .stk-cell{border-right:0.2mm dashed #999;border-bottom:0.2mm dashed #999}
+  .stk-n{font-weight:700;line-height:1.15}
+  .stk-s{font-weight:800;line-height:1.15;margin-top:1.5mm}
+  .stk-c{font-size:9pt;color:#444;margin-top:1mm}
+}
 .gpills button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
 .grow{display:flex;align-items:center;gap:6px;padding:8px 2px;border-top:1px solid var(--line)}
 .grow .nm{flex:1;min-width:0;font-weight:600;font-size:15px}
@@ -618,6 +636,17 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
   <p class="sub" style="margin:0 2px 10px">可以直接在上面改字;切換上方選項會重新產生文字。</p>
   <div class="row"><button class="btn" style="margin:0;flex:1" onclick="shareCopy()">📋 複製文字</button><button class="btn sec" id="shareNative" style="margin:0;flex:1" onclick="shareSend()">📤 分享到 LINE…</button></div>
 </div></div>
+<!-- 會員禮:列印衣服貼紙(A4・3 欄多列;照目前名單與篩選,依款式→尺寸排,同尺寸的衣服可以一次貼完) -->
+<div class="overlay" id="stkOv" style="z-index:95"><div class="sheet">
+  <div class="head" style="margin-top:0"><b>🖨 列印衣服貼紙</b><button class="ghost" onclick="closeOv('stkOv')">✕</button></div>
+  <div id="stkInfo" class="stk-info"></div>
+  <div style="display:flex;gap:10px;align-items:center;margin:10px 0 6px"><span style="flex:none;font-size:14px;font-weight:600">每頁列數</span>
+    <select id="stkRows" onchange="stkInfoRender()" style="flex:1;margin:0"><option value="6">6 列(每頁 18 張)</option><option value="7">7 列(每頁 21 張)</option><option value="8" selected>8 列(每頁 24 張)</option><option value="9">9 列(每頁 27 張)</option><option value="10">10 列(每頁 30 張)</option><option value="11">11 列(每頁 33 張)</option></select></div>
+  <label class="stk-ck"><input type="checkbox" id="stkCut" checked><span>印出裁切線(整張貼紙自己裁時勾;已經模切好的標籤紙請取消)</span></label>
+  <button class="btn" style="margin:10px 0 0" onclick="stkPrint()">🖨 列印(A4・3 欄)</button>
+  <p class="sub" style="margin:8px 2px 0;line-height:1.6">列印視窗請選 A4、邊界「無」、縮放 100%,並關掉頁首頁尾;也可以另存成 PDF。</p>
+</div></div>
+<div id="stkArea"></div>
 <!-- 設定登入密碼(登入後才能設;密碼只給後端,網頁不留) -->
 <div class="overlay" id="pwOv"><div class="sheet" style="max-width:420px">
   <div class="head" style="margin-top:0"><b>🔑 設定登入密碼</b><button class="ghost" onclick="closeOv('pwOv')">✕</button></div>
@@ -1075,7 +1104,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.26b', EXPECT_GS='v2026.11.25';
+var GP_BUILD='v2026.11.26c', EXPECT_GS='v2026.11.25';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS || user!=='凌華'){ el.classList.add('hide'); el.textContent=''; }   /* 只提醒總幹事:會員看了也不能做什麼 */
@@ -1651,9 +1680,57 @@ function updateGiftUI(keepRows){
   }
   var sc=giftEv?('<button type="button" class="ghost gscope'+(giftScope?' gs-on':'')+'" onclick="toggleGiftScope()">'+(giftScope?'✓ ':'📍 ')+'只看 '+esc(giftEv.name)+' 出席('+giftEv.n+' 人)'+(giftScope?'・點此看全部':'')+'</button>'):'';
   document.getElementById('giftPills').innerHTML=sc+pills.map(function(p){
-    return '<button type="button" class="ghost'+(giftFilter===p[0]?' on':'')+'" onclick="setGiftFilter(\''+p[0]+'\')">'+p[1]+' '+p[2]+'</button>'; }).join('');
+    return '<button type="button" class="ghost'+(giftFilter===p[0]?' on':'')+'" onclick="setGiftFilter(\''+p[0]+'\')">'+p[1]+' '+p[2]+'</button>'; }).join('')+
+    '<button type="button" class="ghost gprint" onclick="openStk()">🖨 貼紙</button>';
   if(!keepRows) applyGiftFilter();
 }
+/* --- 衣服貼紙(A4・3 欄多列)---
+   印的是「目前名單上看得到的人」(出席篩選/衣服未領/搜尋都算),沒填尺寸的不印。
+   依 款式→尺寸→屆別 排:衣服是照尺寸一疊一疊來的,同尺寸的貼紙連在一起比較好貼 */
+function stkData(){
+  var q=document.getElementById('giftSearch').value.trim().toLowerCase(), out={list:[], nosize:[]};
+  giftSorted().forEach(function(m,i){ var g=giftModel[m.id]; if(!g||!giftIn(m.id)||!giftMatch(g)) return;
+    if(q && String(m.name).toLowerCase().indexOf(q)<0) return;
+    if(!g.size){ out.nosize.push(m.name); return; }
+    out.list.push({name:m.name, cohort:m.cohort||'', style:(g.style||'男'), size:g.size, k:i}); });
+  var so=function(x){ return (x.style==='女'?100:0)+(GIFT_SIZES.indexOf(x.size)<0?50:GIFT_SIZES.indexOf(x.size)); };
+  out.list.sort(function(a,b){ return (so(a)-so(b))||(a.k-b.k); });
+  return out;
+}
+function stkRowsN(){ return +document.getElementById('stkRows').value||8; }
+function openStk(){ stkInfoRender(); openOv('stkOv'); }
+function stkInfoRender(){
+  var D=stkData(), n=D.list.length, per=stkRowsN()*3, cnt={'男':{},'女':{}};
+  D.list.forEach(function(x){ cnt[x.style][x.size]=(cnt[x.style][x.size]||0)+1; });
+  var scope=[(giftScope&&giftEv)?(giftEv.name+'出席'):'全部會員'];
+  if(giftFilter!=='all') scope.push({ballno:'球標酒未領',shirtno:'衣服未領',done:'都領了',nosize:'未填尺寸',unsure:'尺寸待確認'}[giftFilter]||'');
+  if(document.getElementById('giftSearch').value.trim()) scope.push('搜尋「'+document.getElementById('giftSearch').value.trim()+'」');
+  var h='<b>共 '+n+' 張</b>・'+(n?Math.ceil(n/per):0)+' 頁<br>範圍:'+esc(scope.filter(Boolean).join('・'));
+  ['男','女'].forEach(function(sty){ var ps=GIFT_SIZES.filter(function(s){return cnt[sty][s];}).map(function(s){return s+'×'+cnt[sty][s];});
+    if(ps.length) h+='<br>'+sty+'款:'+ps.join('、'); });
+  if(D.nosize.length) h+='<br><span style="color:var(--warn)">未填尺寸不印('+D.nosize.length+' 人):'+esc(D.nosize.join('、'))+'</span>';
+  document.getElementById('stkInfo').innerHTML=h;
+}
+function stkBuild(){
+  var D=stkData(), R=stkRowsN(), per=R*3, cut=document.getElementById('stkCut').checked, pages=[];
+  var fn=R<=7?26:(R===8?24:(R===9?21:(R===10?19:17)));
+  for(var i=0;i<D.list.length;i+=per){
+    pages.push('<div class="stk-pg'+(cut?' stk-cut':'')+'" style="grid-template-rows:repeat('+R+','+(296/R).toFixed(3)+'mm)">'+
+      D.list.slice(i,i+per).map(function(x){ return '<div class="stk-cell"><div class="stk-n" style="font-size:'+fn+'pt">'+esc(x.name)+'</div>'+
+        '<div class="stk-s" style="font-size:'+(fn+2)+'pt">'+esc(x.style)+'款 '+esc(x.size)+'</div>'+(x.cohort?'<div class="stk-c">'+esc(x.cohort)+'</div>':'')+'</div>'; }).join('')+'</div>');
+  }
+  document.getElementById('stkArea').innerHTML=pages.join('');
+  return D.list.length;
+}
+function stkPrint(){
+  var n=stkBuild(); if(!n){ toast('目前名單沒有可印的人(要先填尺寸)'); return; }
+  /* 紙張設定只在印貼紙時加(不影響平常列印網頁);gp-print 只在列印時生效,畫面上看不出差別 */
+  var st=document.getElementById('stkPageCss'); if(!st){ st=document.createElement('style'); st.id='stkPageCss'; document.head.appendChild(st); }
+  st.textContent='@page{size:A4 portrait;margin:0}';
+  document.body.classList.add('gp-print');
+  setTimeout(function(){ window.print(); },80);
+}
+window.addEventListener('afterprint',function(){ document.body.classList.remove('gp-print'); var st=document.getElementById('stkPageCss'); if(st) st.textContent=''; });
 /* --- 自動儲存 --- */
 function setGiftSaveState(){
   var el=document.getElementById('giftSave'); if(!el) return;
