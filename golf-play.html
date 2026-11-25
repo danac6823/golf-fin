@@ -466,6 +466,8 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .gprog .gp .bar i{display:block;height:100%;background:var(--pri2);border-radius:3px}
 .gpills{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
 .gpills button{flex:none;margin:0;padding:6px 12px;font-size:13px}
+.gpills button.gscope{flex:1 1 100%;border-style:dashed;color:var(--warn);font-weight:600;padding:8px 12px;font-size:14px}
+.gpills button.gscope.gs-on{background:var(--gold-lt);border:1px solid var(--gold);color:#7a5b12}
 .gpills button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
 .grow{display:flex;align-items:center;gap:6px;padding:8px 2px;border-top:1px solid var(--line)}
 .grow .nm{flex:1;min-width:0;font-weight:600;font-size:15px}
@@ -1065,7 +1067,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.25o', EXPECT_GS='v2026.11.25';
+var GP_BUILD='v2026.11.25p', EXPECT_GS='v2026.11.25';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS || user!=='凌華'){ el.classList.add('hide'); el.textContent=''; }   /* 只提醒總幹事:會員看了也不能做什麼 */
@@ -1491,6 +1493,20 @@ var giftTab='A', giftFilter='all', giftModel={};
 var giftDirty=false, giftSaving=false, giftErr=false, giftSavedOnce=false, giftTimer=null;
 function giftToday(){ var d=new Date(); return ''+d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2); }
 function giftSorted(){ return DATA.members.slice().sort(function(a,b){ return (cohortRank(a.cohort)-cohortRank(b.cohort))||(a.id<b.id?-1:1); }); }
+/* 只看本場出席:最近一場有登記出席的場次(先找今天/接下來最近的,沒有才取剛打完的);多日行程把各天出席合併。
+   開著時名單、進度、尺寸統計、複製都只算這些人 → 出門前看要帶哪些尺寸、現場只點到場的人 */
+var giftScope=false, giftEv=null;
+function giftEvent(){
+  var best=null, bk=1e9;
+  DATA.sessions.forEach(function(s){ if(!attList(s.id).length) return;
+    var d=daysUntil(s.date), k=d>=0?d:(1000-d); if(k<bk){ bk=k; best=s; } });
+  if(!best) return null;
+  var ss=best.tripId?DATA.sessions.filter(function(x){return x.tripId===best.tripId;}):[best], mids={}, n=0;
+  ss.forEach(function(s){ attList(s.id).forEach(function(m){ if(!mids[m.id]){ mids[m.id]=1; n++; } }); });
+  return {name:best.tripId?(best.tripName||best.name):mgName(best), mids:mids, n:n};
+}
+function giftIn(mid){ return !giftScope||!giftEv||!!giftEv.mids[mid]; }
+function toggleGiftScope(){ giftScope=!giftScope; updateGiftUI(); }
 function giftSure(g){ return g.src==='套量'||g.src==='回覆'; }   /* 尺寸是否確定 */
 function openGift(){
   if(!(giftDirty||giftSaving)){   /* 還有未存完的變更時保留編輯中的狀態,不拿後端舊資料蓋掉 */
@@ -1501,6 +1517,7 @@ function openGift(){
       giftModel[m.id]={ ball:!!g.ball, ballD:g.ball||'', style:(g.style||(m.sex==='女'?'女':'男')), size:(g.size||''), shirt:!!g.shirt, shirtD:g.shirt||'', src:(g.src||'') };
     });
   }
+  giftEv=giftEvent(); giftScope=false;
   switchGiftTab('A'); setGiftSaveState(); openOv('giftOv');
 }
 function closeGift(){ closeOv('giftOv'); if(giftDirty && !giftSaving){ clearTimeout(giftTimer); giftFlush(); } }
@@ -1570,19 +1587,19 @@ function giftMatch(g){
 function applyGiftFilter(){
   var q=document.getElementById('giftSearch').value.trim().toLowerCase(), shown=0;
   document.querySelectorAll('#giftBody .grow').forEach(function(r){
-    var g=giftModel[r.getAttribute('data-mid')]||{}, ok=giftMatch(g);
+    var mid=r.getAttribute('data-mid'), g=giftModel[mid]||{}, ok=giftIn(mid)&&giftMatch(g);
     if(q){ ok=ok&&(r.getAttribute('data-nm')||'').toLowerCase().indexOf(q)>=0; }
     r.style.display=ok?'':'none'; if(ok) shown++;
   });
   var em=document.getElementById('giftEmpty');
   em.classList.toggle('hide',shown>0);
-  if(!shown) em.textContent=q?('找不到「'+q+'」'):((giftFilter==='ballno'||giftFilter==='shirtno')?'🎉 這一項全部發完了':(giftFilter==='nosize'?'✓ 所有人都填好尺寸了':(giftFilter==='unsure'?'✓ 沒有待確認的尺寸':'沒有符合的會員')));
+  if(!shown) em.textContent=q?('找不到「'+q+'」'+((giftScope&&giftEv)?'(目前只看出席的人)':'')):((giftFilter==='ballno'||giftFilter==='shirtno')?'🎉 這一項全部發完了':(giftFilter==='nosize'?'✓ 所有人都填好尺寸了':(giftFilter==='unsure'?'✓ 沒有待確認的尺寸':'沒有符合的會員')));
 }
 /* 統計+篩選:A=兩項進度條;B=尺寸統計卡(訂購用,可複製)。
    keepRows=true:只更新數字,不重新過濾列——剛點完的人留在原位,點錯可以馬上點回來 */
 function updateGiftUI(keepRows){
   var tot=0,ballGot=0,shirtGot=0,bothGot=0,noSize=0,unsure=0,cnt={'男':{},'女':{}},guess={'男':{},'女':{}};
-  Object.keys(giftModel).forEach(function(mid){ var g=giftModel[mid]; tot++;
+  Object.keys(giftModel).forEach(function(mid){ if(!giftIn(mid)) return; var g=giftModel[mid]; tot++;
     if(g.ball) ballGot++; if(g.shirt) shirtGot++; if(g.ball&&g.shirt) bothGot++;
     if(!g.size) noSize++;
     else { var sty=g.style||'男'; cnt[sty][g.size]=(cnt[sty][g.size]||0)+1;
@@ -1600,13 +1617,14 @@ function updateGiftUI(keepRows){
       return '<tr><td class="rl">'+sty+'款</td>'+tds+'<td><b>'+sum+'</b></td></tr>';
     }).join('');
     st.innerHTML='<div class="card" style="padding:10px 12px;margin:0 0 8px">'+
-      '<div style="display:flex;align-items:center;margin-bottom:6px"><b style="font-size:14px">📐 尺寸統計</b>'+(noSize?'<span class="sub" style="margin-left:8px">未填 '+noSize+' 人</span>':'')+
+      '<div style="display:flex;align-items:center;margin-bottom:6px"><b style="font-size:14px">📐 尺寸統計'+((giftScope&&giftEv)?'・出席者':'')+'</b>'+(noSize?'<span class="sub" style="margin-left:8px">未填 '+noSize+' 人</span>':'')+
       '<button type="button" class="ghost" onclick="copyGiftStats()" style="margin:0 0 0 auto;padding:5px 10px;font-size:12px;flex:none">📋 複製</button></div>'+
       '<div class="hcptbl-x"><table class="hcptbl" style="margin:0"><thead><tr><th></th>'+GIFT_SIZES.map(function(s){return '<th>'+s+'</th>';}).join('')+'<th>計</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
       (unsure?'<div class="sub" style="margin-top:5px">(n?)=推測或未標來源的件數,該尺寸建議多備。</div>':'')+'</div>';
     pills=[['all','全部',tot],['nosize','未填尺寸',noSize],['unsure','尺寸待確認',unsure]];
   }
-  document.getElementById('giftPills').innerHTML=pills.map(function(p){
+  var sc=giftEv?('<button type="button" class="ghost gscope'+(giftScope?' gs-on':'')+'" onclick="toggleGiftScope()">'+(giftScope?'✓ ':'📍 ')+'只看 '+esc(giftEv.name)+' 出席('+giftEv.n+' 人)'+(giftScope?'・點此看全部':'')+'</button>'):'';
+  document.getElementById('giftPills').innerHTML=sc+pills.map(function(p){
     return '<button type="button" class="ghost'+(giftFilter===p[0]?' on':'')+'" onclick="setGiftFilter(\''+p[0]+'\')">'+p[1]+' '+p[2]+'</button>'; }).join('');
   if(!keepRows) applyGiftFilter();
 }
@@ -1664,11 +1682,11 @@ function updateGiftTile(){
 }
 function copyGiftStats(){
   var cnt={'男':{},'女':{}}, guess={'男':{},'女':{}}, noSize=[], unsure=[], tot=0;
-  DATA.members.forEach(function(m){ var g=giftModel[m.id]; if(!g) return; tot++;
+  DATA.members.forEach(function(m){ var g=giftModel[m.id]; if(!g||!giftIn(m.id)) return; tot++;
     if(!g.size) noSize.push(m.name);
     else { var sty=g.style||'男'; cnt[sty][g.size]=(cnt[sty][g.size]||0)+1;
       if(!giftSure(g)){ guess[sty][g.size]=(guess[sty][g.size]||0)+1; unsure.push(m.name); } } });
-  var lines=['👕 會員禮衣服尺寸統計(已填 '+(tot-noSize.length)+'/'+tot+')'];
+  var lines=['👕 會員禮衣服尺寸統計'+((giftScope&&giftEv)?('・'+giftEv.name+'出席'):'')+'(已填 '+(tot-noSize.length)+'/'+tot+')'];
   ['男','女'].forEach(function(sty){
     var parts=GIFT_SIZES.filter(function(s){return cnt[sty][s];}).map(function(s){
       return s+'×'+cnt[sty][s]+((guess[sty][s])?'(推測'+guess[sty][s]+')':''); });
