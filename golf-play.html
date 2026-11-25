@@ -304,6 +304,19 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .ctool.gold{background:var(--gold-soft);border-color:#EDD9A6}
 .ctool.todo small{color:#A32D2D;font-weight:600}
 .ctool.alldone small{color:#27500A;font-weight:600}
+/* 行事曆「最近成績」:打完的場次不埋在最下面,橫向滑動的成績卡(最新在前),點了看完整排名 */
+.rs-row{display:flex;gap:10px;overflow-x:auto;margin:0 -4px 8px;padding:2px 4px 10px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.rs-card{flex:0 0 76%;max-width:290px;min-width:0;scroll-snap-align:start;margin:0;padding:11px 13px;text-align:left;border:1px solid #EDD9A6;border-radius:14px;background:linear-gradient(160deg,#fff 55%,var(--gold-soft));color:var(--txt);cursor:pointer;box-shadow:0 1px 3px rgba(120,90,50,.06)}
+.rs-row .rs-card:only-child{flex-basis:100%;max-width:none}
+.rs-hd{display:flex;align-items:baseline;gap:6px;font-size:15px;font-weight:700}
+.rs-hd span{flex:none;font-size:12px;font-weight:600;color:var(--gold)}
+.rs-hd b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-sub{font-size:12px;color:var(--sub);margin:1px 0 7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-ln{display:flex;gap:6px;font-size:14px;line-height:1.75;white-space:nowrap}
+.rs-ln i{flex:none;font-style:normal;font-size:12px;color:var(--sub);width:66px}
+.rs-ln b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.rs-ln b small{font-weight:400;color:var(--sub);font-size:12px;margin-left:3px}
+.rs-go{margin-top:6px;font-size:12px;font-weight:600;color:var(--pri)}
 /* 管理頁(總幹事):待辦 → 現在這一場 → 場次 → 工具 */
 .mg-lbl{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--pri);margin:16px 2px 7px}
 .mg-lbl span{font-size:12px;font-weight:400;color:var(--sub)}
@@ -496,7 +509,7 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
     <p class="sub" style="margin:0 0 12px">會員檢視免登入;總幹事登入後可編輯賽務資料。</p>
     <!-- 包成表單+帳號欄:手機/瀏覽器才會問「要不要記住密碼」,下次自動帶入 -->
     <form onsubmit="login();return false" autocomplete="on">
-      <input type="text" name="username" autocomplete="username" value="總幹事" readonly style="display:none">
+      <input type="text" name="username" autocomplete="username" value="高球隊" readonly style="display:none">
       <label style="font-size:13px;color:#666">密碼 <span style="font-weight:400">(還沒設密碼就輸入登入代碼)</span></label>
       <input id="tokenInput" name="password" type="password" placeholder="輸入密碼" autocomplete="current-password" style="width:100%;margin:6px 0 12px;padding:10px;border:1.5px solid var(--pri-soft);border-radius:10px">
       <button type="submit" class="btn" style="width:100%">登入</button>
@@ -509,7 +522,7 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
   <div style="padding:2px 2px 12px">
     <p class="sub" style="margin:0 0 12px;line-height:1.6">設好之後,登入只要輸入這組密碼,不用再記登入代碼。<br>原本的登入代碼仍然有效(當備用);要改密碼再來這裡設一次就好。</p>
     <form onsubmit="savePw();return false" autocomplete="on">
-      <input type="text" name="username" autocomplete="username" value="總幹事" readonly style="display:none">
+      <input type="text" name="username" autocomplete="username" value="高球隊" readonly style="display:none">
       <label>新密碼 <span style="font-weight:400">(至少 8 個字,要有英文字母和數字)</span></label>
       <input id="pwNew" name="new-password" type="password" autocomplete="new-password" oninput="pwHint()">
       <label>再輸入一次</label>
@@ -951,7 +964,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.25a', EXPECT_GS='v2026.10.24';
+var GP_BUILD='v2026.11.25b', EXPECT_GS='v2026.10.24';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS){ el.classList.add('hide'); el.textContent=''; }
@@ -2677,6 +2690,30 @@ function heroHtml(it){
   return '<div class="hero"><span class="htag">'+(done?('🏆 剛打完 · '+when):(pi('hourglass')+' 下一場 · '+when))+'</span>'+
     '<div class="hcourse">'+head+'</div><div class="hmeta">'+meta+'</div>'+times+row2+'</div>';
 }
+/* 最近成績(全員):已登錄成績的場次,最新在前。得主一律讀「已落底的獎項紀錄」(=正式公布的結果),
+   還沒落底就只說成績已登錄,不在這裡自己算名次 */
+function recentScoresHtml(){
+  var ss=DATA.sessions.filter(function(s){ return !isPrac(s) && daysUntil(s.date)<=0 &&
+    (DATA.scores||[]).some(function(x){return x.sid===s.id && x.gross!=='' && x.gross!=null;}); })
+    .sort(function(a,b){return String(a.date)<String(b.date)?1:-1;});
+  if(!ss.length) return '';
+  function winner(sid,award){
+    var r=(DATA.awardLog||[]).find(function(x){return x.sid===sid && String(x.awardName).trim()===award;}); if(!r) return null;
+    var sc=r.mid?(DATA.scores||[]).find(function(x){return x.sid===sid && x.mid===r.mid;}):null, m=memById(r.mid);
+    return {name:r.name||(m?m.name:''), gross:(sc&&sc.gross!==''&&sc.gross!=null)?sc.gross:'', f:!!(m&&m.sex==='女')};
+  }
+  function line(lb,w,showGross){ return w?'<div class="rs-ln"><i>'+lb+'</i><b'+(w.f?' class="mname-f"':'')+'>'+esc(w.name)+((showGross&&w.gross!=='')?'<small>'+w.gross+' 桿</small>':'')+'</b></div>':''; }
+  var h='<div class="listlbl">🏆 最近成績 <span style="font-weight:400">・點卡片看完整排名與得獎名單</span></div><div class="rs-row">';
+  ss.forEach(function(s){
+    var g=winner(s.id,'總桿冠軍'), n=winner(s.id,'淨桿冠軍'), att=attList(s.id).length;
+    h+='<button type="button" class="rs-card" onclick="openJudge(\''+s.id+'\')">'+
+      '<div class="rs-hd"><span>'+fmtMD(s.date)+'</span><b>'+esc(mgName(s))+(s.cup?'・'+esc(s.cup):'')+'</b></div>'+
+      '<div class="rs-sub">'+esc(s.courseId?courseName(s.courseId):'')+(att?'・出席 '+att+' 人':'')+'</div>'+
+      ((g||n)?(line('🥇 總桿冠軍',g,true)+line('🏆 淨桿冠軍',n,false)):'<div class="rs-ln"><b style="font-weight:400;color:var(--sub)">成績已登錄・得獎名單整理中</b></div>')+
+      '<div class="rs-go">看完整成績 ▸</div></button>';
+  });
+  return h+'</div>';
+}
 function renderCal(){
   document.getElementById('calYear').textContent='第12屆・2026/8–2027/7';
   var ss=DATA.sessions.slice().sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
@@ -2709,6 +2746,7 @@ function renderCal(){
   var recentIdx=-1; for(var hj=0;hj<upArr.length;hj++){ var _du=daysUntil(upArr[hj].end||upArr[hj].start); if(_du<0 && _du>=-HERO_GRACE && !(!upArr[hj].trip && isPrac(upArr[hj].s))) recentIdx=hj; }  /* 取最後一個=最近剛打完(從結束日算) */
   var heroIdx=(recentIdx>=0)?recentIdx:nextIdx;
   if(heroIdx>=0) h+=heroHtml(upArr[heroIdx]);
+  h+=recentScoresHtml();
   /* 接下來(其餘未歸檔場次，含寬限期剛結束者，月份分組) */
   var rest=upArr.filter(function(it,i){return i!==heroIdx;});
   if(rest.length){
