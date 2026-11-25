@@ -140,9 +140,29 @@ body.appOn{padding-bottom:92px}
   <h1 style="margin-bottom:6px">⛳ 高球隊財務系統</h1>
   <p class="sub" style="margin-bottom:16px">第12屆|輕量版 L1</p>
   <div class="card">
-    <label>登入代碼(向凌華索取)</label>
-    <input id="tokenInput" type="password" placeholder="輸入代碼" autocomplete="off">
-    <button class="btn" onclick="login()">登入</button>
+    <!-- 包成表單+帳號欄:手機/瀏覽器才會問「要不要記住密碼」,下次自動帶入(帳號欄與 golf-play 同名,兩頁共用同一筆) -->
+    <form onsubmit="login();return false" autocomplete="on">
+      <input type="text" name="username" autocomplete="username" value="高球隊" readonly style="display:none">
+      <label>密碼(還沒設密碼就輸入登入代碼)</label>
+      <input id="tokenInput" name="password" type="password" placeholder="輸入密碼" autocomplete="current-password">
+      <button type="submit" class="btn">登入</button>
+    </form>
+  </div>
+</div>
+<!-- 設定登入密碼(登入後才能設;密碼只給後端,網頁不留) -->
+<div id="pwOverlay" onclick="if(event.target===this)closePw()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:90;align-items:flex-end;justify-content:center">
+  <div style="background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:16px 16px max(16px,env(safe-area-inset-bottom))">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:16px">🔑 設定登入密碼</b><button class="ghost" style="width:auto;padding:6px 12px;margin:0" onclick="closePw()">✕</button></div>
+    <p class="sub" style="margin-bottom:12px;line-height:1.6">設好之後,登入只要輸入這組密碼(財務、賽務兩頁通用),不用再記登入代碼。<br>原本的登入代碼仍然有效(當備用);要改密碼再來這裡設一次就好。</p>
+    <form onsubmit="savePw();return false" autocomplete="on">
+      <input type="text" name="username" autocomplete="username" value="高球隊" readonly style="display:none">
+      <label>新密碼(至少 8 個字,要有英文字母和數字)</label>
+      <input id="pwNew" name="new-password" type="password" autocomplete="new-password" oninput="pwHint()">
+      <label>再輸入一次</label>
+      <input id="pwNew2" type="password" autocomplete="new-password" oninput="pwHint()">
+      <p id="pwMsg" class="sub" style="margin:0 2px 8px;min-height:18px"></p>
+      <button type="submit" class="btn" id="pwBtn">儲存密碼</button>
+    </form>
   </div>
 </div>
 
@@ -152,6 +172,7 @@ body.appOn{padding-bottom:92px}
       <div class="avatar" id="avatar">?</div>
       <div style="flex:1"><b id="uname"></b><p class="sub" id="urole"></p></div>
       <button class="ghost" style="width:auto;padding:8px 12px;margin:0" onclick="refresh()">↻</button>
+      <button class="ghost" style="width:auto;padding:8px 12px;margin:0" onclick="openPw()" title="設定登入密碼">🔑</button>
       <button class="ghost" style="width:auto;padding:8px 12px;margin:0" onclick="logout()">登出</button>
     </div>
   </div>
@@ -450,14 +471,37 @@ function toast(msg,ms){ var t=document.getElementById('toast'); t.textContent=ms
 function money(n){ return n.toLocaleString('zh-Hant'); }
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
 
+/* 登入:輸入密碼(或原本的登入代碼)。密碼對了後端回傳登入代碼,存起來之後照舊用代碼驗證。
+   後端還沒更新成支援密碼時 pwLogin 會回「代碼無效」→ 退回舊做法,把輸入當代碼試一次 */
+var loginBusy=false;
 function login(){
-  var tok = document.getElementById('tokenInput').value.trim();
-  if(!tok) return;
-  localStorage.setItem('gf_token', tok);
-  api({action:'whoami'}).then(function(j){
-    user = j.name; enter();
-  }).catch(function(e){ localStorage.removeItem('gf_token'); toast('登入失敗:'+e.message); });
+  var v = document.getElementById('tokenInput').value.trim();
+  if(!v || loginBusy) return;
+  loginBusy=true; localStorage.removeItem('gf_token');
+  api({action:'pwLogin',pw:v}).then(function(j){ if(!j.name||!j.token) throw new Error('登入回應異常,請再試一次'); return j; })
+    .catch(function(e){
+      if(!/代碼無效/.test(e&&e.message||'')) throw e;
+      localStorage.setItem('gf_token', v);
+      return api({action:'whoami'}).then(function(j){ return {name:j.name, token:v}; },
+        function(e2){ throw new Error(/代碼無效/.test(e2.message)?'密碼不正確':e2.message); }); })
+    .then(function(j){ localStorage.setItem('gf_token', j.token); document.getElementById('tokenInput').value=''; user = j.name; enter(); })
+    .catch(function(e){ localStorage.removeItem('gf_token'); toast('登入失敗:'+e.message); })
+    .then(function(){ loginBusy=false; });
 }
+function pwRule(v){ return v.length>=8 && /[A-Za-z]/.test(v) && /[0-9]/.test(v); }
+function openPw(){ document.getElementById('pwNew').value=''; document.getElementById('pwNew2').value=''; pwHint(); document.getElementById('pwOverlay').style.display='flex'; }
+function closePw(){ document.getElementById('pwOverlay').style.display='none'; }
+function pwHint(){ var a=document.getElementById('pwNew').value, b=document.getElementById('pwNew2').value, el=document.getElementById('pwMsg'), m='', bad=true;
+  if(!a) m=''; else if(!pwRule(a)) m='至少 8 個字,而且要同時有英文字母和數字'; else if(b&&a!==b) m='兩次輸入的不一樣'; else if(!b){ m='✓ 可以用,再輸入一次確認'; bad=false; } else { m='✓ 兩次一致'; bad=false; }
+  el.textContent=m; el.style.color=bad?'#A32D2D':'#27500A'; }
+function savePw(){ var a=document.getElementById('pwNew').value, b=document.getElementById('pwNew2').value, btn=document.getElementById('pwBtn');
+  if(!pwRule(a)){ toast('密碼至少 8 個字,而且要同時有英文字母和數字',3500); return; }
+  if(a!==b){ toast('兩次輸入的密碼不一樣'); return; }
+  btn.disabled=true; btn.textContent='儲存中…';
+  api({action:'pwSet',pw:a}).then(function(j){ if(!j.set) throw new Error('儲存回應異常,請再試一次');
+      closePw(); toast('✓ 密碼已設定,下次登入輸入這組密碼即可',3500); })
+    .catch(function(e){ toast(/未知動作/.test(e.message)?'後端還沒更新:請先把 Code.gs 貼到 GAS 並部署新版本,再來設密碼':('密碼沒有存成功:'+e.message),5000); })
+    .then(function(){ btn.disabled=false; btn.textContent='儲存密碼'; }); }
 function logout(){
   document.getElementById('navBar').classList.add('hide');
   document.body.classList.remove('appOn');
@@ -4021,10 +4065,11 @@ function refresh(){
 }
 
 if(localStorage.getItem('gf_token')){
-  /* whoami 也走重試:GAS 慢/瞬斷不再把人踢登出,重試全失敗才清 token */
+  /* whoami 也走重試:GAS 慢/瞬斷不把人踢登出;只有後端明確說「代碼無效」才清 token */
   apiRetry({action:'whoami'}, 2, null, function(j){ return !!(j&&j.ok&&j.name); })
     .then(function(j){ user=j.name; enter(); })
-    .catch(function(){ localStorage.removeItem('gf_token'); });
+    .catch(function(e){ if(/代碼無效/.test(e&&e.message||'')) localStorage.removeItem('gf_token');
+      else toast('⚠️ 連線不穩,暫時無法確認登入;請稍後重新整理(登入狀態保留)',6000); });
 }
 </script>
 </body>
