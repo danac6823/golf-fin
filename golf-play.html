@@ -964,7 +964,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.25b', EXPECT_GS='v2026.10.24';
+var GP_BUILD='v2026.11.25c', EXPECT_GS='v2026.10.24';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS){ el.classList.add('hide'); el.textContent=''; }
@@ -1978,6 +1978,11 @@ function hcpForSession(mid, sid){
     .sort(function(a,b){ return histSessDate(a)<histSessDate(b)?-1:1; });
   if(prior.length) return Number(prior[prior.length-1].after);
   if(m.hcpInit||m.hcpInit===0) return Number(m.hcpInit);
+  /* 沒有期初差點(未登入的會員後端不送這一欄):這場之後第一筆差點調整的「調整前」=這場當時的差點。
+     不這樣做會退回「現在的差點」,後來被調過差點的人舊場次淨桿就算錯(2026/11/25:8、9月會員看到的名次與落底不同) */
+  var later=hh.filter(function(x){ return x.mid===mid && histSessDate(x)>String(s.date); })
+    .sort(function(a,b){ return histSessDate(a)<histSessDate(b)?-1:1; });
+  if(later.length && later[0].before!=='' && (later[0].before||later[0].before===0)) return Number(later[0].before);
   return (m.hcpCur||m.hcpCur===0)?Number(m.hcpCur):null;
 }
 /* 有效當期差點 = 差點歷史最後一筆 after(有調整過就以歷史為準;沒有才用 hcpCur)
@@ -2459,6 +2464,16 @@ function saMirror(p){
   if(!PREVIEW) saveCache(DATA);
   try{ showTab(curTab); }catch(e){}
 }
+/* 已落底的排名獎(正式公布的結果):{byMid:{會員ID:[獎項名]}, champMid, champName, intimacy:[姓名]};還沒落底回 null */
+function landedRank(sid){
+  var rows=(DATA.awardLog||[]).filter(function(x){return x.sid===sid;}); if(!rows.length) return null;
+  var L={byMid:{}, champMid:'', champName:'', intimacy:[]};
+  rows.forEach(function(x){ if(x.cat!=='排名') return; var a=String(x.awardName).trim();
+    if(a==='總桿冠軍'){ L.champMid=x.mid; L.champName=x.name; }
+    if(a==='親密獎' && L.intimacy.indexOf(x.name)<0) L.intimacy.push(x.name);
+    var arr=(L.byMid[x.mid]=L.byMid[x.mid]||[]); if(arr.indexOf(a)<0) arr.push(a); });
+  return L;
+}
 function openJudge(sid){
   var J=judgeSession(sid), s=J.s;
   /* 未完賽(尚無任何總桿)→ 只顯示本場獎項公布,隱藏空的成績欄位/說明 */
@@ -2472,9 +2487,16 @@ function openJudge(sid){
   document.getElementById('judgeTitle').textContent='🏆 '+((s.tripName?s.tripName+'・':'')+s.name)+'・本場成績';
   var _spar=sessStdPar(sid);
   document.getElementById('judgeSub').textContent=fmtMD(s.date)+' ｜ 出席 '+J.attend+' 人 ｜ 淨桿排名 '+J.net.length+' 人'+(s.base?' ｜ 親密基準:'+esc(s.base):'')+(_spar!==72?' ｜ 標準桿 '+_spar:'');
+  /* 會員(非總幹事)看到的得獎名單=已落底的正式紀錄,不用現算的(規則或差點之後再變也不會和公布的不同);
+     總幹事看現算結果,改了成績才看得出「判定有變動」。名次/淨桿仍是現算。 */
+  var LG=(user!=='凌華')?landedRank(sid):null, champ=J.champ;
+  if(LG && !(champ && champ.mid===LG.champMid))
+    champ=LG.champMid?(J.all.find(function(r){return r.mid===LG.champMid;})||{mid:LG.champMid,name:LG.champName,gross:''}):null;
+  var awOf=function(mid){ return (LG?LG.byMid[mid]:J.awards[mid])||[]; }, intim=LG?LG.intimacy:(J.intimacy||[]);
+  if(LG && J.intimacy && J.intimacy.length===intim.length && J.intimacy.every(function(n){return intim.indexOf(n)>=0;})) intim=J.intimacy;   /* 同一批人就照現算的順序,兩種身分看到的一樣 */
   var champHcp='';
-  if(J.champ&&(J.champ.hcp||J.champ.hcp===0)){ champHcp=' <span class="sub" style="font-weight:400">｜差點 '+J.champ.hcp;
-    if((J.champ.hcpNew||J.champ.hcpNew===0)&&J.champ.hcpNew!==J.champ.hcp) champHcp+=' → <b style="color:var(--warn)">'+J.champ.hcpNew+'</b>';
+  if(champ&&(champ.hcp||champ.hcp===0)){ champHcp=' <span class="sub" style="font-weight:400">｜差點 '+champ.hcp;
+    if((champ.hcpNew||champ.hcpNew===0)&&champ.hcpNew!==champ.hcp) champHcp+=' → <b style="color:var(--warn)">'+champ.hcpNew+'</b>';
     champHcp+='</span>'; }
   /* 收工檢查表(總幹事):把賽後四步驟(基準/成績/落底/差點)收在一張卡,每步顯示狀態+就地執行 */
   var wrapCard='';
@@ -2496,16 +2518,16 @@ function openJudge(sid){
       stp(_applied,'套用差點調整:'+(_applied?'已套用':'未套用'), _applied?'':'<button class="ghost" style="padding:3px 10px;font-size:12px;flex:none" onclick="applyHcp(\''+sid+'\')">套用</button>')+
     '</div>';
   }
-  var h=sessAwardConfigHtml(s, true)+wrapCard+'<div class="card"><div class="sub" style="margin-bottom:2px">🥇 總桿冠軍</div><div style="font-size:17px;font-weight:700">'+(J.champ?esc(J.champ.name)+' <span class="sub" style="font-weight:400">總桿 '+J.champ.gross+'</span>'+champHcp:'<span class="sub" style="font-weight:400">—(無符合資格或無成績)</span>')+'</div></div>';
+  var h=sessAwardConfigHtml(s, true)+wrapCard+'<div class="card"><div class="sub" style="margin-bottom:2px">🥇 總桿冠軍</div><div style="font-size:17px;font-weight:700">'+(champ?esc(champ.name)+((champ.gross!==''&&champ.gross!=null)?' <span class="sub" style="font-weight:400">總桿 '+champ.gross+'</span>':'')+champHcp:'<span class="sub" style="font-weight:400">—(無符合資格或無成績)</span>')+'</div></div>';
   /* 親密獎獨立卡:總桿制後得主可能不在淨桿排名表(如新會員),需自己的顯示位 */
   if(s.base){
-    var _im=(J.intimacy||[]).map(function(n){ var m=DATA.members.find(function(x){return x.name===n;}); return '<span'+((m&&m.sex==='女')?' style="color:#C2185B"':'')+'>'+esc(n)+'</span>'; }).join('、');
+    var _im=intim.map(function(n){ var m=DATA.members.find(function(x){return x.name===n;}); return '<span'+((m&&m.sex==='女')?' style="color:#C2185B"':'')+'>'+esc(n)+'</span>'; }).join('、');
     h+='<div class="card"><div class="sub" style="margin-bottom:2px">💑 親密獎 <span style="font-weight:400">基準:'+esc(s.base)+'・總桿差距最近</span></div><div style="font-size:17px;font-weight:700">'+(_im||'<span class="sub" style="font-weight:400">—(無符合者)</span>')+'</div></div>';
   }
   if(J.noHcp.length) h+='<div class="card" style="background:#FBE6EC;border-color:#F0CAD6"><div class="sub" style="color:#791F1F">⚠️ 有成績但缺當期差點，無法進淨桿排名:'+J.noHcp.map(function(r){return esc(r.name);}).join('、')+'</div></div>';
   h+='<div class="card" style="padding:0;overflow:hidden"><table class="jtab"><colgroup><col style="width:9%"><col style="width:20%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:20%"><col style="width:12%"></colgroup><thead><tr><th>名次</th><th>姓名</th><th style="text-align:right">總桿</th><th style="text-align:right">差點</th><th style="text-align:right">淨桿</th><th>獎項</th><th style="text-align:right">新差</th></tr></thead><tbody>';
   if(!J.net.length) h+='<tr><td colspan="7" class="sub" style="text-align:center;padding:14px">尚無可排名淨桿成績(需總桿+當期差點)</td></tr>';
-  J.net.forEach(function(r){ var aw=(J.awards[r.mid]||[]).filter(function(a){return a!=='總桿冠軍'&&a!=='親密獎';});
+  J.net.forEach(function(r){ var aw=awOf(r.mid).filter(function(a){return a!=='總桿冠軍'&&a!=='親密獎';});
     h+='<tr><td class="mono"><b>'+r.pos+'</b></td><td'+(r.sex==='女'?' style="color:#C2185B"':'')+'><b>'+esc(r.name)+'</b></td>'+
       '<td class="mono" style="text-align:right">'+r.gross+'</td>'+
       '<td class="mono" style="text-align:right;color:var(--sub)">'+r.hcp+'</td>'+
@@ -2540,7 +2562,7 @@ function openJudge(sid){
     h+='<div class="card"><div class="sub" style="margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">⚖️ 現場改派'+(user==='凌華'?'<button class="ghost" style="padding:3px 11px;font-size:12px" onclick="openOvr(\''+sid+'\')">✎ 管理</button>':'')+'</div>'+
       (ov.length?ov.map(function(o){var m=memById(o.mid); return '<div style="font-size:14px;line-height:1.8"><b>'+esc(o.award)+'</b> → '+esc(m?m.name:o.mid)+(o.note?' <span class="sub">'+esc(o.note)+'</span>':'')+'</div>';}).join(''):'<span class="sub">尚無;現場頒發與自動判定不同時,點「管理」指定(限第12名/幸運7/跳獎/親密獎/BB獎)</span>')+'</div>';
   }
-  var un=J.all.filter(function(r){return !r.rank && r!==J.champ;});   /* 新會員/缺差點者當選總桿冠軍時,不再重複列於未列排名 */
+  var un=J.all.filter(function(r){return !r.rank && r!==champ;});   /* 新會員/缺差點者當選總桿冠軍時,不再重複列於未列排名 */
   if(un.length){ h+='<div class="card"><div class="sub" style="margin-bottom:3px">未列排名</div>'+un.map(function(r){return '<div style="font-size:14px;line-height:1.7">'+esc(r.name)+' <span class="sub">'+esc(r.tag||'')+((r.gross!==''&&r.gross!=null)?' · 總桿'+r.gross:'')+'</span>'+((r.establish!=null)?' <b style="color:var(--warn)">→ 建立差點 '+r.establish+'</b>':'')+'</div>';}).join('')+'</div>'; }
   if(user==='凌華'){ var applied=DATA.hcpHist.some(function(x){return x.sid===sid;});
     h+='<div style="margin:8px 2px">'+(applied?'<span class="pill st-done" style="font-size:13px">✓ 本場差點調整已套用(當期差點+歷史已更新)</span>':'<button class="btn" style="background:var(--warn)" onclick="applyHcp(\''+sid+'\')">套用差點調整 → 寫入當期差點+差點歷史</button>')+'</div>'; }
