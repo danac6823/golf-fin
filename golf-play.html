@@ -325,8 +325,23 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .jd-p small{display:block;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .jd-p.jd-g{background:linear-gradient(160deg,#fff 40%,var(--gold-soft));border-color:#EDD9A6}
 .jd-new{color:var(--warn);font-weight:700}
-.jd-tw{display:flex;flex-wrap:wrap;gap:0 14px}
-.jd-tw>span{white-space:nowrap}
+/* 本場成績頁的技術獎:一種獎一區,區內兩欄「第幾洞 得主」 */
+.tk-g{border:1px solid var(--line);border-radius:11px;margin-top:8px;overflow:hidden}
+.tk-h{display:flex;align-items:center;padding:6px 11px;font-size:14px;font-weight:700}
+.tk-h span{margin-left:auto;min-width:22px;text-align:center;font-size:12px;font-weight:700;border-radius:999px;padding:1px 7px;background:rgba(255,255,255,.75)}
+.tk-b{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 12px;padding:8px 11px 9px;font-size:15px;line-height:1.5}
+.tk-i{display:flex;gap:7px;min-width:0;align-items:baseline}
+.tk-i i{flex:none;font-style:normal;font-size:12px;color:var(--sub);white-space:nowrap}
+.tk-i span{min-width:0}
+.tk-i b{font-weight:600}
+.tk-i small{font-size:12px;color:var(--sub);margin-left:2px}
+.tk-i.tk-f{grid-column:1/-1}
+.tk-g.tk-paron{border-color:#CBE6D2}
+.tk-paron .tk-h{background:#F1F8F2;color:#27500A}
+.tk-g.tk-bw{border-color:#F0CAD6}
+.tk-bw .tk-h{background:#FDF1F3;color:#8A2A3C}
+.tk-g.tk-best{border-color:#EDD9A6}
+.tk-best .tk-h{background:var(--gold-soft);color:#8A6A1E}
 .jtab tr.jd-me td{background:#FFF8E1}
 .jd-meb{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:var(--gold);border-radius:5px;padding:0 5px;margin-left:4px;vertical-align:1px}
 /* 年度總表:列=會員、欄=各場(舊→新)、格=總桿;姓名欄固定,左右滑看各場 */
@@ -1037,7 +1052,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.25k', EXPECT_GS='v2026.11.25';
+var GP_BUILD='v2026.11.25l', EXPECT_GS='v2026.11.25';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS || user!=='凌華'){ el.classList.add('hide'); el.textContent=''; }   /* 只提醒總幹事:會員看了也不能做什麼 */
@@ -2769,20 +2784,27 @@ function openJudge(sid){
   var un=V.un?V.un.filter(function(r){return r!==champ;}):V.all.filter(function(r){return !r.rank && r!==champ;});   /* 新會員/缺差點者當選總桿冠軍時,不再重複列於未列排名 */
   if(un.length){ h+='<div class="card"><div class="sub" style="margin-bottom:3px">未列排名</div>'+un.map(function(r){return '<div style="font-size:14px;line-height:1.7">'+esc(r.name)+meTag(r)+' <span class="sub">'+esc(r.tag||'')+((r.gross!==''&&r.gross!=null)?' · 總桿'+r.gross:'')+'</span>'+((r.establish!=null)?' <b style="color:var(--warn)">→ 建立差點 '+r.establish+'</b>':'')+'</div>';}).join('')+'</div>'; }
   var tech=DATA.tech.filter(function(x){return x.sid===sid;});
-  if(tech.length){ var g={}; var _jpars=sessionPars(s);
-    tech.forEach(function(t){ var nm=(memById(t.mid)||{}).name||t.mid; var type=t.type;
+  if(tech.length){
+    /* 技術獎:一種獎一區(PAR ON 三/四/五桿洞、黑白切、直入、BIRDIE…),區內照洞號列「第幾洞 → 得主」;
+       沒有洞號的(直入/BIRDIE)同一人多筆合併成「姓名 ×N」 */
+    var g={}, _jpars=sessionPars(s), _who={};
+    tech.forEach(function(t){ var m=memById(t.mid), type=t.type;
       if(type==='paron'){ var par=_jpars?_jpars[t.hole-1]:null; type='paron'+parCls(par); }
-      (g[type]=g[type]||[]).push({name:nm,hole:t.hole}); });
-    var _pl=function(z){ return '🟢 <span style="display:inline-block;vertical-align:top">PAR ON<br>'+z+'</span>'; };
-    var LBL={paron3:_pl('三桿洞'),paron4:_pl('四桿洞'),paron5:_pl('五桿洞'),bwcut:'🚩 黑白切',onputt:'⛳ 直入獎',birdie:'🐦 BIRDIE',eagle:'🦅 EAGLE',hio:'🕳️ 一桿進洞'};
-    var tline=function(type){ var arr=g[type]; if(!arr||!arr.length) return ''; arr.sort(function(a,b){return (a.hole||99)-(b.hole||99);});
-      var parts=[], noHole={};   /* 免洞號同一人多筆 → 合併成「姓名 ×N」 */
-      arr.forEach(function(e){ var hv=(e.hole&&+e.hole>=1&&+e.hole<=18)?+e.hole:'';
-        if(hv) parts.push(esc(e.name)+' <span class="sub">'+holeLabel(s,hv)+'</span>');
-        else if(noHole[e.name]==null){ noHole[e.name]=parts.length; parts.push({nm:e.name,n:1}); }
-        else parts[noHole[e.name]].n++; });
-      return '<div class="techln"><b class="lb">'+LBL[type]+'</b><span class="nm jd-tw">'+parts.map(function(p){ return '<span>'+((typeof p==='string')?p:(esc(p.nm)+(p.n>1?' <span class="sub">×'+p.n+'</span>':'')))+'</span>'; }).join('')+'</span></div>'; };
-    h+='<div class="card"><div class="sub" style="margin-bottom:5px">🎯 技術獎</div>'+['paron3','paron4','paron5','bwcut','onputt','birdie','eagle','hio'].map(tline).join('')+'</div>';
+      _who[t.mid]=1;
+      (g[type]=g[type]||[]).push({mid:t.mid, name:m?m.name:t.mid, f:!!(m&&m.sex==='女'), hole:(t.hole&&+t.hole>=1&&+t.hole<=18)?+t.hole:0}); });
+    var TK=[['paron3','🟢 PAR ON・三桿洞','tk-paron'],['paron4','🟢 PAR ON・四桿洞','tk-paron'],['paron5','🟢 PAR ON・五桿洞','tk-paron'],['bwcut','🚩 黑白切','tk-bw'],
+            ['onputt','⛳ 直入獎','tk-best'],['birdie','🐦 BIRDIE','tk-best'],['eagle','🦅 EAGLE','tk-best'],['hio','🕳️ 一桿進洞','tk-best']];
+    var tkNm=function(e,n){ return '<b'+(e.f?' class="mname-f"':'')+'>'+esc(e.name)+'</b>'+meTag(e)+(n>1?'<small>×'+n+'</small>':''); };
+    var tkBlock=function(k){ var arr=g[k[0]]; if(!arr||!arr.length) return '';
+      var byH={}, holes=[], free=[], fi={};
+      arr.forEach(function(e){
+        if(e.hole){ if(!byH[e.hole]){ byH[e.hole]=[]; holes.push(e.hole); } byH[e.hole].push(e); }
+        else if(fi[e.mid]==null){ fi[e.mid]=free.length; free.push({e:e,n:1}); } else free[fi[e.mid]].n++; });
+      holes.sort(function(x,y){return x-y;});
+      var body=holes.map(function(hn){ return '<div class="tk-i"><i>'+holeLabel(s,hn)+'</i><span>'+byH[hn].map(function(e){return tkNm(e,1);}).join('、')+'</span></div>'; }).join('')+
+        (free.length?'<div class="tk-i tk-f"><span>'+free.map(function(x){return tkNm(x.e,x.n);}).join('、')+'</span></div>':'');
+      return '<div class="tk-g '+k[2]+'"><div class="tk-h">'+k[1]+'<span>'+arr.length+'</span></div><div class="tk-b">'+body+'</div></div>'; };
+    h+='<div class="card"><div class="sub" style="display:flex;justify-content:space-between;align-items:baseline">🎯 技術獎<span>'+tech.length+' 筆・'+Object.keys(_who).length+' 人</span></div>'+TK.map(tkBlock).join('')+'</div>';
   }
   var sa=DATA.sessAward.filter(function(x){return x.sid===sid;});
   if(sa.length||user==='凌華'){
