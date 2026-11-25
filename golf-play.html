@@ -308,15 +308,15 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .rs-row{display:flex;gap:10px;overflow-x:auto;margin:0 -4px 8px;padding:2px 4px 10px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
 .rs-card{flex:0 0 76%;max-width:290px;min-width:0;scroll-snap-align:start;margin:0;padding:11px 13px;text-align:left;border:1px solid #EDD9A6;border-radius:14px;background:linear-gradient(160deg,#fff 55%,var(--gold-soft));color:var(--txt);cursor:pointer;box-shadow:0 1px 3px rgba(120,90,50,.06)}
 .rs-row .rs-card:only-child{flex-basis:100%;max-width:none}
-.rs-hd{display:flex;align-items:baseline;gap:6px;font-size:15px;font-weight:700}
-.rs-hd span{flex:none;font-size:12px;font-weight:600;color:var(--gold)}
+.rs-hd{display:flex;align-items:baseline;gap:6px;font-size:19px;font-weight:700}
+.rs-hd span{flex:none;font-size:13.5px;font-weight:600;color:var(--gold)}
 .rs-hd b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-sub{font-size:12px;color:var(--sub);margin:1px 0 7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rs-ln{display:flex;gap:6px;font-size:14px;line-height:1.75;white-space:nowrap}
-.rs-ln i{flex:none;font-style:normal;font-size:12px;color:var(--sub);width:66px}
+.rs-sub{font-size:13.5px;color:var(--sub);margin:3px 0 9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-ln{display:flex;gap:6px;font-size:18px;line-height:1.75;white-space:nowrap}
+.rs-ln i{flex:none;font-style:normal;font-size:13.5px;color:var(--sub);width:80px}
 .rs-ln b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.rs-ln b small{font-weight:400;color:var(--sub);font-size:12px;margin-left:3px}
-.rs-go{margin-top:6px;font-size:12px;font-weight:600;color:var(--pri)}
+.rs-ln b small{font-weight:400;color:var(--sub);font-size:13.5px;margin-left:4px}
+.rs-go{margin-top:9px;font-size:13px;font-weight:600;color:var(--pri)}
 /* 本場成績頁:最上面四格得獎亮點;排名表六欄(新差點併進差點欄);記住的那個人整列標出來 */
 .jd-pod{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
 .jd-p{min-width:0;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:0 1px 3px rgba(120,90,50,.05)}
@@ -1037,7 +1037,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.25j', EXPECT_GS='v2026.11.25';
+var GP_BUILD='v2026.11.25k', EXPECT_GS='v2026.11.25';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS || user!=='凌華'){ el.classList.add('hide'); el.textContent=''; }   /* 只提醒總幹事:會員看了也不能做什麼 */
@@ -2954,7 +2954,7 @@ function scoredSessions(){   /* 已登錄成績的場次,最新在前 */
     (DATA.scores||[]).some(function(x){return x.sid===s.id && x.gross!=='' && x.gross!=null;}); })
     .sort(function(a,b){return String(a.date)<String(b.date)?1:-1;});
 }
-function scoreCardHtml(s,full){   /* full=成績分頁(多列淨桿亞季軍);否則=行事曆的橫向小卡 */
+function scoreCardHtml(s,full){   /* full=成績分頁(總桿冠軍+淨桿冠亞季);否則=行事曆的橫向小卡(只秀總桿冠軍) */
   function winner(award){
     var r=(DATA.awardLog||[]).find(function(x){return x.sid===s.id && String(x.awardName).trim()===award;}); if(!r) return null;
     var sn=rankSnap(s.id), sc=r.mid?((sn&&sn.all.find(function(x){return x.mid===r.mid;}))||(DATA.scores||[]).find(function(x){return x.sid===s.id && x.mid===r.mid;})):null, m=memById(r.mid);
@@ -2962,7 +2962,7 @@ function scoreCardHtml(s,full){   /* full=成績分頁(多列淨桿亞季軍);�
   }
   function line(lb,w,showGross){ return w?'<div class="rs-ln"><i>'+lb+'</i><b'+(w.f?' class="mname-f"':'')+'>'+esc(w.name)+((showGross&&w.gross!=='')?'<small>'+w.gross+' 桿</small>':'')+'</b></div>':''; }
   var g=winner('總桿冠軍'), n=winner('淨桿冠軍'), att=attList(s.id).length;
-  var lines=line('🥇 總桿冠軍',g,true)+line('🏆 淨桿冠軍',n,false)+(full?(line('🥈 淨桿亞軍',winner('淨桿亞軍'),false)+line('🥉 淨桿季軍',winner('淨桿季軍'),false)):'');
+  var lines=line('🥇 總桿冠軍',g,true)+(full?(line('🏆 淨桿冠軍',n,false)+line('🥈 淨桿亞軍',winner('淨桿亞軍'),false)+line('🥉 淨桿季軍',winner('淨桿季軍'),false)):'');   /* 行事曆的小卡只秀總桿冠軍 */
   return '<button type="button" class="rs-card" onclick="openJudge(\''+s.id+'\')">'+
     '<div class="rs-hd"><span>'+fmtMD(s.date)+'</span><b>'+esc(mgName(s))+(s.cup?'・'+esc(s.cup):'')+'</b></div>'+
     '<div class="rs-sub">'+esc(s.courseId?courseName(s.courseId):'')+(att?'・出席 '+att+' 人':'')+'</div>'+
