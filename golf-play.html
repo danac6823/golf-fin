@@ -329,6 +329,21 @@ td{padding:9px 5px;border-top:1px solid var(--line);vertical-align:top}
 .jd-tw>span{white-space:nowrap}
 .jtab tr.jd-me td{background:#FFF8E1}
 .jd-meb{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:var(--gold);border-radius:5px;padding:0 5px;margin-left:4px;vertical-align:1px}
+/* 年度總表:列=會員、欄=各場(舊→新)、格=總桿;姓名欄固定,左右滑看各場 */
+.yt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;box-shadow:0 1px 3px rgba(120,90,50,.05)}
+.yt{border-collapse:separate;border-spacing:0;width:auto;min-width:100%;font-size:16px}
+.yt th,.yt td{padding:9px 7px;border-top:1px solid var(--line);text-align:center;vertical-align:middle;white-space:nowrap;background:#fff;font-variant-numeric:tabular-nums}
+.yt thead th{border-top:none;background:#F3F8F4;color:var(--txt);font-size:15px;line-height:1.25}
+.yt thead th small{display:block;font-weight:400;font-size:11.5px;color:var(--sub)}
+.yt .yt-n{position:sticky;left:0;z-index:1;text-align:left;font-weight:600;border-right:1px solid #DCEBE2;padding-left:11px;max-width:112px;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.yt .yt-n small{font-size:11px;font-weight:400;color:var(--pri);margin-right:3px}
+.yt thead .yt-n{z-index:2;cursor:default}
+.yt .yt-h{cursor:pointer}
+.yt td.yt-s,.yt th.yt-s{background:#FBF8F3;color:#5A5A62;font-size:14px}
+.yt td.yt-c{background:var(--gold-soft);color:#8A6A1E;font-weight:700}
+.yt td.yt-w{background:#EAF3DE;color:#27500A;font-weight:700}
+.yt td.yt-x{color:var(--sub);font-size:12px}
+.yt tr.yt-me td{background:#FFF8E1}
 /* 行事曆底部:每月財報入口 */
 .fin-link{display:block;margin:10px 0 2px;padding:11px 12px;border:1px dashed #D9D2C7;border-radius:12px;text-align:center;font-size:14px;font-weight:600;color:var(--pri);text-decoration:none;background:rgba(255,255,255,.6)}
 .fin-link small{display:block;font-size:12px;font-weight:400;color:var(--sub);margin-top:1px}
@@ -1022,7 +1037,7 @@ function switchRole(r){ applyRole(r); refresh(); }
 var CACHE_KEY='gp_cache_v1';
 /* 版本對齊:改 golf-play.gs 時,後端 PLAY_VER 與這裡的 EXPECT_GS 一起改;
    後端回報版本對不上 → 頂部黃條提醒重新部署 GAS(抓「貼了舊版/忘了部署」) */
-var GP_BUILD='v2026.11.25i', EXPECT_GS='v2026.11.25';
+var GP_BUILD='v2026.11.25j', EXPECT_GS='v2026.11.25';
 function updateVerBanner(j){
   var el=document.getElementById('verWarn'), gs=j&&j.playVer;
   if(el){ if(gs===EXPECT_GS || user!=='凌華'){ el.classList.add('hide'); el.textContent=''; }   /* 只提醒總幹事:會員看了也不能做什麼 */
@@ -1058,6 +1073,7 @@ var dlDone=false;
 function deepLink(final){
   if(dlDone) return; var q; try{ q=new URLSearchParams(location.search); }catch(e){ dlDone=true; return; }
   var sid=q.get('s'), tab=q.get('tab');
+  if(tab==='year'){ scView='year'; tab='score'; }   /* ?tab=year → 成績分頁的年度總表 */
   if(tab && ['cal','score','member','award'].indexOf(tab)>=0 && curTab!==tab) showTab(tab);
   if(sid){ var s=DATA.sessions.find(function(x){return x.id===sid;});
     if(s){ dlDone=true; if(!isPrac(s)){ try{ openJudge(sid); }catch(e){ console.error('開啟場次失敗',e); } } return; } }
@@ -2961,7 +2977,8 @@ function recentScoresHtml(){
 /* 查個人成績:打名字 → 點人 → 列出他每一場的總桿/淨桿/名次/得獎。上次查的人記在這台裝置,下次直接顯示 */
 var psMid='', psInit=false;
 function psRemember(mid){ psMid=mid; try{ if(mid) localStorage.setItem('gp_me',mid); else localStorage.removeItem('gp_me'); }catch(e){} }
-function psPick(mid){ psRemember(mid); var q=document.getElementById('psQ'); if(q) q.value=''; renderPersonal(); }
+function psPick(mid){ psRemember(mid); var q=document.getElementById('psQ'); if(q) q.value='';
+  if(curTab==='score' && scView==='year') renderScoreTab(); else renderPersonal(); }   /* 年度總表上那一列的標色要跟著換 */
 function personalRows(mid){
   return scoredSessions().map(function(s){
     var V=rankView(s.id), r=V.all.find(function(z){return z.mid===mid;}); if(!r) return null;
@@ -2998,14 +3015,56 @@ function renderPersonal(){
   });
   el.innerHTML=h;
 }
+/* ===== 年度總表(全員)=====
+   列=本屆有出賽紀錄的會員,欄=已登錄成績的場次(舊→新,最右邊是場數/平均),格=總桿。
+   成績來源與本場成績頁相同(rankView:會員讀落底快照);👑總桿冠軍、🏆淨桿冠軍只標已落底的 */
+var scView='cards', ytSort='cohort';
+function setScView(v){ scView=v; renderScoreTab(); }
+function setYtSort(v){ ytSort=v; renderScoreTab(); }
+function ytPick(mid){ psPick(mid); window.scrollTo(0,0); }
+function courseShort(id){ return courseName(id).replace(/高爾夫|鄉村|俱樂部|球場|國際/g,'')||courseName(id); }
+function yearTableData(){
+  var cols=scoredSessions().slice().reverse().map(function(s){
+    var V=rankView(s.id), by={}, L=landedRank(s.id), netc='';
+    V.all.forEach(function(r){ if(r.mid) by[r.mid]=r; });
+    if(L) Object.keys(L.byMid).forEach(function(mid){ if(L.byMid[mid].indexOf('淨桿冠軍')>=0) netc=mid; });
+    return {s:s, by:by, champ:L?L.champMid:'', netc:netc, fun:s.scoring==='友誼賽'};
+  });
+  var rows=membersByCohort().filter(function(m){ return cols.some(function(c){return c.by[m.id];}); }).map(function(m){
+    var gs=[]; cols.forEach(function(c){ var r=c.by[m.id]; if(r && !c.fun && r.gross!=='' && r.gross!=null) gs.push(Number(r.gross)); });
+    return {m:m, n:gs.length, avg:gs.length?Math.round(gs.reduce(function(a,b){return a+b;},0)/gs.length*10)/10:null, best:gs.length?Math.min.apply(null,gs):null};
+  });
+  if(ytSort==='avg') rows.sort(function(a,b){ return (a.avg==null?999:a.avg)-(b.avg==null?999:b.avg); });   /* 穩定排序:同平均維持屆別順序 */
+  return {cols:cols, rows:rows};
+}
+function yearTableHtml(){
+  var D=yearTableData(), me=meMid();
+  if(!D.cols.length) return '<div class="card sub">本屆還沒有已登錄的成績。</div>';
+  var h='<div class="gpills" style="margin-bottom:8px">'+[['cohort','依屆別'],['avg','依平均桿數']].map(function(p){ return '<button type="button" class="ghost'+(ytSort===p[0]?' on':'')+'" onclick="setYtSort(\''+p[0]+'\')">'+p[1]+'</button>'; }).join('')+
+    '<span class="sub" style="margin-left:auto;align-self:center">'+D.rows.length+' 人・'+D.cols.length+' 場</span></div>';
+  h+='<div class="yt-wrap" id="ytWrap"><table class="yt"><thead><tr><th class="yt-n">姓名</th>'+D.cols.map(function(c){
+      return '<th class="yt-h" onclick="openJudge(\''+c.s.id+'\')">'+fmtMD(c.s.date)+'<small>'+esc(courseShort(c.s.courseId))+(c.fun?'・友誼':'')+'</small></th>'; }).join('')+
+    '<th class="yt-s">場數</th><th class="yt-s">平均</th></tr></thead><tbody>';
+  D.rows.forEach(function(R){ var m=R.m, role=(m.cadre&&!/屆/.test(m.cadre))?m.cadre:'';
+    h+='<tr'+(me===m.id?' class="yt-me"':'')+'><td class="yt-n'+(m.sex==='女'?' mname-f':'')+'" onclick="ytPick(\''+m.id+'\')">'+(role?'<small>'+esc(role)+'</small>':'')+esc(m.name)+'</td>'+
+      D.cols.map(function(c){ var r=c.by[m.id]; if(!r) return '<td></td>';
+        if(r.gross===''||r.gross==null) return '<td class="yt-x">未完</td>';
+        return (c.champ===m.id)?'<td class="yt-c">👑 '+r.gross+'</td>':((c.netc===m.id)?'<td class="yt-w">🏆 '+r.gross+'</td>':'<td>'+r.gross+'</td>'); }).join('')+
+      '<td class="yt-s">'+(R.n||'')+'</td><td class="yt-s">'+(R.avg==null?'':R.avg.toFixed(1))+'</td></tr>';
+  });
+  h+='</tbody></table></div><p class="sub" style="margin:0 4px 10px;line-height:1.7">👑 總桿冠軍　🏆 淨桿冠軍　未完＝出席但未完賽　空白＝未出席<br>點日期看那一場,點名字看個人成績(含最佳總桿)。平均不含友誼賽。</p>';
+  return h;
+}
 function renderScoreTab(){
   var el=document.getElementById('scoreTabBody'); if(!el) return;
   if(!psInit){ psInit=true; try{ psMid=localStorage.getItem('gp_me')||''; }catch(e){} }
   var keep=document.getElementById('psQ'), qv=keep?keep.value:'', ss=scoredSessions();
   var h='<div class="ps-box"><input id="psQ" type="text" placeholder="🔍 查個人成績:輸入姓名" autocomplete="off" oninput="renderPersonal()"><div id="psOut"></div></div>';
-  h+='<div class="listlbl">各場成績 <span style="font-weight:400">・點卡片看完整排名與得獎名單</span></div>';
-  h+=ss.length?'<div class="rs-list">'+ss.map(function(s){ return scoreCardHtml(s,true); }).join('')+'</div>':'<div class="card sub">本屆還沒有已登錄的成績。</div>';
+  h+='<div class="segbar" style="margin-top:10px"><button class="seg'+(scView==='cards'?' on':'')+'" onclick="setScView(\'cards\')">🏆 各場成績</button><button class="seg'+(scView==='year'?' on':'')+'" onclick="setScView(\'year\')">📊 年度總表</button></div>';
+  if(scView==='year') h+=yearTableHtml();
+  else h+=ss.length?'<div class="rs-list">'+ss.map(function(s){ return scoreCardHtml(s,true); }).join('')+'</div>':'<div class="card sub">本屆還沒有已登錄的成績。</div>';
   el.innerHTML=h; document.getElementById('psQ').value=qv; renderPersonal();
+  var yw=document.getElementById('ytWrap'); if(yw) yw.scrollLeft=yw.scrollWidth;   /* 場次舊→新,先捲到最右邊:最新一場和平均在眼前 */
 }
 function renderCal(){
   document.getElementById('calYear').textContent='第12屆・2026/8–2027/7';
