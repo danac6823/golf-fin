@@ -196,7 +196,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-11-27b</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-11-27c</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -1047,7 +1047,7 @@ function vchDocHtml(r, pdfMode){
     tbl = '<table style="border-collapse:collapse;width:100%;font-size:13px">'+
       '<tr><th style="'+TH+'width:76px">請款人</th><td style="'+TD+'">'+esc(FULLNAME[q.applicant]||q.applicant||'—')+'</td>'+
           '<th style="'+TH+'width:76px">申請日期</th><td style="'+TD+'">'+d8fmt(q.applyDate)+'</td></tr>'+
-      '<tr><th style="'+TH+'">類別</th><td style="'+TD+'">'+esc(q.cat||'—')+'</td>'+
+      '<tr><th style="'+TH+'">類別</th><td style="'+TD+'">'+esc(reqCatDisp(q)||'—')+'</td>'+
           '<th style="'+TH+'">匯款日期</th><td style="'+TD+'">'+d8fmt(r.date)+'</td></tr>'+
       '<tr><th style="'+TH+'">請款事由</th><td style="'+TD+'" colspan="3">'+esc(q.desc)+(q.act?'|🎯'+esc(q.act):'')+'</td></tr>'+
       '<tr><th style="'+TH+'">金額</th><td style="'+TD+'" colspan="3"><b>NT$ '+money(amt)+'</b>|<span style="font-size:12px">新臺幣 '+cnUpper(amt)+'</span></td></tr>'+
@@ -2930,6 +2930,7 @@ function setReqType(t){
   var g=document.getElementById('rtGen'), s=document.getElementById('rtSec');
   g.style.background = t==='gen'?'#1F3864':'#fff'; g.style.color = t==='gen'?'#fff':'var(--txt)';
   s.style.background = t==='sec'?'#1F3864':'#fff'; s.style.color = t==='sec'?'#fff':'var(--txt)';
+  syncReqCatOpts(t);
   var av=document.getElementById('rtAdv'), hasItems=(t==='sec'||t==='adv');   /* adv=代墊請款:球秘請款的明細介面,收款人換成自己 */
   av.style.background = t==='adv'?'#1F3864':'#fff'; av.style.color = t==='adv'?'#fff':'var(--txt)';
   document.getElementById('advHint').classList.toggle('hide', t!=='adv');
@@ -2981,6 +2982,15 @@ function setReqType(t){
   }
 }
 var REQ_ME={'凌華':'張凌華','允甄':'張允甄'};
+/* 代墊請款可選「代收款退款」(類別存成「代收款」,匯款後入帳=掛在支出的代收款=退款);一般/球秘請款不列 */
+function syncReqCatOpts(t){
+  var sel=document.getElementById('rCat'); if(!sel) return;
+  if(!sel.options.length) sel.innerHTML=CATS.map(function(c){return '<option>'+c+'</option>'}).join('');
+  var op=null; for(var i=0;i<sel.options.length;i++) if(sel.options[i].value==='代收款') op=sel.options[i];
+  if(t==='adv'){ if(!op){ op=document.createElement('option'); op.value='代收款'; op.textContent='代收款退款(退回繳款人)'; sel.insertBefore(op, sel.firstChild); } }
+  else if(op){ var was=(sel.value==='代收款'); sel.removeChild(op); if(was) sel.selectedIndex=0; }
+}
+function reqCatDisp(q){ return (q&&q.cat==='代收款')?'代收款退款':((q&&q.cat)||''); }
 /* 有明細的請款單是哪一種:球秘請款的項目說明固定是「球秘請款(活動)」,其餘有明細的=代墊請款 */
 function reqKindOf(r){ return (r&&r.items&&r.items.length) ? (/^球秘請款\(/.test(String(r.desc||''))?'sec':'adv') : 'gen'; }
 
@@ -3181,6 +3191,7 @@ function reqCreate(){
     if(!q.items.length){ toast('代墊請款請至少填一項明細'); return; }
     q.amount=itemTotal();
     if(q.amount<=0){ toast('合計需大於 0'); return; }
+    if(q.cat==='代收款' && !q.act){ toast('代收款退款請選活動(要跟當初收代收款時同一個,才會對沖)', 4500); return; }
     if(!q.desc){ if(!q.act){ toast('請填項目說明或選活動'); return; } q.desc='代墊請款('+q.act+')'; }
     if(/^球秘請款\(/.test(q.desc)){ toast('項目說明請不要用「球秘請款(」開頭(會被當成球秘請款單)'); return; }
     if(!q.note) q.note=(REQ_ME[user]||user)+' 先墊付,請款歸墊';
@@ -3286,7 +3297,7 @@ function openReqDetail(ref){
   h+='<table style="width:100%;font-size:12.5px;line-height:1.9;margin:4px 0">'+
     '<tr><td style="color:#6b7280;width:74px;vertical-align:top">請款人</td><td>'+esc(r.applicant||'—')+'</td></tr>'+
     '<tr><td style="color:#6b7280;vertical-align:top">申請日期</td><td>'+d8fmt(r.applyDate)+'</td></tr>'+
-    (r.cat?'<tr><td style="color:#6b7280;vertical-align:top">類別</td><td>'+esc(catDisp(r))+'</td></tr>':'')+
+    (r.cat?'<tr><td style="color:#6b7280;vertical-align:top">類別</td><td>'+esc(reqCatDisp(r))+'</td></tr>':'')+
     (r.act?'<tr><td style="color:#6b7280;vertical-align:top">活動</td><td>🎯'+esc(r.act)+'</td></tr>':'')+
     '<tr><td style="color:#6b7280;vertical-align:top">匯款資訊</td><td>'+esc(r.payee||'—')+'<br><span style="font-family:monospace">'+esc(r.bankCode||'—')+(r.branch?' '+esc(r.branch):'')+'|'+esc(r.bankAcct||'—')+'</span></td></tr>'+
     (r.payDate?'<tr><td style="color:#6b7280;vertical-align:top">匯款日</td><td>'+d8fmt(r.payDate)+'</td></tr>':'')+
