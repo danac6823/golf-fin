@@ -196,7 +196,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-11-27a</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-11-27b</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -312,8 +312,10 @@ body.appOn{padding-bottom:92px}
       <div style="margin-top:8px">
         <div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:8px">
           <button type="button" id="rtGen" onclick="setReqType('gen')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;font-size:13px;background:#1F3864;color:#fff">一般請款</button>
-          <button type="button" id="rtSec" onclick="setReqType('sec')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;border-left:1px solid var(--line);font-size:13px;background:#fff">🏌️ 球秘請款(含明細)</button>
+          <button type="button" id="rtSec" onclick="setReqType('sec')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;border-left:1px solid var(--line);font-size:13px;background:#fff">🏌️ 球秘請款</button>
+          <button type="button" id="rtAdv" onclick="setReqType('adv')" style="flex:1;padding:9px 4px;margin:0;border:none;border-radius:0;border-left:1px solid var(--line);font-size:13px;background:#fff">🙋 代墊請款</button>
         </div>
+        <p class="sub hide" id="advHint" style="margin:-2px 2px 8px;font-size:12px;line-height:1.6">你先墊的錢用這裡請回來:逐項填明細(自動加總),收款人是你自己。允甄匯款後系統自動入帳,不用再另外登支出。</p>
         <label>常用廠商(選擇自動帶入帳戶;新廠商選手動輸入,儲存後自動入冊)</label>
         <select id="rVendor" onchange="vendorPick(this.value)"><option value="">— 手動輸入 —</option></select>
         <label>支出資金池 — 允甄將由此戶頭匯出</label>
@@ -2907,6 +2909,7 @@ function toggleReqForm(){
   if(!sel.options.length) sel.innerHTML=CATS.map(function(c){return '<option>'+c+'</option>'}).join('');
   actBox('rActBox','rAct','','活動(例:8月例賽;球秘請款必填)');   /* 新請款單:活動重置為空 */
   fillVendorSel(reqType==='sec'?'球秘':null);
+  if(reqType==='adv' && !reqEditRef && !fm.classList.contains('hide')) setReqType('adv');
 }
 
 var reqType='gen';
@@ -2927,10 +2930,17 @@ function setReqType(t){
   var g=document.getElementById('rtGen'), s=document.getElementById('rtSec');
   g.style.background = t==='gen'?'#1F3864':'#fff'; g.style.color = t==='gen'?'#fff':'var(--txt)';
   s.style.background = t==='sec'?'#1F3864':'#fff'; s.style.color = t==='sec'?'#fff':'var(--txt)';
-  document.getElementById('rItems').classList.toggle('hide', t!=='sec');
+  var av=document.getElementById('rtAdv'), hasItems=(t==='sec'||t==='adv');   /* adv=代墊請款:球秘請款的明細介面,收款人換成自己 */
+  av.style.background = t==='adv'?'#1F3864':'#fff'; av.style.color = t==='adv'?'#fff':'var(--txt)';
+  document.getElementById('advHint').classList.toggle('hide', t!=='adv');
+  document.getElementById('rItems').classList.toggle('hide', !hasItems);
+  var rowsEl=document.getElementById('rItemRows');
+  if(hasItems && rowsEl.getAttribute('data-for')!==t){ rowsEl.innerHTML=''; document.getElementById('rItemTotal').textContent='0'; }   /* 球秘↔代墊互切:不沿用對方的明細列 */
+  if(hasItems) rowsEl.setAttribute('data-for',t);
   var amt=document.getElementById('rAmt');
-  amt.readOnly = (t==='sec');
-  amt.placeholder = t==='sec' ? '金額(由明細自動加總)' : '金額';
+  amt.readOnly = hasItems;
+  amt.placeholder = hasItems ? '金額(由明細自動加總)' : '金額';
+  document.getElementById('rDesc').placeholder = t==='adv' ? '項目說明(可不填,預設「代墊請款+活動」)' : '項目說明,例:8月獎品採購 保溫瓶×10';
   var pool=document.getElementById('rPool');
   document.getElementById('bankFields').classList.toggle('hide', t==='sec');
   document.getElementById('secBankInfo').classList.toggle('hide', t!=='sec');
@@ -2950,11 +2960,29 @@ function setReqType(t){
     rc.value='球秘請款'; catGuard(rc,'rTeam');
     itemTotal();
     renderSecBank();
+  } else if(t==='adv'){
+    pool.disabled=false;
+    buildSecItemList();
+    if(!rowsEl.children.length){ addItemRow(); addItemRow(); }
+    if(!reqEditRef){ var ra=document.getElementById('rAct'); if(!ra||!ra.value) actBox('rActBox','rAct','','活動(建議選,報表才歸得到這場)'); }
+    fillVendorSel(null);
+    /* 收款人=自己:名冊裡有自己就帶入帳戶;沒有就先填姓名,帳戶第一次手填、送出後自動入冊 */
+    var me=REQ_ME[user]||'', vl=(lastData&&lastData.vendors)||[], vi=-1;
+    if(!reqEditRef){
+      vl.forEach(function(v,i){ if(vi<0 && me && (v.payee===me||v.name===me)) vi=i; });
+      var vs2=document.getElementById('rVendor');
+      if(vi>=0){ vs2.value=String(vi); vendorPick(String(vi)); }
+      else { vs2.value=''; document.getElementById('rPayee').value=me; ['rBank','rBranch','rAcct'].forEach(function(id){ document.getElementById(id).value=''; }); }
+    }
+    itemTotal();
   } else {
     pool.disabled=false;
     fillVendorSel(null);
   }
 }
+var REQ_ME={'凌華':'張凌華','允甄':'張允甄'};
+/* 有明細的請款單是哪一種:球秘請款的項目說明固定是「球秘請款(活動)」,其餘有明細的=代墊請款 */
+function reqKindOf(r){ return (r&&r.items&&r.items.length) ? (/^球秘請款\(/.test(String(r.desc||''))?'sec':'adv') : 'gen'; }
 
 function renderSecBank(){
   var el=document.getElementById('secBankInfo');
@@ -3089,7 +3117,7 @@ function reqOpenEdit(ref){
   var fm=document.getElementById('reqForm');
   fm.classList.remove('hide');
   fm.querySelector('b').textContent='✎ 編輯請款單 '+ref+'(允甄匯款前)';
-  setReqType((r.items&&r.items.length)?'sec':'gen');
+  setReqType(reqKindOf(r));
   document.getElementById('rPool').value=r.pool;
   document.getElementById('rDesc').value=r.desc;
   actBox('rActBox','rAct',r.act||'','活動(例:8月例賽;球秘請款必填)');
@@ -3147,6 +3175,15 @@ function reqCreate(){
       });
       if(dup && !confirm('⚠️ 本月已有一筆含「球秘執行費」的請款單(執行費一月一筆)。仍要送出?')) return;
     }
+  }
+  if(reqType==='adv'){
+    q.items=gatherItems();
+    if(!q.items.length){ toast('代墊請款請至少填一項明細'); return; }
+    q.amount=itemTotal();
+    if(q.amount<=0){ toast('合計需大於 0'); return; }
+    if(!q.desc){ if(!q.act){ toast('請填項目說明或選活動'); return; } q.desc='代墊請款('+q.act+')'; }
+    if(/^球秘請款\(/.test(q.desc)){ toast('項目說明請不要用「球秘請款(」開頭(會被當成球秘請款單)'); return; }
+    if(!q.note) q.note=(REQ_ME[user]||user)+' 先墊付,請款歸墊';
   }
   if(!q.desc||!q.amount||!q.payee){ toast('項目、金額、收款戶名必填'); return; }
   if(reqEditRef){
