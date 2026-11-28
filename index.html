@@ -196,7 +196,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-11-27c</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-11-28a</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -430,7 +430,7 @@ var OV_VIEWS=[['pools','📊 總表'],['team','隊伍'],['mainv','創主班'],['
 
 var MUT_ACTIONS={add:1,'void':1,giftAdd:1,giftDel:1,editEntry:1,reqCreate:1,reqEdit:1,reqCancel:1,reqPay:1,reqClose:1,reqReceipt:1,
   sponsorTransfer:1,directGift:1,reconCommit:1,publishMonth:1,memberConfirm:1,memberSync:1,
-  budgetSave:1,budgetDel:1,budgetBatch:1,actUpsert:1,actDel:1,exportPdf:1,exportXlsx:1,incomeConfirm:1,pettyFundConfirm:1,custodyKeep:1};
+  budgetSave:1,budgetDel:1,budgetBatch:1,actUpsert:1,actDel:1,exportPdf:1,exportXlsx:1,incomeConfirm:1,cashOffset:1,pettyFundConfirm:1,custodyKeep:1};
 var apiInflight=null;
 function api(payload){
   if(MUT_ACTIONS[payload.action]){
@@ -1229,7 +1229,7 @@ function _detTable(title, rs, withPool, balMap){
   /* 明細一律日期升冪(最新在最下);狀態/收款方式附註同 app 明細列;balMap 給定時帶流水餘額欄 */
   var tr=_asc(rs).map(function(r){
     var mk='';
-    if(r.status==='待對帳') mk='・⏳待對帳'; else if(r.status==='待存入') mk='・💰待存入';
+    if(r.status==='待對帳') mk='・⏳待對帳'; else if(r.status==='待存入') mk='・💰待存入'; else if(r.status==='現金抵付') mk='・🔄現金抵付(不存入)';
     else if(r.status==='待撥入確認') mk='・💸待撥入'; else if(r.status==='已對帳') mk='・✓已對帳';
     else if(r.status==='已撥入') mk='・✓已撥入';
     if(r.method&&r.method!=='匯款'&&r.income>0) mk+='・💵'+esc(r.method);
@@ -2844,6 +2844,7 @@ function renderDetail(){
     else if(r.status==='待撥入確認') sub.push('💸待撥入');
     else if(r.status==='已對帳') sub.push('✓已對帳');
     else if(r.status==='已撥入') sub.push('✓已撥入');
+    else if(r.status==='現金抵付') sub.push('🔄現金抵付');
     if(r.method&&r.method!=='匯款'&&r.income>0) sub.push('💵'+r.method);
     if(r.act) sub.push('🎯'+r.act);
     if(r.fy && r.fy!==fyOf(r.date)) sub.push('📅→'+r.fy+'年度');
@@ -3333,6 +3334,16 @@ function closeReqOverlay(){ document.getElementById('reqOverlay').style.display=
 
 var payTab='req'; /* 付款頁雙頁籤:req=請款單流程、inbox=入帳/撥補待辦 */
 function setPayTab(tb){ payTab=tb; renderReqs(); }
+/* 現金抵付:現金收款沒存進戶頭、直接拿去支付(如發退款)→ 從「待存入」移除,留用途 */
+function cashOffsetGo(id){
+  var r=((lastData&&lastData.recent)||[]).filter(function(x){return x.id===id;})[0]; if(!r) return;
+  var note=prompt('「'+r.desc+'」NT$ '+money(r.income)+'\n這筆現金沒有存進戶頭,拿去付了什麼?(必填)\n例:現場支付住宿訂金退款');
+  if(note===null) return;
+  if(!note.trim()){ toast('請寫明現金拿去付了什麼'); return; }
+  api({action:'cashOffset', txnId:id, note:note.trim()})
+    .then(function(){ toast('✓ '+id+' 已改為現金抵付,不再列入待存入;已通知允甄'); refresh(); })
+    .catch(function(e){ toast(/未知動作/.test(e.message)?'失敗:後端還沒更新,暫時不能標記現金抵付(請先部署新版 Code.gs)':'失敗:'+e.message, 5000); });
+}
 function incomeConfirmGo(id){
   if(!confirm('確認這筆錢已進銀行戶頭(匯款入帳/現金・LINE Pay 已存入)?確認後狀態改為「已對帳」並通知凌華')) return;
   api({action:'incomeConfirm', txnId:id})
@@ -3403,7 +3414,8 @@ function renderReqs(){
         '<div style="flex:1;min-width:0"><b style="font-size:13px">'+esc(r.desc)+'</b>'+
         '<p class="sub" style="font-size:11px;margin-top:2px">'+d8fmt(r.date)+'・'+esc(String(r.pool).replace(/^\[.\]/,''))+'・'+esc(catDisp(r))+(r.method?'・💵'+esc(r.method):'')+'・'+r.id+'</p></div>'+
         '<b class="amt-in" style="white-space:nowrap">+'+money(r.income)+'</b>'+
-        '<button class="btn" style="width:auto;padding:8px 12px;margin:0;font-size:12px" data-incok="'+r.id+'" onclick="incomeConfirmGo(\''+r.id+'\')">'+btnTxt+'</button></div>';
+        '<button class="btn" style="width:auto;padding:8px 12px;margin:0;font-size:12px" data-incok="'+r.id+'" onclick="incomeConfirmGo(\''+r.id+'\')">'+btnTxt+'</button></div>'+
+        (r.status==='待存入'?'<button class="ghost" style="width:auto;padding:5px 10px;margin:6px 0 0;font-size:11.5px" onclick="cashOffsetGo(\''+r.id+'\')">🔄 這筆現金已拿去支付・不存入</button>':'');
       el.appendChild(d);
     }
     var incDep=(lastData.recent||[]).filter(function(r){ return !r.voided && r.status==='待存入'; });
@@ -3454,7 +3466,7 @@ function renderReqs(){
         el.appendChild(d);
       });
     }
-    /* 唯讀追蹤:我登的入帳,允甄尚未確認的(待對帳/待存入)。凌華無動作鈕,確認權在允甄 */
+    /* 追蹤:我登的入帳,允甄尚未確認的(待對帳/待存入)。確認權在允甄;唯一例外=待存入的現金若已直接拿去支付,凌華可改標「現金抵付」 */
     var watchP=(lastData.recent||[]).filter(function(r){ return !r.voided && (r.status==='待對帳'||r.status==='待存入'); });
     if(watchP.length){
       head('🏦 允甄尚未確認的入帳・唯讀追蹤('+watchP.length+')', 0, '#6b7280');
@@ -3466,7 +3478,8 @@ function renderReqs(){
           '<div style="flex:1;min-width:0"><b style="font-size:13px">'+esc(r.desc)+'</b>'+
           '<p class="sub" style="font-size:11px;margin-top:2px">'+d8fmt(r.date)+'・'+esc(String(r.pool).replace(/^\[.\]/,''))+'・'+esc(catDisp(r))+(r.method?'・💵'+esc(r.method):'')+'・'+r.id+(r.by?'・登帳:'+esc(r.by):'')+'</p></div>'+
           '<div style="text-align:right;white-space:nowrap"><b class="amt-in">+'+money(r.income)+'</b>'+
-          '<p class="sub" style="font-size:11px;margin-top:2px;color:#8a5a00">'+badge+'</p></div></div>';
+          '<p class="sub" style="font-size:11px;margin-top:2px;color:#8a5a00">'+badge+'</p></div></div>'+
+          (r.status==='待存入'?'<button class="ghost" style="width:auto;padding:5px 10px;margin:6px 0 0;font-size:11.5px" onclick="cashOffsetGo(\''+r.id+'\')">🔄 這筆現金已拿去支付・不存入</button>':'');
         el.appendChild(d);
       });
     }
@@ -3909,7 +3922,7 @@ function pick(tp){
     h+='<select id="fTeamE">'+to.map(function(x){return '<option>'+x+'</option>'}).join('')+'</select>';
   }
   h+='<input type="number" id="fAmt" placeholder="金額" inputmode="numeric">';
-  if(tp.dir>0) h+='<select id="fPay" onchange="toggleLast5()"><option>匯款</option><option>現金</option><option>LINE Pay</option></select><input type="text" id="fLast5" maxlength="5" inputmode="numeric" placeholder="匯款後5碼(選填)">'; /* 收款方式:現金/LINE Pay→待存入提醒允甄 */
+  if(tp.dir>0) h+='<select id="fPay" onchange="toggleLast5()"><option>匯款</option><option>現金</option><option>LINE Pay</option><option value="現金抵付">現金抵付(收了直接拿去付・不存入)</option></select><input type="text" id="fLast5" maxlength="5" inputmode="numeric" placeholder="匯款後5碼(選填)">'; /* 收款方式:現金/LINE Pay→待存入提醒允甄 */
   if(tp.catSel) h+='<select id="fCat" onchange="catGuard(this,\'fTeamE\')">'+CATS.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select>';
   h+='<input type="text" id="fDesc" placeholder="明細,例:8/27長庚月例賽">';
   h+=actField('fAct','','活動(選填,例:9月例賽)');
@@ -3921,7 +3934,7 @@ function pick(tp){
     if(poolOpts.length>1) h+='<select id="fPool">'+poolOpts.map(function(p){return '<option>'+p+'</option>'}).join('')+'</select>';
     h+='<select id="fDir"><option value="out">支出</option><option value="in">收入</option></select>';
     h+='<input type="number" id="fAmt" placeholder="金額" inputmode="numeric">';
-    h+='<select id="fPay" onchange="toggleLast5()"><option>匯款</option><option>現金</option><option>LINE Pay</option></select><input type="text" id="fLast5" maxlength="5" inputmode="numeric" placeholder="匯款後5碼(選填)">'; /* 收款方式(收入適用;支出忽略) */
+    h+='<select id="fPay" onchange="toggleLast5()"><option>匯款</option><option>現金</option><option>LINE Pay</option><option value="現金抵付">現金抵付(收了直接拿去付・不存入)</option></select><input type="text" id="fLast5" maxlength="5" inputmode="numeric" placeholder="匯款後5碼(選填)">'; /* 收款方式(收入適用;支出忽略) */
     h+='<select id="fCat" onchange="catGuard(this,\'fTeamE\')">'+ALL_CATS.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select>';
     h+='<select id="fTeamE">'+ALL_TEAMS.map(function(x){return '<option>'+x+'</option>'}).join('')+'</select>';
     h+='<input type="text" id="fDesc" placeholder="明細">';
