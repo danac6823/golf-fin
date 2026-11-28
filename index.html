@@ -196,7 +196,7 @@ body.appOn{padding-bottom:92px}
       <p class="sub" style="padding:0 6px 6px">金流總覽(可點入明細)</p>
       <div id="homeFlow"></div>
     </div>
-    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-11-28a</p>
+    <p class="sub" style="text-align:center;font-size:10px;margin-top:2px">GOLF-FIN L3 build 2026-11-28b</p>
   </div>
 
   <div id="memberSec" class="hide">
@@ -428,7 +428,7 @@ function setLinaTab(t){ linaTab=t; renderOverview(); }
 function ovActBack(){ ovActSel=null; ovMain='pool'; showTab('actm'); } /* 返回活動管理(列表層已拆) */
 var OV_VIEWS=[['pools','📊 總表'],['team','隊伍'],['mainv','創主班'],['lina','會長'],['yz','允甄'],['adv','花']];
 
-var MUT_ACTIONS={add:1,'void':1,giftAdd:1,giftDel:1,editEntry:1,reqCreate:1,reqEdit:1,reqCancel:1,reqPay:1,reqClose:1,reqReceipt:1,
+var MUT_ACTIONS={add:1,'void':1,giftAdd:1,giftDel:1,editEntry:1,reqCreate:1,reqEdit:1,reqCancel:1,reqPay:1,reqClose:1,reqReceipt:1,reqReceiptDel:1,
   sponsorTransfer:1,directGift:1,reconCommit:1,publishMonth:1,memberConfirm:1,memberSync:1,
   budgetSave:1,budgetDel:1,budgetBatch:1,actUpsert:1,actDel:1,exportPdf:1,exportXlsx:1,incomeConfirm:1,cashOffset:1,pettyFundConfirm:1,custodyKeep:1};
 var apiInflight=null;
@@ -3063,6 +3063,14 @@ function driveId(u){
   return m ? m[1] : null;
 }
 
+/* 傳錯憑證:刪掉那一張(照片移到雲端硬碟垃圾桶),再用「補傳憑證」傳對的 */
+function reqRcpDel(ref, i){
+  var r=((lastData&&lastData.reqs)||[]).filter(function(x){return x.ref===ref;})[0]; if(!r||!r.receipts||!r.receipts[i]) return;
+  if(!confirm('刪除 '+ref+' 的第 '+(i+1)+' 張憑證?\n照片會移到雲端硬碟垃圾桶(30 天內可救回)。刪完再按「補傳憑證」傳正確的。')) return;
+  api({action:'reqReceiptDel', ref:ref, url:r.receipts[i]})
+    .then(function(j){ toast('✓ 已刪除,這張單剩 '+j.count+' 張憑證'); closeReqOverlay(); refresh(); })
+    .catch(function(e){ toast(/未知動作/.test(e.message)?'失敗:後端還沒更新,暫時不能刪憑證(請先部署新版 Code.gs)':'失敗:'+e.message, 5000); });
+}
 function viewReceipt(u){
   var id = driveId(u);
   if(!id){ window.open(u, '_blank'); return; }
@@ -3311,7 +3319,8 @@ function openReqDetail(ref){
   var rc=(r.receipts||[]).length;
   if(rc){
     h+='<p class="sub">📎 憑證 '+rc+' 張:'+
-      r.receipts.map(function(u,i){ return '<a href="javascript:void(0)" onclick="viewReceipt(\''+esc(u)+'\')" style="color:#1F3864;text-decoration:underline">查看'+(rc>1?(i+1):'')+'</a>'; }).join('・')+'</p>';
+      r.receipts.map(function(u,i){ return '<a href="javascript:void(0)" onclick="viewReceipt(\''+esc(u)+'\')" style="color:#1F3864;text-decoration:underline">查看'+(rc>1?(i+1):'')+'</a>'+
+        (user!=='麗娜'?'<a href="javascript:void(0)" onclick="reqRcpDel(\''+r.ref+'\','+i+')" style="color:#A32D2D;margin-left:3px;text-decoration:none" title="傳錯了,刪除這張">✕刪</a>':''); }).join('・')+'</p>';
   } else if(!closed){
     h+='<p class="sub" style="color:#8a4a00">⚠ 未附憑證</p>';
   }
